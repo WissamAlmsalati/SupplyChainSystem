@@ -1,0 +1,6 @@
+{
+  "name": "TAQA Workforce Operations Management System",
+  "description": "Comprehensive workforce tracking, deployment scheduling, credentials compliance, appraisals, and payroll preparation platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
