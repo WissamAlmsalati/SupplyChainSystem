@@ -119,3 +119,4 @@ When `APP_ENV=local`, the database is seeded automatically on first start:
 - Email: `admin@example.com`
 - Password: `password`
 
+# SupplyChainSystem
