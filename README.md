@@ -57,4 +57,65 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-# taqaa
+
+## Docker
+
+### Environment
+
+Copy the Docker environment template to `.env` and adjust secrets:
+
+```bash
+cp .env.docker .env
+```
+
+### Development
+
+Development uses bind mounts, Vite HMR, and a unified Nginx entry point on port 80:
+
+```bash
+docker compose up -d --build
+```
+
+Services:
+- Single entry point: http://localhost
+- Admin dashboard: http://localhost
+- Cafe mobile app: http://localhost/cafe/
+- Backend API: http://localhost/api
+- Swagger docs: http://localhost/api/documentation
+- MySQL: localhost:3306
+- Redis: localhost:6379
+
+To stop:
+
+```bash
+docker compose down
+```
+
+### Production
+
+Production builds optimized static frontends and runs the queue worker:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Services:
+- Single entry point: http://localhost
+- Admin dashboard: http://localhost
+- Cafe mobile app: http://localhost/cafe/
+- Backend API: http://localhost/api
+- MySQL + Redis with persistent volumes
+- Dedicated queue worker container
+
+To stop:
+
+```bash
+docker compose -f docker-compose.prod.yml down
+```
+
+### Default admin credentials (development)
+
+When `APP_ENV=local`, the database is seeded automatically on first start:
+- Email: `admin@example.com`
+- Password: `password`
+

@@ -1,0 +1,941 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Cafe Supply Chain API",
+        "description": "REST API documentation split by platform: Admin Dashboard, Cafe Mobile App, and Public Storefront.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/api",
+            "description": "Local development server"
+        }
+    ],
+    "paths": {
+        "/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Log in and receive an access token",
+                "operationId": "67d6d0fdd54fba132e1b6f55ca254183",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AuthLoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials"
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Revoke the current access token",
+                "operationId": "28d48c13fca984400ac8de99f54ee13a",
+                "responses": {
+                    "200": {
+                        "description": "Logged out successfully"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get the authenticated user",
+                "operationId": "bc2032a379aa97707ccc61511897c120",
+                "responses": {
+                    "200": {
+                        "description": "Authenticated user details"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/orders": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Orders"
+                ],
+                "summary": "List cafe orders",
+                "operationId": "df333eb5fb03206b34e826eea2c6b5be",
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of cafe orders"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Cafe Mobile Orders"
+                ],
+                "summary": "Create an order for the cafe",
+                "operationId": "4c7d655b789460acf5478b0a6871bed7",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CafeOrderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Order created"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/cafe/orders/{id}": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Orders"
+                ],
+                "summary": "Get a cafe order",
+                "operationId": "ddb54b10046cd006c29ffb454b880dfe",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Order details"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                }
+            }
+        },
+        "/cafe/orders/{id}/status": {
+            "put": {
+                "tags": [
+                    "Cafe Mobile Orders"
+                ],
+                "summary": "Update order status",
+                "operationId": "766c6aac15f0b1777050785478dff042",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "status": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Status updated"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                }
+            }
+        },
+        "/cafe/branches": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Branches"
+                ],
+                "summary": "List cafe branches",
+                "operationId": "29bf3a3c3bb631e6885ee6f65afb6f0d",
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of cafe branches"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Cafe Mobile Branches"
+                ],
+                "summary": "Create a branch for the cafe",
+                "operationId": "1a40ff98a18f993c5a30a7c0113c49b4",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CafeBranchRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Branch created"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/cafe/branches/{id}": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Branches"
+                ],
+                "summary": "Get a cafe branch",
+                "operationId": "8c9baf70781a9927d0ab8dd263b36ba2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Branch details"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Cafe Mobile Branches"
+                ],
+                "summary": "Update a cafe branch",
+                "operationId": "faa28d4c68cdbaa8d23976bcc1383504",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CafeBranchRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Branch updated"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                }
+            }
+        },
+        "/cafe/profile": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Profile"
+                ],
+                "summary": "Get cafe profile",
+                "operationId": "b61a587e42e4a65a611e9ce586ebe1f0",
+                "responses": {
+                    "200": {
+                        "description": "Cafe profile"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Cafe Mobile Profile"
+                ],
+                "summary": "Update cafe profile",
+                "operationId": "6d026f2b75cdcbd36744e80489abf60f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "contact_info": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Profile updated"
+                    }
+                }
+            }
+        },
+        "/cafe/categories": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Catalog"
+                ],
+                "summary": "List product categories",
+                "operationId": "a4cb49242b76128b80cc01f04488b6b9",
+                "responses": {
+                    "200": {
+                        "description": "List of categories"
+                    }
+                }
+            }
+        },
+        "/cafe/products": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Catalog"
+                ],
+                "summary": "List products",
+                "operationId": "46d95a00fca533270cd7255284e834f8",
+                "parameters": [
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of products"
+                    }
+                }
+            }
+        },
+        "/cafe/products/{id}": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Catalog"
+                ],
+                "summary": "Get product details",
+                "operationId": "7cdda903aaa51527f8fd6dbf56255e3b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product details"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "CafeRequest": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150
+                    },
+                    "contact_info": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "nullable": true
+                    },
+                    "created_by_admin_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "CafeBranchRequest": {
+                "required": [
+                    "cafe_id",
+                    "name",
+                    "latitude",
+                    "longitude"
+                ],
+                "properties": {
+                    "cafe_id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "city": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "street": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "nullable": true
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "delivery_zone_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "DeliveryZoneRequest": {
+                "required": [
+                    "hex_id",
+                    "delivery_price"
+                ],
+                "properties": {
+                    "hex_id": {
+                        "type": "string",
+                        "maxLength": 30
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "delivery_price": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "CategoryRequest": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "parent_category_id": {
+                        "type": "integer",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "SupplierRequest": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150
+                    },
+                    "contact_info": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "ProductRequest": {
+                "required": [
+                    "category_id",
+                    "name"
+                ],
+                "properties": {
+                    "category_id": {
+                        "type": "integer"
+                    },
+                    "supplier_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ProductVariantRequest": {
+                "required": [
+                    "product_id",
+                    "sku",
+                    "price"
+                ],
+                "properties": {
+                    "product_id": {
+                        "type": "integer"
+                    },
+                    "sku": {
+                        "type": "string",
+                        "maxLength": 50
+                    },
+                    "attribute_name": {
+                        "type": "string",
+                        "maxLength": 50,
+                        "nullable": true
+                    },
+                    "attribute_value": {
+                        "type": "string",
+                        "maxLength": 50,
+                        "nullable": true
+                    },
+                    "price": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "WarehouseRequest": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "city": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "InventoryRequest": {
+                "required": [
+                    "warehouse_id",
+                    "product_variant_id",
+                    "quantity"
+                ],
+                "properties": {
+                    "warehouse_id": {
+                        "type": "integer"
+                    },
+                    "product_variant_id": {
+                        "type": "integer"
+                    },
+                    "quantity": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "AuthLoginRequest": {
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password"
+                    }
+                },
+                "type": "object"
+            },
+            "AuthRegisterRequest": {
+                "required": [
+                    "name",
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 150
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "minLength": 6
+                    },
+                    "mobile_number": {
+                        "type": "string",
+                        "maxLength": 20,
+                        "nullable": true
+                    },
+                    "cafe_id": {
+                        "type": "integer",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "AuthResponse": {
+                "properties": {
+                    "token": {
+                        "type": "string"
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "AppUserRequest": {
+                "required": [
+                    "name",
+                    "email",
+                    "password",
+                    "user_type_id"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 150
+                    },
+                    "mobile_number": {
+                        "type": "string",
+                        "maxLength": 20,
+                        "nullable": true
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password"
+                    },
+                    "user_type_id": {
+                        "type": "integer"
+                    },
+                    "cafe_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "OrderItemRequest": {
+                "required": [
+                    "product_variant_id",
+                    "quantity",
+                    "unit_price"
+                ],
+                "properties": {
+                    "product_variant_id": {
+                        "type": "integer"
+                    },
+                    "quantity": {
+                        "type": "integer"
+                    },
+                    "unit_price": {
+                        "type": "number",
+                        "format": "float"
+                    }
+                },
+                "type": "object"
+            },
+            "OrderRequest": {
+                "required": [
+                    "user_id",
+                    "branch_id",
+                    "status",
+                    "total_amount"
+                ],
+                "properties": {
+                    "user_id": {
+                        "type": "integer"
+                    },
+                    "branch_id": {
+                        "type": "integer"
+                    },
+                    "delegate_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "delivery_zone_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "delivery_fee": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "order_date": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "status": {
+                        "type": "string",
+                        "maxLength": 30
+                    },
+                    "total_amount": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderItemRequest"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "CafeOrderRequest": {
+                "required": [
+                    "branch_id",
+                    "items"
+                ],
+                "properties": {
+                    "branch_id": {
+                        "type": "integer"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderItemRequest"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "CartRequest": {
+                "required": [
+                    "user_id",
+                    "branch_id"
+                ],
+                "properties": {
+                    "user_id": {
+                        "type": "integer"
+                    },
+                    "branch_id": {
+                        "type": "integer"
+                    },
+                    "status": {
+                        "type": "string",
+                        "maxLength": 20
+                    }
+                },
+                "type": "object"
+            },
+            "PurchaseOrderRequest": {
+                "required": [
+                    "supplier_id",
+                    "warehouse_id",
+                    "status"
+                ],
+                "properties": {
+                    "supplier_id": {
+                        "type": "integer"
+                    },
+                    "warehouse_id": {
+                        "type": "integer"
+                    },
+                    "order_date": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "status": {
+                        "type": "string",
+                        "maxLength": 20
+                    }
+                },
+                "type": "object"
+            },
+            "ValidationError": {
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Shared authentication endpoints"
+        },
+        {
+            "name": "Cafe Mobile Orders",
+            "description": "Cafe mobile app order management"
+        },
+        {
+            "name": "Cafe Mobile Branches",
+            "description": "Cafe mobile app branch management"
+        },
+        {
+            "name": "Cafe Mobile Profile",
+            "description": "Cafe mobile app profile"
+        },
+        {
+            "name": "Cafe Mobile Catalog",
+            "description": "Cafe mobile app product catalog"
+        }
+    ],
+    "security": [
+        {
+            "bearerAuth": []
+        }
+    ]
+}

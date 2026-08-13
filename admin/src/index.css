@@ -1,0 +1,181 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Tajawal', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --color-background: #f8f7f5;
+  --color-surface: #ffffff;
+  --color-foreground: #1c1917;
+  --color-muted: #78716c;
+  --color-border: #e7e5e4;
+  --color-border-strong: #d6d3d1;
+
+  --color-primary: #0f766e;
+  --color-primary-foreground: #ffffff;
+  --color-primary-soft: #f0fdfa;
+
+  --color-accent: #d97706;
+  --color-accent-foreground: #ffffff;
+  --color-accent-soft: #fffbeb;
+
+  --color-danger: #dc2626;
+  --color-danger-foreground: #ffffff;
+  --color-danger-soft: #fef2f2;
+
+  --color-success: #16a34a;
+  --color-success-foreground: #ffffff;
+  --color-success-soft: #f0fdf4;
+
+  --color-warning: #d97706;
+  --color-warning-foreground: #ffffff;
+  --color-warning-soft: #fffbeb;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--color-foreground);
+  background: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+/* Keep page headers pinned while content scrolls */
+main > header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding-top: 1.5rem;
+  padding-bottom: 0.75rem;
+  background: var(--color-background);
+}
+
+@media (min-width: 1024px) {
+  main > header {
+    padding-top: 2rem;
+  }
+}
+
+/* Print: show only the invoice, full A4 page */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto;
+    background: #fff !important;
+  }
+
+  /* Hide app chrome */
+  nav,
+  aside,
+  .print\:hidden,
+  [class*="print:hidden"] {
+    display: none !important;
+  }
+
+  /* Layout reset */
+  .flex.h-screen,
+  main {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+  }
+
+  /* Invoice takes full page */
+  .invoice-page {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Force backgrounds and colors to print */
+  .invoice-page * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Avoid breaking inside important blocks */
+  .invoice-page tr,
+  .invoice-page td,
+  .invoice-page th,
+  .invoice-page .no-break {
+    break-inside: avoid;
+  }
+
+  /* Ensure tables render with borders */
+  .invoice-page table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+}

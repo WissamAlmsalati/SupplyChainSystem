@@ -1,0 +1,56 @@
+# Version control
+.git
+.gitattributes
+.gitignore
+
+# IDE / editors
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Dependencies
+node_modules
+vendor
+admin/node_modules
+cafe/node_modules
+
+# Build outputs
+admin/dist
+cafe/dist
+
+# Laravel runtime
+storage/logs/*.log
+storage/framework/cache
+storage/framework/sessions
+storage/framework/views
+storage/app/public/*
+!storage/app/public/.gitignore
+bootstrap/cache/*.php
+.phpunit.result.cache
+
+# Secrets
+.env
+.env.*
+!.env.example
+!.env.docker
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Frontend contexts (they have their own Dockerfiles)
+admin/
+cafe/
+
+# Tests / docs
+tests
+phpunit.xml
+phpunit.xml.dist
+README.md
+docs
+
+# Misc
+.DS_Store
+*.md

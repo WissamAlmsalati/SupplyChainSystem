@@ -1,0 +1,121 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useApiResource } from '../hooks/useApiResource'
+import { useModulePermission } from '../hooks/usePermission'
+import DataTable from '../components/DataTable'
+import Modal from '../components/Modal'
+import Button from '../components/ui/Button'
+import Input from '../components/ui/Input'
+import Badge from '../components/ui/Badge'
+
+const initial = { hex_id: '', name: '', delivery_price: '', is_active: true }
+
+export default function DeliveryZones() {
+  const navigate = useNavigate()
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/delivery-zones')
+  const [modal, setModal] = useState(false)
+  const [form, setForm] = useState(initial)
+  const [editing, setEditing] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const { canCreate, canEdit, canDelete } = useModulePermission('DELIVERY_ZONES')
+
+  const openCreate = () => {
+    setForm(initial)
+    setEditing(null)
+    setModal(true)
+  }
+
+  const openEdit = (item) => {
+    setForm({ ...initial, ...item, delivery_price: item.delivery_price ?? '' })
+    setEditing(item)
+    setModal(true)
+  }
+
+  const close = () => {
+    setModal(false)
+    setForm(initial)
+    setEditing(null)
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const data = { ...form, delivery_price: Number(form.delivery_price), is_active: Boolean(form.is_active) }
+      if (editing) await update(editing.id, data)
+      else await create(data)
+      close()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const columns = [
+    { key: 'name', label: 'الاسم' },
+    { key: 'delivery_price', label: 'سعر التوصيل' },
+    { key: 'latitude', label: 'خط العرض', render: (r) => r.latitude ?? '-' },
+    { key: 'longitude', label: 'خط الطول', render: (r) => r.longitude ?? '-' },
+    {
+      key: 'is_active',
+      label: 'الحالة',
+      render: (r) => <Badge variant={r.is_active ? 'success' : 'default'}>{r.is_active ? 'نشط' : 'غير نشط'}</Badge>,
+    },
+  ]
+
+  return (
+    <>
+      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-extrabold text-foreground">مناطق التوصيل</h1>
+        {canCreate && <Button variant="primary" onClick={openCreate}>إضافة منطقة</Button>}
+      </header>
+      {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      <DataTable
+        columns={columns}
+        rows={items}
+        loading={loading}
+        pagination={pagination}
+        onPageChange={setPage}
+        emptyText="لا توجد مناطق توصيل."
+        actions={canEdit || canDelete ? (row) => (
+          <>
+            <Button variant="secondary" size="sm" onClick={() => navigate(`/delivery-zones/${row.id}`)}>عرض</Button>
+            {canEdit && <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>تعديل</Button>}
+            {canDelete && <Button variant="danger" size="sm" onClick={() => remove(row.id)}>حذف</Button>}
+          </>
+        ) : undefined}
+      />
+      <Modal title={editing ? 'تعديل منطقة' : 'إضافة منطقة'} open={modal} onClose={close}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+
+          <Input
+            label="الاسم"
+            value={form.name || ''}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <Input
+            label="سعر التوصيل"
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.delivery_price}
+            onChange={(e) => setForm({ ...form, delivery_price: e.target.value })}
+            required
+          />
+          <label className="flex items-center gap-2 cursor-pointer text-sm text-foreground">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-border-strong text-primary focus:ring-primary"
+              checked={form.is_active}
+              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+            />
+            نشط
+          </label>
+          <div className="flex items-center justify-end gap-2 mt-6">
+            <Button type="button" variant="secondary" onClick={close}>إلغاء</Button>
+            <Button type="submit" variant="primary" disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>
+          </div>
+        </form>
+      </Modal>
+    </>
+  )
+}

@@ -1,0 +1,281 @@
+import { useEffect, useState } from 'react'
+import client from '../api/client'
+import { useModulePermission } from '../hooks/usePermission'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import QuickOrderModal from '../components/QuickOrderModal'
+
+const statusColors = {
+  pending: '#d97706',
+  processing: '#0f766e',
+  completed: '#16a34a',
+  delivered: '#16a34a',
+  cancelled: '#dc2626',
+  failed: '#dc2626',
+}
+
+const statusLabels = {
+  pending: 'معلّق',
+  processing: 'قيد المعالجة',
+  completed: 'مكتمل',
+  delivered: 'تم التوصيل',
+  cancelled: 'ملغي',
+  failed: 'فاشل',
+}
+
+function formatMoney(value) {
+  return Number(value).toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+export default function Dashboard() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [quickOpen, setQuickOpen] = useState(false)
+  const { canCreate: canCreateOrder } = useModulePermission('ORDERS')
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const res = await client.get('/dashboard')
+      setData(res.data)
+    } catch (err) {
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  if (loading) return <div className="text-muted">جاري التحميل...</div>
+  if (!data) return <div className="text-danger">فشل تحميل لوحة التحكم.</div>
+
+  const { stats, ordersByStatus, recentOrders, topProducts, monthlyRevenue, recentLogs, lowStockItems } = data
+
+  const statusEntries = Object.entries(ordersByStatus || {})
+  const totalStatus = statusEntries.reduce((sum, [, count]) => sum + count, 0) || 1
+  const gradient = statusEntries
+    .map(([status, count], i, arr) => {
+      const prev = arr.slice(0, i).reduce((s, [, c]) => s + c, 0)
+      const start = (prev / totalStatus) * 360
+      const end = ((prev + count) / totalStatus) * 360
+      return `${statusColors[status] || '#78716c'} ${start}deg ${end}deg`
+    })
+    .join(', ')
+
+  const maxRevenue = Math.max(...monthlyRevenue.map((m) => Number(m.revenue) || 0), 1)
+
+  return (
+    <>
+      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold text-foreground">لوحة التحكم</h1>
+          <p className="mt-1 text-muted">نظرة عامة وتحليلات على أداء سلسلة الإمداد</p>
+        </div>
+        {canCreateOrder && (
+          <Button variant="primary" onClick={() => setQuickOpen(true)}>
+            + طلب سريع
+          </Button>
+        )}
+      </header>
+
+      <QuickOrderModal open={quickOpen} onClose={() => setQuickOpen(false)} onCreated={load} />
+
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <StatCard label="إجمالي الطلبات" value={stats.orders} />
+        <StatCard label="المنتجات" value={stats.products} />
+        <StatCard label="إجمالي الإيرادات" value={`${formatMoney(stats.revenue)} د.ل`} />
+        <StatCard
+          label="منتجات منخفضة المخزون"
+          value={stats.lowStock}
+          tone={stats.lowStock > 0 ? 'danger' : 'default'}
+        />
+        <StatCard label="فروع المقاهي" value={stats.branches} />
+      </div>
+
+      {/* Charts */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        {/* Monthly revenue */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>الإيرادات الشهرية (آخر 6 أشهر)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex h-56 items-end justify-between gap-2">
+              {monthlyRevenue.map((m) => {
+                const height = `${(Number(m.revenue) / maxRevenue) * 100}%`
+                return (
+                  <div key={m.month} className="flex flex-1 flex-col items-center gap-2">
+                    <div className="text-xs text-muted">{formatMoney(m.revenue)}</div>
+                    <div
+                      className="w-full max-w-[3rem] rounded-t-md bg-primary/80 transition-all hover:bg-primary"
+                      style={{ height }}
+                      title={`${m.label}: ${formatMoney(m.revenue)} د.ل`}
+                    />
+                    <div className="text-xs text-muted">
+                      {new Date(`${m.month}-01`).toLocaleDateString('ar-SA', { month: 'short', year: 'numeric' })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Orders by status */}
+        <Card>
+          <CardHeader>
+            <CardTitle>حالات الطلبات</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div
+                className="h-28 w-28 rounded-full"
+                style={{
+                  background: `conic-gradient(${gradient})`,
+                }}
+              />
+              <div className="flex-1 space-y-2">
+                {statusEntries.map(([status, count]) => (
+                  <div key={status} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ background: statusColors[status] || '#78716c' }}
+                      />
+                      <span className="text-foreground">{statusLabels[status] || status}</span>
+                    </div>
+                    <span className="font-semibold text-muted">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Lists */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        {/* Top products */}
+        <Card>
+          <CardHeader>
+            <CardTitle>أكثر المنتجات مبيعاً</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {topProducts.length === 0 ? (
+              <div className="text-sm text-muted">لا توجد بيانات مبيعات.</div>
+            ) : (
+              <ul className="space-y-3">
+                {topProducts.map((p, i) => (
+                  <li key={p.id ?? i} className="flex items-center justify-between text-sm">
+                    <span className="text-foreground">{p.name}</span>
+                    <Badge variant="primary">{p.quantity}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Low stock */}
+        <Card>
+          <CardHeader>
+            <CardTitle>تنبيهات المخزون</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {lowStockItems.length === 0 ? (
+              <div className="text-sm text-muted">لا توجد منتجات منخفضة.</div>
+            ) : (
+              <ul className="space-y-3">
+                {lowStockItems.map((item) => (
+                  <li key={item.id} className="flex items-center justify-between text-sm">
+                    <span className="text-foreground">
+                      {item.product_variant?.product?.name ?? 'منتج'}
+                      {item.product_variant?.attribute_value ? ` - ${item.product_variant.attribute_value}` : ''}
+                    </span>
+                    <Badge variant="danger">{item.quantity}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent orders */}
+        <Card>
+          <CardHeader>
+            <CardTitle>آخر الطلبات</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentOrders.length === 0 ? (
+              <div className="text-sm text-muted">لا توجد طلبات.</div>
+            ) : (
+              <ul className="space-y-3">
+                {recentOrders.map((o) => (
+                  <li key={o.id} className="flex items-center justify-between text-sm">
+                    <div>
+                      <div className="font-medium text-foreground">طلب #{o.id}</div>
+                      <div className="text-xs text-muted">{o.user?.name ?? '-'}</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {o.source === 'add order from dashboard' && (
+                        <Badge variant="primary">من الـ Dashboard</Badge>
+                      )}
+                      <Badge variant={o.status === 'completed' ? 'success' : 'warning'}>
+                        {statusLabels[o.status] || o.status}
+                      </Badge>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent activity */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>آخر النشاطات</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentLogs.length === 0 ? (
+            <div className="text-sm text-muted">لا توجد نشاطات.</div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {recentLogs.map((log) => (
+                <li key={log.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm text-foreground">{log.description}</div>
+                  <div className="text-xs text-muted">
+                    {log.user_name} — {log.created_at ? new Date(log.created_at).toLocaleString('ar-SA') : '-'}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+function StatCard({ label, value, tone = 'default' }) {
+  const tones = {
+    default: 'border-border bg-surface',
+    danger: 'border-danger/20 bg-danger-soft',
+    warning: 'border-warning/20 bg-warning-soft',
+  }
+
+  return (
+    <Card className={tones[tone]}>
+      <CardContent className="p-0">
+        <div className="text-sm font-medium text-muted">{label}</div>
+        <div className="mt-2 text-3xl font-extrabold text-foreground">{value}</div>
+      </CardContent>
+    </Card>
+  )
+}
