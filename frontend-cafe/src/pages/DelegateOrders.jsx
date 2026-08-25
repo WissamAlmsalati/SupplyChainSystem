@@ -1,0 +1,146 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import client from '../api/client'
+
+const statusLabels = {
+  pending: 'معلّق',
+  processing: 'قيد المعالجة',
+  completed: 'مكتمل',
+  delivered: 'تم التوصيل',
+  cancelled: 'ملغي',
+  failed: 'فاشل',
+}
+
+const statusColors = {
+  pending: '#d97706',
+  processing: '#0f766e',
+  completed: '#16a34a',
+  delivered: '#16a34a',
+  cancelled: '#dc2626',
+  failed: '#dc2626',
+}
+
+const availableStatuses = ['pending', 'processing', 'completed', 'delivered', 'cancelled', 'failed']
+
+function formatMoney(value) {
+  return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+export default function DelegateOrders() {
+  const navigate = useNavigate()
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [updating, setUpdating] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('')
+
+  const load = async (filter = statusFilter) => {
+    setLoading(true)
+    setError('')
+    try {
+      const params = filter ? `?status=${encodeURIComponent(filter)}` : ''
+      const res = await client.get(`/delegate/orders${params}`)
+      setOrders(res.data.data)
+    } catch (err) {
+      setError(err.response?.data?.message || 'فشل تحميل الطلبات')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [statusFilter])
+
+  const updateStatus = async (order, status) => {
+    setUpdating(order.id)
+    try {
+      await client.post(`/delegate/orders/${order.id}/status`, { status })
+      load()
+    } catch (err) {
+      setError(err.response?.data?.message || 'فشل تحديث الحالة')
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  return (
+    <>
+      <header className="mb-6 pt-6">
+        <h1 className="text-2xl font-extrabold text-foreground">طلباتي</h1>
+        <p className="mt-1 text-muted">الطلبات المخصصة لك</p>
+      </header>
+
+      {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <label className="text-sm text-muted">تصفية بالحالة:</label>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-md border border-border-strong bg-background px-3 py-2 text-sm text-foreground"
+        >
+          <option value="">الكل</option>
+          {availableStatuses.map((s) => (
+            <option key={s} value={s}>{statusLabels[s]}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+        <table className="w-full text-sm">
+          <thead className="border-b border-border bg-background text-muted">
+            <tr>
+              <th className="px-4 py-3 text-start">#</th>
+              <th className="px-4 py-3 text-start">العميل</th>
+              <th className="px-4 py-3 text-start">الفرع</th>
+              <th className="px-4 py-3 text-start">الحالة</th>
+              <th className="px-4 py-3 text-end">الإجمالي</th>
+              <th className="px-4 py-3 text-start">التاريخ</th>
+              <th className="px-4 py-3 text-start">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {loading ? (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted">جاري التحميل...</td></tr>
+            ) : orders.length === 0 ? (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted">لا توجد طلبات.</td></tr>
+            ) : (
+              orders.map((o) => (
+                <tr key={o.id} className="hover:bg-background/50">
+                  <td className="px-4 py-3">#{o.id}</td>
+                  <td className="px-4 py-3">{o.user?.name ?? '-'}</td>
+                  <td className="px-4 py-3">{o.branch?.name ?? '-'}</td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={o.status}
+                      disabled={updating === o.id}
+                      onChange={(e) => updateStatus(o, e.target.value)}
+                      className="rounded-md border border-border-strong bg-background px-2 py-1 text-xs"
+                    >
+                      {availableStatuses.map((s) => (
+                        <option key={s} value={s}>{statusLabels[s]}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3 text-end font-medium">{formatMoney(o.total_amount)} د.ل</td>
+                  <td className="px-4 py-3 text-muted">
+                    {o.order_date ? new Date(o.order_date).toLocaleDateString('en-US') : '-'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => navigate(`/orders/${o.id}`)}
+                      className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                    >
+                      عرض
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}

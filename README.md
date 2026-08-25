@@ -68,6 +68,12 @@ Copy the Docker environment template to `.env` and adjust secrets:
 cp .env.docker .env
 ```
 
+For Laravel artisan commands run directly on the host, also copy `.env` into `backend/`:
+
+```bash
+cp .env backend/.env
+```
+
 ### Development
 
 Development uses bind mounts, Vite HMR, and a unified Nginx entry point on port 80:
@@ -75,6 +81,11 @@ Development uses bind mounts, Vite HMR, and a unified Nginx entry point on port 
 ```bash
 docker compose up -d --build
 ```
+
+Project layout:
+- `backend/` — Laravel API
+- `frontend-admin/` — Admin dashboard (React + Vite)
+- `frontend-cafe/` — Cafe mobile app (React + Vite)
 
 Services:
 - Single entry point: http://localhost
@@ -106,6 +117,11 @@ Services:
 - Backend API: http://localhost/api
 - MySQL + Redis with persistent volumes
 - Dedicated queue worker container
+
+Project layout:
+- `backend/` — Laravel API
+- `frontend-admin/` — Admin dashboard
+- `frontend-cafe/` — Cafe mobile app
 
 To stop:
 

@@ -1,67 +1,117 @@
 <?php
 
+use App\Http\Controllers\Api\AppUserController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CafeBranchController;
+use App\Http\Controllers\Api\CafeController;
+use App\Http\Controllers\Api\CafeDashboardController;
+use App\Http\Controllers\Api\CafeMobileController;
+use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\CartItemController;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DelegateController;
+use App\Http\Controllers\Api\DelegateMobileController;
+use App\Http\Controllers\Api\DeliveryZoneController;
+use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\OrderItemController;
+use App\Http\Controllers\Api\OrderStatusLogController;
+use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ProductImageController;
+use App\Http\Controllers\Api\ProductVariantController;
+use App\Http\Controllers\Api\PurchaseOrderController;
+use App\Http\Controllers\Api\PurchaseOrderItemController;
+use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\UserTypeController;
+use App\Http\Controllers\Api\WarehouseController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\BootstrapController;
-use App\Http\Controllers\EmployeeController;
-use App\Http\Controllers\ComplianceController;
-use App\Http\Controllers\DeploymentController;
-use App\Http\Controllers\EvaluationController;
-use App\Http\Controllers\PayrollController;
-use App\Http\Controllers\SettingController;
-use App\Http\Controllers\AuxiliaryController;
 
-// Bootstrap initial dataset
-Route::get('/bootstrap', [BootstrapController::class, 'index']);
+/*
+|--------------------------------------------------------------------------
+| Public routes
+|--------------------------------------------------------------------------
+|
+| Authentication endpoints and read-only storefront endpoints are open.
+| All other API routes require a valid Sanctum bearer token.
+|
+*/
 
-// Dynamic Settings CRUD
-Route::post('/settings/{table}', [SettingController::class, 'store']);
-Route::put('/settings/{table}/{id}', [SettingController::class, 'update']);
-Route::delete('/settings/{table}/{id}', [SettingController::class, 'destroy']);
+Route::post('login', [AuthController::class, 'login']);
 
-// Employee Management
-Route::post('/employees', [EmployeeController::class, 'store']);
-Route::put('/employees/{id}', [EmployeeController::class, 'update']);
-Route::delete('/employees/{id}', [EmployeeController::class, 'destroy']);
+Route::get('products', [ProductController::class, 'index']);
+Route::get('products/{product}', [ProductController::class, 'show']);
+Route::get('categories', [CategoryController::class, 'index']);
+Route::get('categories/{category}', [CategoryController::class, 'show']);
 
-// Documents & Certificates Compliance
-Route::post('/documents', [ComplianceController::class, 'storeDocument']);
-Route::delete('/documents/{id}', [ComplianceController::class, 'destroyDocument']);
-Route::post('/certificates', [ComplianceController::class, 'storeCertificate']);
-Route::delete('/certificates/{id}', [ComplianceController::class, 'destroyCertificate']);
-Route::post('/position-required-certificates', [ComplianceController::class, 'storePositionRequiredCertificate']);
-Route::delete('/position-required-certificates', [ComplianceController::class, 'destroyPositionRequiredCertificate']);
+Route::middleware(['auth:sanctum', 'permission'])->group(function () {
+    Route::post('logout', [AuthController::class, 'logout']);
+    Route::get('me', [AuthController::class, 'me']);
+    Route::post('register', [AuthController::class, 'register']);
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('cafe/dashboard', [CafeDashboardController::class, 'index'])->name('cafe.dashboard');
 
-// Deployments & Operations & Leave
-Route::post('/deployments', [DeploymentController::class, 'storeDeployment']);
-Route::put('/deployments/{id}', [DeploymentController::class, 'updateDeployment']);
-Route::delete('/deployments/{id}', [DeploymentController::class, 'destroyDeployment']);
-Route::put('/b2b/{id}', [DeploymentController::class, 'updateB2B']);
-Route::post('/leave', [DeploymentController::class, 'storeLeave']);
-Route::delete('/leave/{id}', [DeploymentController::class, 'destroyLeave']);
+    Route::prefix('cafe')->name('cafe.')->group(function () {
+        Route::get('profile', [CafeMobileController::class, 'profile'])->name('profile');
+        Route::put('profile', [CafeMobileController::class, 'updateProfile'])->name('profile.update');
+        Route::get('orders', [CafeMobileController::class, 'orders'])->name('orders.index');
+        Route::post('orders', [CafeMobileController::class, 'storeOrder'])->name('orders.store');
+        Route::get('orders/{id}', [CafeMobileController::class, 'showOrder'])->name('orders.show');
+        Route::put('orders/{id}/status', [CafeMobileController::class, 'updateOrderStatus'])->name('orders.status');
+        Route::get('branches', [CafeMobileController::class, 'branches'])->name('branches.index');
+        Route::post('branches', [CafeMobileController::class, 'storeBranch'])->name('branches.store');
+        Route::get('branches/{id}', [CafeMobileController::class, 'showBranch'])->name('branches.show');
+        Route::get('branches/{id}/orders', [CafeMobileController::class, 'branchOrders'])->name('branches.orders');
+        Route::put('branches/{id}', [CafeMobileController::class, 'updateBranch'])->name('branches.update');
+        Route::get('delivery-zones', [CafeMobileController::class, 'deliveryZones'])->name('delivery-zones.index');
+        Route::get('categories', [CafeMobileController::class, 'categories'])->name('categories.index');
+        Route::get('products', [CafeMobileController::class, 'products'])->name('products.index');
+        Route::get('products/{id}', [CafeMobileController::class, 'showProduct'])->name('products.show');
+        Route::get('products/{id}/variants', [CafeMobileController::class, 'productVariants'])->name('products.variants');
+    });
 
-// Appraisals / Performance Evaluations
-Route::post('/evaluations', [EvaluationController::class, 'store']);
-Route::delete('/evaluations/{id}', [EvaluationController::class, 'destroy']);
+    Route::prefix('delegate')->name('delegate.')->group(function () {
+        Route::post('location', [DelegateMobileController::class, 'updateLocation'])->name('location');
+        Route::post('availability', [DelegateMobileController::class, 'setAvailability'])->name('availability');
+        Route::get('orders', [DelegateMobileController::class, 'myOrders'])->name('orders');
+        Route::get('orders/{id}', [DelegateMobileController::class, 'showOrder'])->name('orders.show');
+        Route::post('orders/{id}/status', [DelegateMobileController::class, 'updateOrderStatus'])->name('orders.status');
+    });
 
-// Payroll
-Route::get('/payroll/{period}', [PayrollController::class, 'getPeriod']);
-Route::put('/payroll/{period}/{entryId}', [PayrollController::class, 'updateEntry']);
-Route::post('/payroll/{period}/lock', [PayrollController::class, 'lockPeriod']);
-Route::post('/allowances', [PayrollController::class, 'storeAllowance']);
-Route::post('/bonuses', [PayrollController::class, 'storeBonus']);
+    Route::apiResources([
+        'activity-logs' => ActivityLogController::class,
+        'user-types' => UserTypeController::class,
+        'permissions' => PermissionController::class,
+        'delegates' => DelegateController::class,
+        'cafes' => CafeController::class,
+        'cafe-branches' => CafeBranchController::class,
+        'delivery-zones' => DeliveryZoneController::class,
+        'suppliers' => SupplierController::class,
+        'product-variants' => ProductVariantController::class,
+        'product-images' => ProductImageController::class,
+        'warehouses' => WarehouseController::class,
+        'inventory' => InventoryController::class,
+        'users' => AppUserController::class,
+        'carts' => CartController::class,
+        'cart-items' => CartItemController::class,
+        'orders' => OrderController::class,
+        'order-items' => OrderItemController::class,
+        'order-status-logs' => OrderStatusLogController::class,
+        'payments' => PaymentController::class,
+        'purchase-orders' => PurchaseOrderController::class,
+        'purchase-order-items' => PurchaseOrderItemController::class,
+    ]);
 
-// Equipment, Notes & Attachments
-Route::post('/equipment', [AuxiliaryController::class, 'storeEquipment']);
-Route::put('/equipment/{id}', [AuxiliaryController::class, 'updateEquipment']);
-Route::delete('/equipment/{id}', [AuxiliaryController::class, 'destroyEquipment']);
+    Route::post('delegates/{delegate}/toggle-active', [DelegateController::class, 'toggleActive'])->name('delegates.toggle-active');
+    Route::put('delegates/{delegate}/location', [DelegateController::class, 'updateLocation'])->name('delegates.location');
 
-Route::post('/notes', [AuxiliaryController::class, 'storeNote']);
-Route::delete('/notes/{id}', [AuxiliaryController::class, 'destroyNote']);
+    // Write endpoints for the storefront resources are protected;
+    // index/show remain public above.
+    Route::apiResource('products', ProductController::class)->except(['index', 'show']);
+    Route::apiResource('categories', CategoryController::class)->except(['index', 'show']);
 
-Route::post('/attachments', [AuxiliaryController::class, 'storeAttachment']);
-Route::delete('/attachments/{id}', [AuxiliaryController::class, 'destroyAttachment']);
-
-// AI Diagnostics & Gemini Chat
-Route::post('/ai/scan', [AuxiliaryController::class, 'aiScan']);
-Route::post('/ai/recommendations/{id}/status', [AuxiliaryController::class, 'updateAiRecommendationStatus']);
-Route::post('/ai/chat', [AuxiliaryController::class, 'aiChat']);
+    Route::post('orders/{order}/assign-delegate', [OrderController::class, 'assignDelegate'])->name('orders.assign-delegate');
+});

@@ -53,7 +53,7 @@ services:
 
   app:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
       target: prod
     container_name: cafe_supply_chain_app
@@ -75,7 +75,7 @@ services:
 
   worker:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
       target: prod
     container_name: cafe_supply_chain_worker
@@ -99,7 +99,7 @@ services:
 
   admin:
     build:
-      context: ./admin
+      context: ./frontend-admin
       dockerfile: Dockerfile
     container_name: cafe_supply_chain_admin
     restart: always
@@ -108,7 +108,7 @@ services:
 
   cafe:
     build:
-      context: ./cafe
+      context: ./frontend-cafe
       dockerfile: Dockerfile
     container_name: cafe_supply_chain_cafe
     restart: always
