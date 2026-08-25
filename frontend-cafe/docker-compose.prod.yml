@@ -1,0 +1,13 @@
+services:
+  cafe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cafe_supply_chain_cafe
+    restart: always
+    networks:
+      - cafe_network
+
+networks:
+  cafe_network:
+    driver: bridge

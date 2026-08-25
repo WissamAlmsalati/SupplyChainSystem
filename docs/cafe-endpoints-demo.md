@@ -1,11 +1,11 @@
 # Cafe Mobile API Endpoints Demo
 
-Base URL: `http://localhost/api`
+Base URL: `http://localhost/api/v1`
 
 ## Step 1: Setup test data
 
-## Step 2: POST /login
-**Request:** `POST /login`
+## Step 2: POST /api/v1/login
+**Request:** `POST /api/v1/login`
 
 **Body:**
 
@@ -34,8 +34,8 @@ Base URL: `http://localhost/api`
 }
 ```
 
-## Step 3: GET /me — Get authenticated user
-**Request:** `GET /me`
+## Step 3: GET /api/v1/me — Get authenticated user
+**Request:** `GET /api/v1/me`
 
 **Response:** `200`
 
@@ -133,8 +133,8 @@ Base URL: `http://localhost/api`
 }
 ```
 
-## Step 4: GET /cafe/profile — Get cafe profile
-**Request:** `GET /cafe/profile`
+## Step 4: GET /api/v1/cafe/profile — Get cafe profile
+**Request:** `GET /api/v1/cafe/profile`
 
 **Response:** `200`
 
@@ -209,8 +209,22 @@ Base URL: `http://localhost/api`
 }
 ```
 
-## Step 5: GET /cafe/branches — List cafe branches
-**Request:** `GET /cafe/branches`
+## Step 4b: PUT /api/v1/cafe/profile — Update cafe profile
+**Request:** `PUT /api/v1/cafe/profile`
+
+**Body:**
+
+```json
+{
+    "name": "مقهى اختبار",
+    "contact_info": "0911111111"
+}
+```
+
+**Response:** `200` — the updated cafe object.
+
+## Step 5: GET /api/v1/cafe/branches — List cafe branches
+**Request:** `GET /api/v1/cafe/branches`
 
 **Response:** `200`
 
@@ -323,19 +337,49 @@ Base URL: `http://localhost/api`
 }
 ```
 
-## Step 6: GET /cafe/branches/13/orders — List branch orders
-**Request:** `GET /cafe/branches/13/orders`
+## Step 5b: GET /api/v1/cafe/branches/{id} — Get one branch
+**Request:** `GET /api/v1/cafe/branches/13`
+
+**Response:** `200` — the branch with `cafe` and `delivery_zone`.
+
+## Step 5c: GET /api/v1/cafe/delivery-zones — List active delivery zones
+**Request:** `GET /api/v1/cafe/delivery-zones`
 
 **Response:** `200`
 
 ```json
 {
-    "data": []
+    "data": [
+        {
+            "id": 12,
+            "hex_id": "842da29ffffffff",
+            "name": "منطقة اختبار",
+            "delivery_price": "5.00",
+            "latitude": "27.00000000",
+            "longitude": "17.00000000"
+        }
+    ]
 }
 ```
 
-## Step 7: POST /cafe/branches — Create cafe branch
-**Request:** `POST /cafe/branches`
+## Step 6: GET /api/v1/cafe/branches/13/orders — List branch orders
+**Request:** `GET /api/v1/cafe/branches/13/orders`
+
+**Query params (optional):** `status`, `page`, `per_page`
+
+**Response:** `200` (paginated)
+
+```json
+{
+    "data": [],
+    "current_page": 1,
+    "per_page": 15,
+    "total": 0
+}
+```
+
+## Step 7: POST /api/v1/cafe/branches — Create cafe branch
+**Request:** `POST /api/v1/cafe/branches`
 
 **Body:**
 
@@ -363,19 +407,53 @@ Base URL: `http://localhost/api`
 }
 ```
 
-## Step 8: GET /cafe/orders — List cafe orders
-**Request:** `GET /cafe/orders`
+## Step 7b: PUT /api/v1/cafe/branches/{id} — Update cafe branch
+**Request:** `PUT /api/v1/cafe/branches/17`
+
+**Body:** same fields as create (`name`, `city`, `street`, `latitude`, `longitude`, `delivery_zone_id`, `is_active`).
+
+**Response:** `200` — the updated branch with `cafe` and `delivery_zone`.
+
+## Step 7c: DELETE /api/v1/cafe/branches/{id} — Delete cafe branch
+**Request:** `DELETE /api/v1/cafe/branches/17`
+
+A branch that has orders cannot be deleted.
 
 **Response:** `200`
 
 ```json
 {
-    "data": []
+    "message": "تم حذف الفرع بنجاح"
 }
 ```
 
-## Step 9: POST /cafe/orders — Create cafe order
-**Request:** `POST /cafe/orders`
+**Response (branch has orders):** `409`
+
+```json
+{
+    "success": false,
+    "message": "لا يمكن حذف فرع لديه طلبات"
+}
+```
+
+## Step 8: GET /api/v1/cafe/orders — List cafe orders
+**Request:** `GET /api/v1/cafe/orders`
+
+**Query params (optional):** `status`, `branch_id`, `from` (YYYY-MM-DD), `to` (YYYY-MM-DD), `page`, `per_page`
+
+**Response:** `200` (paginated)
+
+```json
+{
+    "data": [],
+    "current_page": 1,
+    "per_page": 15,
+    "total": 0
+}
+```
+
+## Step 9: POST /api/v1/cafe/orders — Create cafe order
+**Request:** `POST /api/v1/cafe/orders`
 
 **Body:**
 
@@ -385,12 +463,13 @@ Base URL: `http://localhost/api`
     "items": [
         {
             "product_variant_id": 12,
-            "quantity": 2,
-            "unit_price": 10
+            "quantity": 2
         }
     ]
 }
 ```
+
+> `unit_price` is always taken server-side from the product variant price; client-sent prices are ignored.
 
 **Response:** `201`
 
@@ -406,8 +485,66 @@ Base URL: `http://localhost/api`
 }
 ```
 
-## Step 10: GET /cafe/categories — List categories
-**Request:** `GET /cafe/categories`
+## Step 9b: PUT /api/v1/cafe/orders/{id}/status — Confirm order receipt
+**Request:** `PUT /api/v1/cafe/orders/5/status`
+
+The cafe can only set `received`, and only after the delegate has marked the order as `delivered`. Every change is recorded in `order_status_log`.
+
+**Body:**
+
+```json
+{
+    "status": "received"
+}
+```
+
+**Response:** `200`
+
+```json
+{
+    "id": 5,
+    "status": "received",
+    ...
+}
+```
+
+**Response (order not delivered yet):** `422`
+
+```json
+{
+    "success": false,
+    "message": "لا يمكن تأكيد الاستلام إلا بعد التسليم"
+}
+```
+
+## Step 9c: POST /api/v1/cafe/orders/{id}/cancel-request — Request cancellation
+**Request:** `POST /api/v1/cafe/orders/5/cancel-request`
+
+The cafe cannot cancel an order by itself; it sends a cancellation request that the admin reviews (via `PUT /api/v1/orders/{id}` with `status: cancelled`).
+
+Only `pending` orders can be requested for cancellation.
+
+**Response:** `200`
+
+```json
+{
+    "id": 5,
+    "status": "cancellation_requested",
+    "message": "تم إرسال طلب الإلغاء، سيتم مراجعته من الإدارة"
+}
+```
+
+**Response (order already processed):** `422`
+
+```json
+{
+    "success": false,
+    "message": "لا يمكن طلب الإلغاء إلا للطلبات قيد الانتظار"
+}
+```
+
+## Step 10: GET /api/v1/cafe/categories — List categories
+**Request:** `GET /api/v1/cafe/categories`
 
 **Response:** `200`
 
@@ -424,8 +561,8 @@ Base URL: `http://localhost/api`
 }
 ```
 
-## Step 11: GET /cafe/products — List products
-**Request:** `GET /cafe/products`
+## Step 11: GET /api/v1/cafe/products — List products
+**Request:** `GET /api/v1/cafe/products`
 
 **Response:** `200`
 
@@ -443,8 +580,8 @@ Base URL: `http://localhost/api`
 }
 ```
 
-## Step 12: GET /cafe/products?category_id=12 — List products by category
-**Request:** `GET /cafe/products?category_id=12`
+## Step 12: GET /api/v1/cafe/products?category_id=12 — List products by category
+**Request:** `GET /api/v1/cafe/products?category_id=12`
 
 **Response:** `200`
 
@@ -462,8 +599,8 @@ Base URL: `http://localhost/api`
 }
 ```
 
-## Step 13: GET /cafe/products/12/variants — Get product variants
-**Request:** `GET /cafe/products/12/variants`
+## Step 13: GET /api/v1/cafe/products/12/variants — Get product variants
+**Request:** `GET /api/v1/cafe/products/12/variants`
 
 **Response:** `200`
 
@@ -478,6 +615,337 @@ Base URL: `http://localhost/api`
             "attribute_value": "افتراضي",
             "price": "10.00",
             "is_active": true
+        }
+    ]
+}
+```
+
+## Step 14: POST /api/v1/cafe/register — Register a new cafe (pending approval)
+**Request:** `POST /api/v1/cafe/register`
+
+**Body:** multipart/form-data
+
+```json
+{
+    "cafe_name": "مقهى جديد",
+    "logo": "<image file>",
+    "phone_number": "0922222222",
+    "email": "newcafe@example.com",
+    "password": "secret123",
+    "address": "طرابلس، شارع الرشيد",
+    "latitude": 32.8872,
+    "longitude": 13.1913
+}
+```
+
+**Response:** `201`
+
+```json
+{
+    "success": true,
+    "message": "تم إرسال طلب التسجيل بنجاح، سيتم التواصل معك بعد الموافقة",
+    "data": {
+        "cafe": {
+            "id": 20,
+            "name": "مقهى جديد",
+            "contact_info": "0922222222",
+            "address": "طرابلس، شارع الرشيد",
+            "latitude": "32.88720000",
+            "longitude": "13.19130000",
+            "image": "cafes/...",
+            "image_url": "http://localhost/storage/cafes/...",
+            "is_active": false
+        }
+    }
+}
+```
+
+> The cafe and its owner user are created with `is_active = false`. The user cannot log in until an admin approves the request.
+
+## Step 15: POST /api/v1/login (phone or email) for approved cafes
+**Request:** `POST /api/v1/login`
+
+**Body:**
+
+```json
+{
+    "phone_number": "0922222222",
+    "password": "secret123"
+}
+```
+
+**Response (approved cafe):** `200`
+
+```json
+{
+    "token": "...",
+    "permissions": [
+        "ORDERS_VIEW",
+        "ORDERS_EDIT",
+        ...
+    ]
+}
+```
+
+**Response (pending cafe):** `403`
+
+```json
+{
+    "success": false,
+    "message": "الحساب غير نشط، يرجى انتظار موافقة الإدارة"
+}
+```
+
+---
+
+# Admin Cafe Registration Approval
+
+Base URL: `http://localhost/api/v1`
+
+These endpoints require an admin or super_admin bearer token.
+
+## List pending registrations
+**Request:** `GET /api/v1/cafe-registrations/pending`
+
+**Response:** `200`
+
+```json
+{
+    "data": [
+        {
+            "id": 20,
+            "name": "مقهى جديد",
+            "contact_info": "0922222222",
+            "address": "طرابلس، شارع الرشيد",
+            "latitude": "32.88720000",
+            "longitude": "13.19130000",
+            "is_active": false,
+            "app_users": [
+                {
+                    "id": 25,
+                    "name": "مقهى جديد",
+                    "email": "newcafe@example.com",
+                    "mobile_number": "0922222222",
+                    "is_active": false
+                }
+            ]
+        }
+    ]
+}
+```
+
+## Approve a registration
+**Request:** `POST /api/v1/cafe-registrations/{cafe}/approve`
+
+**Response:** `200`
+
+```json
+{
+    "success": true,
+    "message": "تمت الموافقة على الطلب بنجاح"
+}
+```
+
+## Reject a registration
+**Request:** `POST /api/v1/cafe-registrations/{cafe}/reject`
+
+**Response:** `200`
+
+```json
+{
+    "success": true,
+    "message": "تم رفض الطلب بنجاح"
+}
+```
+
+> Rejecting deletes the pending cafe and its owner user.
+
+---
+
+# Cafe Mobile Cart & Checkout
+
+## GET /api/v1/cafe/cart — Current cart
+**Request:** `GET /api/v1/cafe/cart`
+
+**Response:** `200`
+
+```json
+{
+    "data": {
+        "id": 1,
+        "user_id": 15,
+        "branch_id": 13,
+        "status": "active",
+        "branch": {
+            "id": 13,
+            "name": "فرع رئيسي"
+        },
+        "items": [
+            {
+                "id": 1,
+                "product_variant_id": 12,
+                "quantity": 2,
+                "price_at_add": "10.00",
+                "product_variant": {
+                    "id": 12,
+                    "sku": "DEMO-001",
+                    "attribute_value": "افتراضي",
+                    "price": "10.00",
+                    "product": {
+                        "id": 12,
+                        "name": "منتج اختبار"
+                    }
+                }
+            }
+        ]
+    }
+}
+```
+
+## POST /api/v1/cafe/cart/items — Add item
+**Request:** `POST /api/v1/cafe/cart/items`
+
+**Body:**
+
+```json
+{
+    "branch_id": 13,
+    "product_variant_id": 12,
+    "quantity": 2
+}
+```
+
+**Response:** `201`
+
+## PUT /api/v1/cafe/cart/items/{id} — Update quantity
+**Request:** `PUT /api/v1/cafe/cart/items/1`
+
+**Body:**
+
+```json
+{
+    "quantity": 5
+}
+```
+
+**Response:** `200`
+
+## DELETE /api/v1/cafe/cart/items/{id} — Remove item
+**Request:** `DELETE /api/v1/cafe/cart/items/1`
+
+**Response:** `200`
+
+## DELETE /api/v1/cafe/cart — Clear cart
+**Request:** `DELETE /api/v1/cafe/cart`
+
+**Response:** `200`
+
+```json
+{
+    "success": true,
+    "message": "تم إفراغ السلة"
+}
+```
+
+## POST /api/v1/cafe/cart/checkout — Checkout
+**Request:** `POST /api/v1/cafe/cart/checkout`
+
+**Response:** `201`
+
+```json
+{
+    "success": true,
+    "message": "تم إنشاء الطلب بنجاح",
+    "data": {
+        "id": 6,
+        "status": "pending",
+        "total_amount": "25.00",
+        "delegate_id": null
+    }
+}
+```
+
+---
+
+# Cafe Mobile Delegate Tracking
+
+## GET /api/v1/cafe/orders/{id}/delegate — Delegate location for my order
+**Request:** `GET /api/v1/cafe/orders/6/delegate`
+
+**Response:** `200`
+
+```json
+{
+    "data": {
+        "id": 5,
+        "name": "مندوب التوصيل",
+        "latitude": "27.10000000",
+        "longitude": "17.10000000",
+        "is_available": true,
+        "location_updated_at": "2026-08-21 14:30:00"
+    }
+}
+```
+
+> For real-time updates the mobile app can listen to the Reverb channel `delegates.locations` event `delegate.location.updated`.
+
+---
+
+# Cafe Mobile Dashboard
+
+## GET /api/v1/cafe/dashboard — Dashboard analytics
+**Request:** `GET /api/v1/cafe/dashboard`
+
+**Response:** `200`
+
+```json
+{
+    "cafe": {
+        "id": 12,
+        "name": "مقهى اختبار",
+        "contact_info": "0911111111"
+    },
+    "stats": {
+        "orders": 15,
+        "branches": 3,
+        "revenue": "1,250.00",
+        "pending_orders": 2
+    },
+    "periodStats": {
+        "today": {
+            "orders": 2,
+            "revenue": "150.00"
+        },
+        "this_week": {
+            "orders": 8,
+            "revenue": "650.00"
+        },
+        "this_month": {
+            "orders": 15,
+            "revenue": "1,250.00"
+        }
+    },
+    "ordersByStatus": {
+        "pending": 2,
+        "delivered": 12,
+        "cancelled": 1
+    },
+    "recentOrders": [...],
+    "monthlyRevenue": [...],
+    "topProducts": [
+        {
+            "product_variant_id": 12,
+            "product_name": "منتج اختبار",
+            "variant_value": "افتراضي",
+            "total_quantity": 42
+        }
+    ],
+    "branchesComparison": [
+        {
+            "id": 13,
+            "name": "فرع رئيسي",
+            "orders_count": 10,
+            "revenue": "800.00"
         }
     ]
 }

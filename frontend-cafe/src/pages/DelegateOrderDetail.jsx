@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { Skeleton, SkeletonCard } from '../components/ui/Skeleton'
 
 const statusLabels = {
   pending: 'معلّق',
@@ -89,7 +90,31 @@ export default function DelegateOrderDetail() {
     }
   }
 
-  if (loading) return <div className="pt-6 text-muted">جاري التحميل...</div>
+  if (loading) {
+    return (
+      <div className="space-y-6 pt-6">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="mt-2 h-4 w-24" />
+          </div>
+          <Skeleton className="h-10 w-28" />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-80 rounded-xl" />
+            <SkeletonCard />
+          </div>
+        </div>
+        <SkeletonCard />
+      </div>
+    )
+  }
   if (!order) return <div className="pt-6 text-danger">{error || 'الطلب غير موجود.'}</div>
 
   const items = order.items ?? []

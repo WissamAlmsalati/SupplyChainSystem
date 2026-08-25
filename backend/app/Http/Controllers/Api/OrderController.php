@@ -54,9 +54,22 @@ class OrderController extends BaseApiController
         return $order->branch?->cafe_id === $this->cafeAdminCafeId();
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return $this->jsonResponse($this->orderQuery()->paginate(15));
+        $query = $this->orderQuery()->orderByDesc('order_date');
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('status', 'like', "%{$search}%")
+                  ->orWhere('id', $search)
+                  ->orWhere('order_number', 'like', "%{$search}%")
+                  ->orWhereHas('branch', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('user', fn ($sub) => $sub->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        return $this->jsonResponse($query->paginate(15));
     }
 
     /**
@@ -83,6 +96,7 @@ class OrderController extends BaseApiController
         }
 
         $order = DB::transaction(function () use ($data, $items) {
+            $data['order_number'] = Order::generateOrderNumber();
             $order = Order::create($data);
             if ($items) {
                 $order->items()->createMany($items);

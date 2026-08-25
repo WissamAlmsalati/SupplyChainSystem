@@ -19,10 +19,7 @@ const LockIcon = () => (
 )
 
 const LogoIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 3v16a2 2 0 0 0 2 2h16" />
-    <path d="m19 9-5 5-4-4-3 3" />
-  </svg>
+  <img src="/favicon.svg" alt="logo" className="h-8 w-8 object-contain" />
 )
 
 export default function Login() {
@@ -56,7 +53,7 @@ export default function Login() {
             <LogoIcon />
           </div>
           <h1 className="text-4xl font-extrabold leading-tight">
-            سلسلة إمداد المقاهي
+            الساحل لمستلزمات المقاهي
           </h1>
           <p className="mt-5 max-w-md text-lg leading-relaxed text-white/85">
             نظام متكامل لإدارة المقاهي، المخزون، الطلبات، الفروع، ومناطق التوصيل — كل شي من مكان واحد.
@@ -65,7 +62,7 @@ export default function Login() {
 
         <div className="relative z-10 flex items-center gap-4 text-sm text-white/70">
           <span className="h-px w-10 bg-white/30" />
-          <span>لوحة تحكم البائع</span>
+          <span>لوحة التحكم</span>
         </div>
 
         {/* Decorative circles */}
@@ -121,7 +118,7 @@ export default function Login() {
         </div>
 
         <p className="mt-8 text-center text-xs text-muted">
-          © {new Date().getFullYear()} Cafe Supply Chain — جميع الحقوق محفوظة
+          © {new Date().getFullYear()} الساحل لمستلزمات المقاهي — جميع الحقوق محفوظة
         </p>
       </div>
     </div>

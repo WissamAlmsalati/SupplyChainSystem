@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Api\CafeRequest;
 use App\Models\Cafe;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -21,9 +22,19 @@ class CafeController extends BaseApiController
      *     @OA\Response(response=200, description="Paginated list of cafes")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return $this->jsonResponse(Cafe::with('createdByAdmin')->paginate(15));
+        $query = Cafe::with('createdByAdmin');
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('contact_info', 'like', "%{$search}%");
+            });
+        }
+
+        return $this->jsonResponse($query->paginate(15));
     }
 
     /**

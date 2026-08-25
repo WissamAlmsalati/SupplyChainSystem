@@ -1,0 +1,23 @@
+services:
+  admin:
+    image: node:20-alpine
+    container_name: cafe_supply_chain_admin
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      API_PROXY_TARGET: http://nginx
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - admin_node_modules:/app/node_modules
+    networks:
+      - cafe_network
+    command: sh -c "npm ci && npm run dev -- --host"
+
+volumes:
+  admin_node_modules:
+
+networks:
+  cafe_network:
+    driver: bridge

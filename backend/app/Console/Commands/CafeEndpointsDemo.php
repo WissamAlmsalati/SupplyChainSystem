@@ -28,7 +28,7 @@ class CafeEndpointsDemo extends Command
 
     public function handle(): int
     {
-        $this->baseUrl = 'http://web/api';
+        $this->baseUrl = 'http://localhost/api/v1';
         $this->md("# Cafe Mobile API Endpoints Demo\n\nBase URL: `http://localhost/api`\n");
 
         $this->setupData();

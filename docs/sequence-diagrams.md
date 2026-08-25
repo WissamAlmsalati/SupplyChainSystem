@@ -1,4 +1,4 @@
-# Cafe Supply Chain API — Sequence Diagrams
+# الساحل لمستلزمات المقاهي — Sequence Diagrams
 
 These Mermaid diagrams describe the main business flows exposed by the API documented at `/api/documentation`.
 

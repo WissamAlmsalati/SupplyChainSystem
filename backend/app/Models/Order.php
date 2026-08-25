@@ -25,6 +25,7 @@ class Order extends Model
         'status',
         'source',
         'total_amount',
+        'order_number',
     ];
 
     protected $casts = [
@@ -66,5 +67,31 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public static function generateOrderNumber(): string
+    {
+        $prefix = 'ORD-' . date('Y') . '-';
+        $maxAttempts = 10;
+
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            $last = self::where('order_number', 'like', $prefix . '%')
+                ->orderByDesc('order_number')
+                ->value('order_number');
+
+            $sequence = 1;
+            if ($last) {
+                $sequence = (int) substr($last, strlen($prefix)) + 1;
+            }
+
+            $number = $prefix . str_pad($sequence, 5, '0', STR_PAD_LEFT);
+
+            if (! self::where('order_number', $number)->exists()) {
+                return $number;
+            }
+        }
+
+        // Fallback with microtime if collisions persist under heavy concurrency
+        return $prefix . str_pad((int) (microtime(true) * 1000), 10, '0', STR_PAD_LEFT);
     }
 }

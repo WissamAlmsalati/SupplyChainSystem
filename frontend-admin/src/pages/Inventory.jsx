@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useApiResource, useApiList } from '../hooks/useApiResource'
 import { useModulePermission } from '../hooks/usePermission'
+import { useAuth } from '../context/AuthContext'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
+import SearchableSelect from '../components/ui/SearchableSelect'
 
 const initial = { warehouse_id: '', product_variant_id: '', quantity: '' }
 
@@ -15,7 +17,8 @@ function variantLabel(v) {
 }
 
 export default function Inventory() {
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/inventory')
+  const [search, setSearch] = useState('')
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/inventory', { search })
   const warehouses = useApiList('/warehouses')
   const variants = useApiList('/product-variants?per_page=10000')
   const [modal, setModal] = useState(false)
@@ -23,9 +26,13 @@ export default function Inventory() {
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
   const { canCreate, canEdit, canDelete } = useModulePermission('INVENTORY')
+  const { hasFeature } = useAuth()
 
   const openCreate = () => {
-    setForm(initial)
+    setForm({
+      ...initial,
+      warehouse_id: warehouses.length === 1 ? String(warehouses[0].id) : '',
+    })
     setEditing(null)
     setModal(true)
   }
@@ -64,14 +71,23 @@ export default function Inventory() {
     { key: 'warehouse', label: 'المستودع', render: (r) => r.warehouse?.name ?? '-' },
     { key: 'product_variant', label: 'المنتج / المتغير', render: (r) => (r.product_variant ? variantLabel(r.product_variant) : '-') },
     { key: 'quantity', label: 'الكمية' },
-    { key: 'updated_at', label: 'آخر تحديث', render: (r) => r.updated_at ? new Date(r.updated_at).toLocaleString('ar-SA') : '-' },
+    { key: 'updated_at', label: 'آخر تحديث', render: (r) => r.updated_at ? new Date(r.updated_at).toLocaleString('en-US') : '-' },
   ]
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">المخزون</h1>
-        {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مخزون</Button>}
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="بحث..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+          />
+          {canCreate && hasFeature('add_inventory') && <Button variant="primary" onClick={openCreate}>إضافة مخزون</Button>}
+        </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
       <DataTable
@@ -90,34 +106,28 @@ export default function Inventory() {
       />
       <Modal title={editing ? 'تعديل مخزون' : 'إضافة مخزون'} open={modal} onClose={close}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted">المستودع</label>
-            <select
-              className="w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
+          {warehouses.length !== 1 && (
+            <SearchableSelect
+              label="المستودع"
+              placeholder="اختر المستودع"
+              searchPlaceholder="ابحث باسم المستودع..."
+              options={warehouses}
               value={form.warehouse_id}
-              onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}
+              onChange={(v) => setForm({ ...form, warehouse_id: v })}
+              getLabel={(w) => w.name}
               required
-            >
-              <option value="">اختر المستودع</option>
-              {warehouses.map((w) => (
-                <option key={w.id} value={w.id}>{w.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted">المنتج / المتغير</label>
-            <select
-              className="w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
-              value={form.product_variant_id}
-              onChange={(e) => setForm({ ...form, product_variant_id: e.target.value })}
-              required
-            >
-              <option value="">اختر المنتج</option>
-              {variants.map((v) => (
-                <option key={v.id} value={v.id}>{variantLabel(v)}</option>
-              ))}
-            </select>
-          </div>
+            />
+          )}
+          <SearchableSelect
+            label="المنتج / المتغير"
+            placeholder="اختر المنتج"
+            searchPlaceholder="ابحث باسم المنتج..."
+            options={variants}
+            value={form.product_variant_id}
+            onChange={(v) => setForm({ ...form, product_variant_id: v })}
+            getLabel={variantLabel}
+            required
+          />
           <Input
             label="الكمية"
             type="number"

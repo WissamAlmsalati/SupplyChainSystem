@@ -4,6 +4,17 @@ import Modal from './Modal'
 import Button from './ui/Button'
 import Input from './ui/Input'
 
+const statusLabels = {
+  pending: 'معلّق',
+  processing: 'قيد المعالجة',
+  completed: 'مكتمل',
+  delivered: 'تم التوصيل',
+  cancelled: 'ملغي',
+  failed: 'فاشل',
+  confirmed: 'مؤكد',
+  shipped: 'تم الشحن',
+}
+
 export default function QuickOrderModal({ open, onClose, onCreated }) {
   const [users, setUsers] = useState([])
   const [branches, setBranches] = useState([])
@@ -237,7 +248,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
 
         <div className="flex items-center justify-between rounded-lg bg-primary-soft px-4 py-3 text-primary">
           <span className="font-medium">الإجمالي</span>
-          <span className="text-lg font-bold">{totalAmount.toLocaleString('ar-SA', { minimumFractionDigits: 2 })} د.ل</span>
+          <span className="text-lg font-bold">{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} د.ل</span>
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-2">

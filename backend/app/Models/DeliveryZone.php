@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DeliveryZone extends Model
@@ -15,6 +16,7 @@ class DeliveryZone extends Model
     public $timestamps = true;
 
     protected $fillable = [
+        'warehouse_id',
         'hex_id',
         'name',
         'delivery_price',
@@ -29,6 +31,11 @@ class DeliveryZone extends Model
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
     ];
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
 
     public function cafeBranches(): HasMany
     {

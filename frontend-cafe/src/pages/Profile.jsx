@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import client from '../api/client'
+import { SkeletonCard } from '../components/ui/Skeleton'
 
 export default function Profile() {
   const { user } = useAuth()
@@ -8,14 +9,32 @@ export default function Profile() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!user?.cafe_id) {
+      setCafe(null)
+      setLoading(false)
+      return
+    }
     client
-      .get(`/cafes/${user?.cafe_id}`)
+      .get(`/cafes/${user.cafe_id}`)
       .then((res) => setCafe(res.data?.data ?? res.data))
       .catch(() => setCafe(null))
       .finally(() => setLoading(false))
   }, [user])
 
-  if (loading) return <div className="pt-6 text-muted">جاري التحميل...</div>
+  if (loading) {
+    return (
+      <div className="space-y-6 pt-6">
+        <div>
+          <div className="h-8 w-48 rounded-md bg-border animate-pulse" />
+          <div className="mt-2 h-4 w-64 rounded-md bg-border animate-pulse" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>

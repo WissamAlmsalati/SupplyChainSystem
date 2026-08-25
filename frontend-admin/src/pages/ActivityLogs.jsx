@@ -41,7 +41,7 @@ export default function ActivityLogs() {
     {
       key: 'created_at',
       label: 'التاريخ',
-      render: (r) => r.created_at ? new Date(r.created_at).toLocaleString('ar-SA') : '-',
+      render: (r) => r.created_at ? new Date(r.created_at).toLocaleString('en-US') : '-',
     },
     { key: 'user_name', label: 'المستخدم' },
     {
@@ -55,7 +55,7 @@ export default function ActivityLogs() {
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">سجل النشاطات</h1>
       </header>
 

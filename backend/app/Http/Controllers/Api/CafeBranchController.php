@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Api\CafeBranchRequest;
 use App\Models\CafeBranch;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * @OA\Tag(name="Admin Branches", description="Admin platform branch management")
@@ -19,13 +20,22 @@ class CafeBranchController extends BaseApiController
      *     @OA\Response(response=200, description="Paginated list of cafe branches")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $perPage = request()->integer('per_page', 15);
         $query = CafeBranch::with(['cafe', 'deliveryZone']);
 
         if (auth()->user()?->userType?->name === 'cafe') {
             $query->where('cafe_id', auth()->user()->cafe_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('city', 'like', "%{$search}%")
+                  ->orWhere('street', 'like', "%{$search}%");
+            });
         }
 
         return $this->jsonResponse($query->paginate($perPage > 0 ? min($perPage, 10000) : 15));

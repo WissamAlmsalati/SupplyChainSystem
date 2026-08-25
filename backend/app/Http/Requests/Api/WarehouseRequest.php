@@ -16,8 +16,12 @@ class WarehouseRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:100'],
             'city' => ['nullable', 'string', 'max:100'],
+            'hex_id' => ['nullable', 'string', 'max:40'],
+            'resolution' => ['nullable', 'integer', 'min:0', 'max:15'],
             'latitude' => ['nullable', 'numeric'],
             'longitude' => ['nullable', 'numeric'],
+            'hex_ids' => ['nullable', 'array'],
+            'hex_ids.*' => ['string', 'max:40'],
         ];
     }
 }

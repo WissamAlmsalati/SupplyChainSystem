@@ -1,0 +1,13 @@
+services:
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cafe_supply_chain_admin
+    restart: always
+    networks:
+      - cafe_network
+
+networks:
+  cafe_network:
+    driver: bridge

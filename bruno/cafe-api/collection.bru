@@ -1,0 +1,15 @@
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:pre-request {
+  // Ensure every authenticated request sends the current token
+  const token = bru.getVar("token");
+  if (token) {
+    req.setHeader("Authorization", "Bearer " + token);
+  }
+}

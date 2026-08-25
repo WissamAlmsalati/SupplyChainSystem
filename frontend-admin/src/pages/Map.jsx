@@ -10,6 +10,17 @@ import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { latLngToCell, cellToBoundary, cellToLatLng, polygonToCells } from 'h3-js'
 
+const statusLabels = {
+  pending: 'معلّق',
+  processing: 'قيد المعالجة',
+  completed: 'مكتمل',
+  delivered: 'تم التوصيل',
+  cancelled: 'ملغي',
+  failed: 'فاشل',
+  confirmed: 'مؤكد',
+  shipped: 'تم الشحن',
+}
+
 const defaultIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -81,6 +92,14 @@ export default function Map() {
     zones.forEach((z) => { map[z.hex_id] = z })
     return map
   }, [zones])
+
+  const warehouseZoneMap = useMemo(() => {
+    const map = {}
+    warehouses.forEach((w) => {
+      (w.delivery_zones ?? []).forEach((z) => { map[z.hex_id] = w })
+    })
+    return map
+  }, [warehouses])
 
   const libyaCells = useMemo(() => {
     try {
@@ -187,7 +206,7 @@ export default function Map() {
       liveDelegates.forEach((d) => {
         if (d.latitude != null && d.longitude != null) {
           const updatedAt = d.location_updated_at
-            ? new Date(d.location_updated_at).toLocaleString('ar-LY')
+            ? new Date(d.location_updated_at).toLocaleString('en-US')
             : '-'
           const popup = `<b>${d.name}</b><br/>${d.is_available ? 'متاح' : 'غير مت'}<br/>آخر تحديث: ${updatedAt}`
           L.marker([d.latitude, d.longitude], { icon: d.is_available ? delegateIcon : delegateOfflineIcon })
@@ -200,18 +219,18 @@ export default function Map() {
     if ((layer === 'zones' || layer === 'all') && gridVisible) {
       libyaCells.forEach((cell) => {
         const zone = zoneMap[cell]
-        if (showPricedOnly && !zone) return
+        const warehouse = warehouseZoneMap[cell]
+        if (showPricedOnly && !zone && !warehouse) return
 
         try {
           const boundary = cellToBoundary(cell)
           const center = cellToLatLng(cell)
-          const isPriced = Boolean(zone)
-          const polygon = L.polygon(boundary, {
-            color: isPriced ? '#15803d' : '#d1d5db',
-            fillColor: isPriced ? '#22c55e' : '#f9fafb',
-            fillOpacity: isPriced ? 0.6 : 0.08,
-            weight: isPriced ? 3 : 0.8,
-          }).addTo(map)
+          const style = warehouse
+            ? { color: '#1d4ed8', fillColor: '#3b82f6', fillOpacity: 0.5, weight: 3 }
+            : zone
+              ? { color: '#15803d', fillColor: '#22c55e', fillOpacity: 0.6, weight: 3 }
+              : { color: '#d1d5db', fillColor: '#f9fafb', fillOpacity: 0.08, weight: 0.8 }
+          const polygon = L.polygon(boundary, style).addTo(map)
 
           polygon.on('click', (e) => {
             L.DomEvent.stopPropagation(e)
@@ -226,15 +245,19 @@ export default function Map() {
             setModal(true)
           })
 
-          polygon.bindTooltip(isPriced
-            ? `${zone.name || 'منطقة مسعّرة'} — ${Number(zone.delivery_price).toFixed(2)} د.ل`
-            : `${cell} — انقر لتحديد السعر`, { direction: 'top', sticky: true })
+          let tooltip = `${cell} — انقر لتحديد السعر`
+          if (warehouse) {
+            tooltip = `مستودع: ${warehouse.name}${zone ? ` — ${Number(zone.delivery_price).toFixed(2)} د.ل` : ''}`
+          } else if (zone) {
+            tooltip = `${zone.name || 'منطقة مسعّرة'} — ${Number(zone.delivery_price).toFixed(2)} د.ل`
+          }
+          polygon.bindTooltip(tooltip, { direction: 'top', sticky: true })
         } catch {
           // ignore invalid cells
         }
       })
     }
-  }, [warehouses, branches, liveDelegates, zones, layer, gridVisible, showPricedOnly, libyaCells, zoneMap])
+  }, [warehouses, branches, liveDelegates, zones, layer, gridVisible, showPricedOnly, libyaCells, zoneMap, warehouseZoneMap])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -291,7 +314,7 @@ export default function Map() {
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">الخريطة</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant={layer === 'warehouses' ? 'primary' : 'secondary'} size="sm" onClick={() => setLayer('warehouses')}>المستودعات</Button>
@@ -318,6 +341,10 @@ export default function Map() {
           مندوب غير متاح
         </div>
         <div className="flex items-center gap-2">
+          <span className="inline-block h-4 w-4 rounded-sm border-2 border-blue-700 bg-blue-500" />
+          نطاق مستودع
+        </div>
+        <div className="flex items-center gap-2">
           <span className="inline-block h-4 w-4 rounded-sm border-2 border-green-700 bg-green-500" />
           منطقة مسعّرة
         </div>
@@ -327,7 +354,7 @@ export default function Map() {
         </div>
       </div>
       <div className="mb-4 rounded-lg border border-primary/20 bg-primary-soft px-4 py-3 text-sm text-primary">
-        انقر أي خلية سداسية في ليبيا لتحديد أو تعديل سعر التوصيل.
+        الخلايا الزرقاء = نطاق مستودع. الخلايا الخضراء = منطقة مسعّرة. انقر أي خلية لتحديد أو تعديل السعر.
       </div>
       {loading && <div className="mb-4 text-sm text-muted">جاري تحميل بيانات الخريطة...</div>}
       <div ref={mapRef} className="h-[600px] rounded-lg border border-border" />

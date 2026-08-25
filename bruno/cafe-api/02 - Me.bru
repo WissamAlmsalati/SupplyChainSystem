@@ -1,0 +1,27 @@
+meta {
+  name: Me
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {}
+  token: {{token}}
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("returns user object", function() {
+    const json = res.getBody();
+    expect(json.id).to.be.a('number');
+    expect(json.user_type).to.be.an('object');
+  });
+}

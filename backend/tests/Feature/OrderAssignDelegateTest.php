@@ -84,7 +84,7 @@ class OrderAssignDelegateTest extends TestCase
 
     protected function token(): string
     {
-        $res = $this->postJson('/api/login', [
+        $res = $this->postJson('/api/v1/login', [
             'email' => 'admin@test.com',
             'password' => 'password',
         ]);
@@ -97,7 +97,7 @@ class OrderAssignDelegateTest extends TestCase
     public function test_admin_can_assign_delegate_to_order(): void
     {
         $token = $this->token();
-        $res = $this->postJson('/api/orders/' . $this->order->id . '/assign-delegate', [
+        $res = $this->postJson('/api/v1/orders/' . $this->order->id . '/assign-delegate', [
             'delegate_id' => $this->delegate->id,
         ], ['Authorization' => "Bearer $token"]);
 
@@ -113,7 +113,7 @@ class OrderAssignDelegateTest extends TestCase
         $this->delegate->update(['is_active' => false]);
 
         $token = $this->token();
-        $res = $this->postJson('/api/orders/' . $this->order->id . '/assign-delegate', [
+        $res = $this->postJson('/api/v1/orders/' . $this->order->id . '/assign-delegate', [
             'delegate_id' => $this->delegate->id,
         ], ['Authorization' => "Bearer $token"]);
 

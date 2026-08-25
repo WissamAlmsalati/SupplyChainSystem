@@ -17,6 +17,8 @@ class Warehouse extends Model
     protected $fillable = [
         'name',
         'city',
+        'hex_id',
+        'resolution',
         'latitude',
         'longitude',
     ];
@@ -24,6 +26,7 @@ class Warehouse extends Model
     protected $casts = [
         'latitude' => 'decimal:6',
         'longitude' => 'decimal:6',
+        'resolution' => 'integer',
     ];
 
     public function inventories(): HasMany
@@ -34,5 +37,10 @@ class Warehouse extends Model
     public function purchaseOrders(): HasMany
     {
         return $this->hasMany(PurchaseOrder::class);
+    }
+
+    public function deliveryZones(): HasMany
+    {
+        return $this->hasMany(DeliveryZone::class);
     }
 }

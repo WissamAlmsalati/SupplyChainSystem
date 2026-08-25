@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Api\CategoryRequest;
 use App\Models\Category;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * @OA\Tag(name="Admin Categories", description="Admin platform category management")
@@ -20,9 +21,16 @@ class CategoryController extends BaseApiController
      *     @OA\Response(response=200, description="Paginated list of categories")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return $this->jsonResponse(Category::with('parentCategory')->paginate(15));
+        $query = Category::with('parentCategory');
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        return $this->jsonResponse($query->paginate(15));
     }
 
     /**

@@ -18,9 +18,12 @@ export function Tbody({ children }) {
   return <tbody className="divide-y divide-border">{children}</tbody>
 }
 
-export function Tr({ children, className = '' }) {
+export function Tr({ children, className = '', onClick }) {
   return (
-    <tr className={`transition-colors hover:bg-stone-50/50 ${className}`}>
+    <tr
+      onClick={onClick}
+      className={`transition-colors hover:bg-stone-50/50 ${className}`}
+    >
       {children}
     </tr>
   )

@@ -41,7 +41,7 @@ class DelegateDocsController extends BaseApiController
                 'version' => $docs['info']['version'] ?? '1.0.0',
             ],
             'servers' => [
-                ['url' => '/api', 'description' => 'Local development server'],
+                ['url' => '/api/v1', 'description' => 'Local development server'],
             ],
             'paths' => $paths,
             'components' => [

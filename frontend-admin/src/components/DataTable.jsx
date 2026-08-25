@@ -1,8 +1,9 @@
 import Button from './ui/Button'
 import { Table, Thead, Tbody, Tr, Th, Td } from './ui/Table'
+import { SkeletonTable } from './ui/Skeleton'
 
-export default function DataTable({ columns, rows, loading, emptyText, actions, pagination, onPageChange }) {
-  if (loading) return <div className="text-muted">جاري التحميل...</div>
+export default function DataTable({ columns, rows, loading, emptyText, actions, pagination, onPageChange, onRowClick }) {
+  if (loading) return <SkeletonTable columns={columns.length + (actions ? 1 : 0)} />
 
   const showPagination = pagination && pagination.last_page > 1
 
@@ -29,7 +30,11 @@ export default function DataTable({ columns, rows, loading, emptyText, actions, 
             </Tr>
           ) : (
             rows.map((row) => (
-              <Tr key={row.id}>
+              <Tr
+                key={row.id}
+                onClick={() => onRowClick?.(row)}
+                className={onRowClick ? 'cursor-pointer hover:bg-background/60' : ''}
+              >
                 {columns.map((col) => (
                   <Td key={col.key}>
                     {col.render ? col.render(row) : row[col.key] ?? '-'}

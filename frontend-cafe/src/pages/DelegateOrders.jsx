@@ -102,7 +102,17 @@ export default function DelegateOrders() {
           </thead>
           <tbody className="divide-y divide-border">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted">جاري التحميل...</td></tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-3"><div className="h-4 w-10 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-28 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-6 w-24 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3 text-end"><div className="ms-auto h-4 w-20 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-6 w-12 animate-pulse rounded-md bg-border" /></td>
+                </tr>
+              ))
             ) : orders.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-muted">لا توجد طلبات.</td></tr>
             ) : (

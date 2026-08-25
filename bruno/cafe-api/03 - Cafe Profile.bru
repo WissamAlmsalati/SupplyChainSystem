@@ -1,0 +1,27 @@
+meta {
+  name: Cafe Profile
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/cafe/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("returns cafe profile", function() {
+    const json = res.getBody();
+    expect(json.cafe).to.be.an('object');
+    expect(json.cafe.name).to.be.a('string').that.is.not.empty;
+  });
+}

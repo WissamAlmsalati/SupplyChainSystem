@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { latLngToCell, cellToBoundary, polygonToCells } from 'h3-js'
+import { latLngToCell, cellToBoundary, cellToLatLng, cellToChildren, getResolution, polygonToCells } from 'h3-js'
 import Modal from './Modal'
 import Button from './ui/Button'
 import Input from './ui/Input'
@@ -38,12 +38,14 @@ const LIBYA_POLYGON = [
   [31.0, 10.0],
 ]
 
-export default function MapPicker({ open, onClose, onSelect, initial, zones = [] }) {
+export default function MapPicker({ open, onClose, onSelect, initial, zones = [], warehouseHex = null, resolution = null, mode = 'branch', childResolution = null }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markerRef = useRef(null)
   const gridLayerRef = useRef(null)
   const highlightRef = useRef(null)
+  const warehouseLayerRef = useRef(null)
+  const mapClickHandlerRef = useRef(null)
   const [selected, setSelected] = useState(initial || null)
   const [manualLat, setManualLat] = useState(initial ? String(initial.lat) : '')
   const [manualLng, setManualLng] = useState(initial ? String(initial.lng) : '')
@@ -54,13 +56,34 @@ export default function MapPicker({ open, onClose, onSelect, initial, zones = []
     return map
   }, [zones])
 
-  const libyaCells = (() => {
+  const previewHex = useMemo(() => {
+    if (warehouseHex) return warehouseHex
+    if (!initial || resolution === null || resolution === undefined || resolution === '') return null
+    try {
+      return latLngToCell(initial.lat, initial.lng, Number(resolution))
+    } catch {
+      return null
+    }
+  }, [warehouseHex, initial, resolution])
+
+  const activeHex = warehouseHex || previewHex
+
+  const gridCells = useMemo(() => {
+    if (mode === 'warehouse' && activeHex) {
+      try {
+        const parentRes = getResolution(activeHex)
+        const targetRes = childResolution ?? Math.min(parentRes + 1, 15)
+        return cellToChildren(activeHex, targetRes)
+      } catch {
+        return []
+      }
+    }
     try {
       return polygonToCells(LIBYA_POLYGON, H3_RESOLUTION)
     } catch {
       return []
     }
-  })()
+  }, [mode, activeHex, childResolution])
 
   const selectLocation = (lat, lng) => {
     try {
@@ -95,19 +118,40 @@ export default function MapPicker({ open, onClose, onSelect, initial, zones = []
   }
 
   useEffect(() => {
-    if (!open || mapInstanceRef.current) return
+    if (!open) return
 
-    const center = initial ? [initial.lat, initial.lng] : [27.0, 17.0]
-    const map = L.map(mapRef.current).setView(center, 6)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map)
+    let map = mapInstanceRef.current
+    if (!map) {
+      let center = [27.0, 17.0]
+      let zoom = 6
+      if (initial) {
+        center = [initial.lat, initial.lng]
+        zoom = 6
+      } else if (activeHex) {
+        try {
+          const [lat, lng] = cellToLatLng(activeHex)
+          center = [lat, lng]
+          zoom = mode === 'warehouse' ? 9 : 6
+        } catch {
+          // keep default
+        }
+      }
+      map = L.map(mapRef.current).setView(center, zoom)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(map)
+      mapInstanceRef.current = map
+    }
 
-    mapInstanceRef.current = map
+    // Clear previous dynamic layers before redrawing
+    if (gridLayerRef.current) {
+      gridLayerRef.current.clearLayers()
+    } else {
+      gridLayerRef.current = L.layerGroup().addTo(map)
+    }
 
     // Draw the H3 grid
-    gridLayerRef.current = L.layerGroup().addTo(map)
-    libyaCells.forEach((cell) => {
+    gridCells.forEach((cell) => {
       try {
         const zone = zoneMap[cell]
         const boundary = cellToBoundary(cell)
@@ -135,14 +179,46 @@ export default function MapPicker({ open, onClose, onSelect, initial, zones = []
       }
     })
 
-    map.on('click', (e) => {
-      selectLocation(e.latlng.lat, e.latlng.lng)
-    })
+    // Draw warehouse coverage hex in blue
+    if (activeHex) {
+      try {
+        const boundary = cellToBoundary(activeHex)
+        warehouseLayerRef.current = L.polygon(boundary, {
+          color: '#2563eb',
+          fillColor: '#3b82f6',
+          fillOpacity: 0.25,
+          weight: 3,
+          dashArray: '6, 6',
+        }).addTo(map)
+        warehouseLayerRef.current.bindTooltip('نطاق المستودع', { direction: 'top', sticky: true })
+        const [lat, lng] = cellToLatLng(activeHex)
+        const zoom = mode === 'warehouse' ? 9 : 10
+        map.flyTo([lat, lng], zoom)
+      } catch {
+        // ignore invalid warehouse hex
+      }
+    }
+
+    if (!mapClickHandlerRef.current) {
+      mapClickHandlerRef.current = (e) => selectLocation(e.latlng.lat, e.latlng.lng)
+      map.on('click', mapClickHandlerRef.current)
+    }
 
     if (initial) {
       selectLocation(initial.lat, initial.lng)
     }
-  }, [open, initial, zoneMap, libyaCells])
+
+    return () => {
+      if (warehouseLayerRef.current) {
+        try {
+          warehouseLayerRef.current.remove()
+        } catch {
+          // ignore
+        }
+        warehouseLayerRef.current = null
+      }
+    }
+  }, [open, initial, zoneMap, gridCells, warehouseHex, mode])
 
   useEffect(() => {
     if (!open) {
@@ -169,8 +245,10 @@ export default function MapPicker({ open, onClose, onSelect, initial, zones = []
     }
   }
 
+  const title = mode === 'warehouse' ? 'نطاق عمل المستودع' : 'اختيار موقع الفرع ومنطقة التوصيل'
+
   return (
-    <Modal title="اختيار موقع الفرع ومنطقة التوصيل" open={open} onClose={onClose}>
+    <Modal title={title} open={open} onClose={onClose}>
       <div
         ref={mapRef}
         className="mb-4 h-[400px] rounded-lg border border-border"
@@ -185,10 +263,18 @@ export default function MapPicker({ open, onClose, onSelect, initial, zones = []
           <span className="inline-block h-4 w-4 rounded-sm border border-border bg-surface" />
           بلا سعر
         </div>
+        {activeHex && (
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-4 w-4 rounded-sm border-2 border-blue-600 bg-blue-500" />
+            نطاق المستودع <code className="mr-1 text-xs">{activeHex}</code>
+          </div>
+        )}
       </div>
 
       <div className="mb-4 rounded-lg border border-primary/20 bg-primary-soft px-4 py-3 text-sm text-primary">
-        انقر أي خلية لاختيار موقع الفرع ومنطقة التوصيل. مرّر الماوس فوق الخلايا الخضراء لرؤية السعر.
+        {mode === 'warehouse'
+          ? 'الشكل الأزرق الكبير = نطاق المستودع. الخلايا الداخلية = مناطق التوصيل المسعّرة. انقر داخل النطاق لتحديد مركز المستودع.'
+          : 'انقر أي خلية لاختيار موقع الفرع ومنطقة التوصيل. مرّر الماوس فوق الخلايا الخضراء لرؤية السعر.'}
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">

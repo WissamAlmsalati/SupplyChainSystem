@@ -18,6 +18,9 @@ class Cafe extends Model
     protected $fillable = [
         'name',
         'contact_info',
+        'address',
+        'latitude',
+        'longitude',
         'image',
         'created_by_admin_id',
         'is_active',
@@ -30,6 +33,8 @@ class Cafe extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'created_at' => 'timestamp',
+        'latitude' => 'decimal:8',
+        'longitude' => 'decimal:8',
     ];
 
     public function getImageUrlAttribute(): ?string

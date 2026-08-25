@@ -6,6 +6,7 @@ use App\Http\Requests\Api\DelegateRequest;
 use App\Models\AppUser;
 use App\Models\UserType;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -27,13 +28,21 @@ class DelegateController extends BaseApiController
      *     @OA\Response(response=200, description="Paginated list of delegates")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $delegates = AppUser::with(['userType', 'cafe'])
-            ->where('user_type_id', $this->delegateTypeId())
-            ->paginate(15);
+        $query = AppUser::with(['userType', 'cafe'])
+            ->where('user_type_id', $this->delegateTypeId());
 
-        return $this->jsonResponse($delegates);
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('mobile_number', 'like', "%{$search}%");
+            });
+        }
+
+        return $this->jsonResponse($query->paginate(15));
     }
 
     /**

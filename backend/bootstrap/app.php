@@ -36,7 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => 'يجب تسجيل الدخول',
-                ], 401);
+                ], 401, [], JSON_UNESCAPED_UNICODE);
             }
         });
 
@@ -45,7 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => 'غير مصرح',
-                ], 403);
+                ], 403, [], JSON_UNESCAPED_UNICODE);
             }
         });
 
@@ -54,7 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => 'العنصر غير موجود',
-                ], 404);
+                ], 404, [], JSON_UNESCAPED_UNICODE);
             }
         });
 
@@ -63,7 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => 'الرابط غير موجود',
-                ], 404);
+                ], 404, [], JSON_UNESCAPED_UNICODE);
             }
         });
 
@@ -73,7 +73,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'success' => false,
                     'message' => 'البيانات المدخلة غير صحيحة',
                     'errors' => $e->errors(),
-                ], 422);
+                ], 422, [], JSON_UNESCAPED_UNICODE);
             }
         });
     })->create();

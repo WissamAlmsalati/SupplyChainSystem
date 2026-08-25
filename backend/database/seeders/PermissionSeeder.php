@@ -34,6 +34,8 @@ class PermissionSeeder extends Seeder
             'ORDER_ASSIGN',
             'ZONE_MANAGE',
             'DASHBOARD_VIEW',
+            'CAFE_REGISTRATIONS_VIEW',
+            'CAFE_REGISTRATIONS_APPROVE',
         ];
 
         foreach ($modules as $module) {

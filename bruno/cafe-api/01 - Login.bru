@@ -1,0 +1,41 @@
+meta {
+  name: Login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "phone_number": "{{phone}}",
+    "password": "{{password}}"
+  }
+}
+
+script:post-response {
+  const json = res.getBody();
+  if (json.token) {
+    bru.setVar("token", json.token);
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("returns bearer token", function() {
+    const json = res.getBody();
+    expect(json.token).to.be.a('string').that.is.not.empty;
+  });
+
+  test("cafe user does not receive permissions", function() {
+    const json = res.getBody();
+    expect(json.permissions).to.be.undefined;
+  });
+}

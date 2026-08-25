@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useApiResource } from '../hooks/useApiResource'
+import { useApiResource, useApiList } from '../hooks/useApiResource'
 import { useModulePermission } from '../hooks/usePermission'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
@@ -8,11 +8,15 @@ import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
 
-const initial = { hex_id: '', name: '', delivery_price: '', is_active: true }
+const initial = { warehouse_id: '', hex_id: '', name: '', delivery_price: '', is_active: true }
 
 export default function DeliveryZones() {
   const navigate = useNavigate()
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/delivery-zones')
+  const [warehouseFilter, setWarehouseFilter] = useState('')
+  const [search, setSearch] = useState('')
+  const warehouses = useApiList('/warehouses?per_page=10000')
+  const path = warehouseFilter ? `/delivery-zones?warehouse_id=${warehouseFilter}` : '/delivery-zones'
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource(path, { search })
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
@@ -41,7 +45,12 @@ export default function DeliveryZones() {
     e.preventDefault()
     setSaving(true)
     try {
-      const data = { ...form, delivery_price: Number(form.delivery_price), is_active: Boolean(form.is_active) }
+      const data = {
+        ...form,
+        warehouse_id: form.warehouse_id === '' ? null : Number(form.warehouse_id),
+        delivery_price: Number(form.delivery_price),
+        is_active: Boolean(form.is_active),
+      }
       if (editing) await update(editing.id, data)
       else await create(data)
       close()
@@ -52,6 +61,8 @@ export default function DeliveryZones() {
 
   const columns = [
     { key: 'name', label: 'الاسم' },
+    { key: 'warehouse', label: 'المستودع', render: (r) => r.warehouse?.name ?? '-' },
+    { key: 'hex_id', label: 'السداسي', render: (r) => r.hex_id ?? '-' },
     { key: 'delivery_price', label: 'سعر التوصيل' },
     { key: 'latitude', label: 'خط العرض', render: (r) => r.latitude ?? '-' },
     { key: 'longitude', label: 'خط الطول', render: (r) => r.longitude ?? '-' },
@@ -64,9 +75,28 @@ export default function DeliveryZones() {
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">مناطق التوصيل</h1>
-        {canCreate && <Button variant="primary" onClick={openCreate}>إضافة منطقة</Button>}
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="بحث..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+          />
+          <select
+            className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+            value={warehouseFilter}
+            onChange={(e) => setWarehouseFilter(e.target.value)}
+          >
+            <option value="">كل المستودعات</option>
+            {warehouses.map((w) => (
+              <option key={w.id} value={w.id}>{w.name}</option>
+            ))}
+          </select>
+          {canCreate && <Button variant="primary" onClick={openCreate}>إضافة منطقة</Button>}
+        </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
       <DataTable
@@ -76,9 +106,9 @@ export default function DeliveryZones() {
         pagination={pagination}
         onPageChange={setPage}
         emptyText="لا توجد مناطق توصيل."
+        onRowClick={(row) => navigate(`/delivery-zones/${row.id}`)}
         actions={canEdit || canDelete ? (row) => (
           <>
-            <Button variant="secondary" size="sm" onClick={() => navigate(`/delivery-zones/${row.id}`)}>عرض</Button>
             {canEdit && <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>تعديل</Button>}
             {canDelete && <Button variant="danger" size="sm" onClick={() => remove(row.id)}>حذف</Button>}
           </>
@@ -86,7 +116,25 @@ export default function DeliveryZones() {
       />
       <Modal title={editing ? 'تعديل منطقة' : 'إضافة منطقة'} open={modal} onClose={close}>
         <form onSubmit={handleSubmit} className="space-y-4">
-
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-muted">المستودع</label>
+            <select
+              className="w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
+              value={form.warehouse_id}
+              onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}
+            >
+              <option value="">بدون مستودع</option>
+              {warehouses.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+          </div>
+          <Input
+            label="معرف السداسي (hex_id)"
+            value={form.hex_id || ''}
+            onChange={(e) => setForm({ ...form, hex_id: e.target.value })}
+            required
+          />
           <Input
             label="الاسم"
             value={form.name || ''}

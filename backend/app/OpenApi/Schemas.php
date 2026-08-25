@@ -98,8 +98,10 @@ namespace App\OpenApi;
  * @OA\Schema(
  *     schema="AuthLoginRequest",
  *     type="object",
- *     required={"email", "password"},
- *     @OA\Property(property="email", type="string", format="email"),
+ *     required={"password"},
+ *     description="Cafe users must login with phone_number and password only. Email is allowed for admin and delegate users only.",
+ *     @OA\Property(property="email", type="string", format="email", nullable=true, description="Use for admin/delegate login only. Cafe users must NOT use email."),
+ *     @OA\Property(property="phone_number", type="string", nullable=true, description="Required for cafe users. Example: 0912345678"),
  *     @OA\Property(property="password", type="string", format="password"),
  * )
  *
@@ -115,10 +117,25 @@ namespace App\OpenApi;
  * )
  *
  * @OA\Schema(
+ *     schema="CafeRegisterRequest",
+ *     type="object",
+ *     required={"cafe_name", "phone_number", "password", "address"},
+ *     @OA\Property(property="cafe_name", type="string", maxLength=150),
+ *     @OA\Property(property="logo", type="string", format="binary", nullable=true),
+ *     @OA\Property(property="phone_number", type="string", maxLength=20),
+ *     @OA\Property(property="email", type="string", format="email", nullable=true, maxLength=150),
+ *     @OA\Property(property="password", type="string", format="password", minLength=6),
+ *     @OA\Property(property="address", type="string", maxLength=1000),
+ *     @OA\Property(property="latitude", type="number", format="float", nullable=true, minimum=-90, maximum=90),
+ *     @OA\Property(property="longitude", type="number", format="float", nullable=true, minimum=-180, maximum=180),
+ * )
+ *
+ * @OA\Schema(
  *     schema="AuthResponse",
  *     type="object",
- *     @OA\Property(property="token", type="string"),
- *     @OA\Property(property="permissions", type="array", @OA\Items(type="string")),
+ *     description="For cafe users the response contains only the bearer token. Admin and delegate responses also include permissions.",
+ *     @OA\Property(property="token", type="string", description="Bearer token to use in the Authorization header"),
+ *     @OA\Property(property="permissions", type="array", nullable=true, @OA\Items(type="string"), description="Included for admin/delegate users only. Omitted for cafe users."),
  * )
  *
  * @OA\Schema(

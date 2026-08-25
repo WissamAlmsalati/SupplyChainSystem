@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApiResource, useApiList } from '../hooks/useApiResource'
 import { useModulePermission } from '../hooks/usePermission'
 import DataTable from '../components/DataTable'
@@ -18,7 +19,9 @@ const initial = {
 }
 
 export default function Users() {
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/users')
+  const navigate = useNavigate()
+  const [search, setSearch] = useState('')
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/users', { search })
   const userTypes = useApiList('/user-types')
   const cafes = useApiList('/cafes')
   const [modal, setModal] = useState(false)
@@ -82,9 +85,18 @@ export default function Users() {
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">المستخدمين</h1>
-        {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مستخدم</Button>}
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="بحث..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+          />
+          {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مستخدم</Button>}
+        </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
       <DataTable
@@ -94,12 +106,13 @@ export default function Users() {
         pagination={pagination}
         onPageChange={setPage}
         emptyText="لا يوجد مستخدمون."
-        actions={canEdit || canDelete ? (row) => (
+        onRowClick={(row) => navigate(`/users/${row.id}`)}
+        actions={(row) => (
           <>
             {canEdit && <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>تعديل</Button>}
             {canDelete && <Button variant="danger" size="sm" onClick={() => remove(row.id)}>حذف</Button>}
           </>
-        ) : undefined}
+        )}
       />
       <Modal title={editing ? 'تعديل مستخدم' : 'إضافة مستخدم'} open={modal} onClose={close}>
         <form onSubmit={handleSubmit} className="space-y-4">

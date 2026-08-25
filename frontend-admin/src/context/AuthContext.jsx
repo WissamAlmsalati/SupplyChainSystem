@@ -16,19 +16,32 @@ function normalizeUser(raw) {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [premiumFeatures, setPremiumFeatures] = useState([])
   const [ready, setReady] = useState(false)
+
+  const fetchFeatures = useCallback(async () => {
+    try {
+      const { data } = await client.get('/premium-features')
+      setPremiumFeatures(data ?? [])
+    } catch {
+      setPremiumFeatures([])
+    }
+  }, [])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
       client.get('/me')
-        .then((res) => setUser(normalizeUser(res.data)))
+        .then((res) => {
+          setUser(normalizeUser(res.data))
+          fetchFeatures()
+        })
         .catch(() => localStorage.removeItem('token'))
         .finally(() => setReady(true))
     } else {
       setReady(true)
     }
-  }, [])
+  }, [fetchFeatures])
 
   const login = async (email, password) => {
     const { data } = await client.post('/login', { email, password })
@@ -37,6 +50,7 @@ export function AuthProvider({ children }) {
     const normalized = normalizeUser(res.data)
     localStorage.setItem('user', JSON.stringify(normalized))
     setUser(normalized)
+    await fetchFeatures()
     return normalized
   }
 
@@ -62,8 +76,12 @@ export function AuthProvider({ children }) {
     return codes.some((code) => hasPermission(code))
   }, [hasPermission])
 
+  const hasFeature = useCallback((code) => {
+    return premiumFeatures.includes(code)
+  }, [premiumFeatures])
+
   return (
-    <AuthContext.Provider value={{ user, ready, login, logout, hasPermission, hasAnyPermission }}>
+    <AuthContext.Provider value={{ user, ready, login, logout, hasPermission, hasAnyPermission, hasFeature }}>
       {children}
     </AuthContext.Provider>
   )

@@ -89,7 +89,7 @@ class DelegateMobileEndpointsTest extends TestCase
 
     protected function delegateToken(): string
     {
-        $res = $this->postJson('/api/login', [
+        $res = $this->postJson('/api/v1/login', [
             'email' => 'delegate1@test.com',
             'password' => 'password',
         ]);
@@ -102,7 +102,7 @@ class DelegateMobileEndpointsTest extends TestCase
     public function test_delegate_can_update_location(): void
     {
         $token = $this->delegateToken();
-        $res = $this->postJson('/api/delegate/location', [
+        $res = $this->postJson('/api/v1/delegate/location', [
             'latitude' => 27.5,
             'longitude' => 17.5,
         ], ['Authorization' => "Bearer $token"]);
@@ -118,7 +118,7 @@ class DelegateMobileEndpointsTest extends TestCase
     public function test_delegate_can_set_availability(): void
     {
         $token = $this->delegateToken();
-        $res = $this->postJson('/api/delegate/availability', [
+        $res = $this->postJson('/api/v1/delegate/availability', [
             'is_available' => false,
         ], ['Authorization' => "Bearer $token"]);
 
@@ -146,14 +146,14 @@ class DelegateMobileEndpointsTest extends TestCase
         $perms = collect($codes)->map(fn ($code) => Permission::firstOrCreate(['code' => $code]));
         $cafeType->permissions()->syncWithoutDetaching($perms->pluck('id'));
 
-        $res = $this->postJson('/api/login', [
-            'email' => 'cafe@test.com',
+        $res = $this->postJson('/api/v1/login', [
+            'phone_number' => '0911111111',
             'password' => 'password',
         ]);
         $res->assertOk();
         $token = $res->json('token');
 
-        $res = $this->postJson('/api/cafe/orders', [
+        $res = $this->postJson('/api/v1/cafe/orders', [
             'branch_id' => $this->branch->id,
             'items' => [
                 [
@@ -176,7 +176,7 @@ class DelegateMobileEndpointsTest extends TestCase
         Event::fake([DelegateLocationUpdated::class]);
 
         $token = $this->delegateToken();
-        $res = $this->postJson('/api/delegate/location', [
+        $res = $this->postJson('/api/v1/delegate/location', [
             'latitude' => 27.5,
             'longitude' => 17.5,
         ], ['Authorization' => "Bearer $token"]);
@@ -190,7 +190,7 @@ class DelegateMobileEndpointsTest extends TestCase
         $this->createAssignedOrder();
 
         $token = $this->delegateToken();
-        $res = $this->getJson('/api/delegate/orders', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/delegate/orders', ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
         $this->assertCount(1, $res->json('data'));
@@ -202,7 +202,7 @@ class DelegateMobileEndpointsTest extends TestCase
         $this->createAssignedOrder(['status' => 'delivered']);
 
         $token = $this->delegateToken();
-        $res = $this->getJson('/api/delegate/orders?status=delivered', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/delegate/orders?status=delivered', ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
         $this->assertCount(1, $res->json('data'));
@@ -214,7 +214,7 @@ class DelegateMobileEndpointsTest extends TestCase
         $order = $this->createAssignedOrder();
 
         $token = $this->delegateToken();
-        $res = $this->getJson("/api/delegate/orders/{$order->id}", ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson("/api/v1/delegate/orders/{$order->id}", ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
         $this->assertEquals($order->id, $res->json('id'));
@@ -226,7 +226,7 @@ class DelegateMobileEndpointsTest extends TestCase
         $order = $this->createAssignedOrder(['delegate_id' => null]);
 
         $token = $this->delegateToken();
-        $res = $this->getJson("/api/delegate/orders/{$order->id}", ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson("/api/v1/delegate/orders/{$order->id}", ['Authorization' => "Bearer $token"]);
 
         $res->assertNotFound();
     }
@@ -236,7 +236,7 @@ class DelegateMobileEndpointsTest extends TestCase
         $order = $this->createAssignedOrder();
 
         $token = $this->delegateToken();
-        $res = $this->postJson("/api/delegate/orders/{$order->id}/status", [
+        $res = $this->postJson("/api/v1/delegate/orders/{$order->id}/status", [
             'status' => 'delivered',
         ], ['Authorization' => "Bearer $token"]);
 
@@ -252,11 +252,27 @@ class DelegateMobileEndpointsTest extends TestCase
         $order = $this->createAssignedOrder(['delegate_id' => null]);
 
         $token = $this->delegateToken();
-        $res = $this->postJson("/api/delegate/orders/{$order->id}/status", [
+        $res = $this->postJson("/api/v1/delegate/orders/{$order->id}/status", [
             'status' => 'delivered',
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertNotFound();
+    }
+
+    public function test_delegate_cannot_set_status_other_than_delivered(): void
+    {
+        $order = $this->createAssignedOrder(['status' => 'pending']);
+
+        $token = $this->delegateToken();
+        $res = $this->postJson("/api/v1/delegate/orders/{$order->id}/status", [
+            'status' => 'cancelled',
+        ], ['Authorization' => "Bearer $token"]);
+
+        $res->assertUnprocessable();
+        $this->assertDatabaseHas('order', [
+            'id' => $order->id,
+            'status' => 'pending',
+        ]);
     }
 
     protected function createAssignedOrder(array $overrides = []): Order

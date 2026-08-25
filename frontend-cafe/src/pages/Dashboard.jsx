@@ -1,136 +1,184 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import client from '../api/client'
-
-const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
-  delivered: 'تم التوصيل',
-  cancelled: 'ملغي',
-  failed: 'فاشل',
-}
-
-const statusColors = {
-  pending: '#d97706',
-  processing: '#0f766e',
-  completed: '#16a34a',
-  delivered: '#16a34a',
-  cancelled: '#dc2626',
-  failed: '#dc2626',
-}
+import { useCart } from '../context/CartContext'
 
 function formatMoney(value) {
-  return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const num = Number(value)
+  if (!Number.isFinite(num)) return '0.00'
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function Card({ children, className = '' }) {
-  return <div className={`rounded-xl border border-border bg-surface p-5 shadow-sm ${className}`}>{children}</div>
+function PlusIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  )
 }
 
 export default function Dashboard() {
-  const [data, setData] = useState(null)
+  const navigate = useNavigate()
+  const { addItem, cart } = useCart()
+  const [categories, setCategories] = useState([])
+  const [products, setProducts] = useState([])
+  const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [adding, setAdding] = useState(null)
 
   useEffect(() => {
-    client
-      .get('/cafe/dashboard')
-      .then((res) => setData(res.data))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false))
+    async function load() {
+      setLoading(true)
+      try {
+        const [categoriesRes, productsRes, branchesRes] = await Promise.all([
+          client.get('/cafe/categories'),
+          client.get('/cafe/products'),
+          client.get('/cafe/branches'),
+        ])
+        setCategories(categoriesRes.data?.data ?? [])
+        setProducts(productsRes.data?.data ?? [])
+        setBranches(branchesRes.data?.data ?? [])
+      } catch (err) {
+        setError(err.response?.data?.message || 'فشل التحميل')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
-  if (loading) return <div className="pt-6 text-muted">جاري التحميل...</div>
-  if (!data) return <div className="pt-6 text-danger">فشل تحميل لوحة التحكم.</div>
+  const featured = products.slice(0, 8)
+  const cartBranchId = cart?.branch_id
 
-  const { cafe, stats, ordersByStatus, recentOrders, monthlyRevenue } = data
-  const statusEntries = Object.entries(ordersByStatus || {})
-  const totalStatus = statusEntries.reduce((sum, [, count]) => sum + count, 0) || 1
-  const maxRevenue = Math.max(...monthlyRevenue.map((m) => Number(m.revenue) || 0), 1)
+  const handleAdd = async (product, e) => {
+    e.stopPropagation()
+    const branchId = cartBranchId || branches[0]?.id
+    if (!branchId) {
+      setError('لا يوجد فرع، أضف فرعًا أولاً.')
+      return
+    }
+    const variant = product.variants?.find((v) => v.is_active !== false) || product.variants?.[0]
+    if (!variant) return
+    setAdding(product.id)
+    try {
+      await addItem(branchId, variant.id, 1)
+    } catch (err) {
+      setError(err.response?.data?.message || 'فشل الإضافة إلى السلة')
+    } finally {
+      setAdding(null)
+    }
+  }
 
   return (
-    <>
-      <header className="mb-6 pt-6">
-        <h1 className="text-2xl font-extrabold text-foreground">لوحة تحكم {cafe?.name}</h1>
-        <p className="mt-1 text-muted">نظرة سريعة على أداء مقهاك</p>
-      </header>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <div className="text-sm text-muted">إجمالي الطلبات</div>
-          <div className="mt-2 text-3xl font-extrabold text-foreground">{stats.orders}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-muted">عدد الفروع</div>
-          <div className="mt-2 text-3xl font-extrabold text-foreground">{stats.branches}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-muted">إجمالي الإيرادات</div>
-          <div className="mt-2 text-3xl font-extrabold text-foreground">{formatMoney(stats.revenue)} د.ل</div>
-        </Card>
+    <div className="pt-6">
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl bg-primary px-6 py-10 text-primary-foreground sm:px-10">
+        <div className="relative z-10 max-w-xl">
+          <h1 className="text-3xl font-extrabold sm:text-4xl">كل مستلزمات مقهاك في مكان واحد</h1>
+          <p className="mt-3 text-primary-foreground/90">
+            اطلب المنتجات بسهولة، تابع طلباتك، ودير فروعك من تطبيق الساحل.
+          </p>
+          <button
+            onClick={() => navigate('/products')}
+            className="mt-5 rounded-lg bg-white px-6 py-2.5 text-sm font-bold text-primary hover:bg-white/90"
+          >
+            تسوق الآن
+          </button>
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <div className="mb-4 font-semibold text-foreground">الإيرادات الشهرية (آخر 6 أشهر)</div>
-          <div className="flex h-48 items-end justify-between gap-2">
-            {monthlyRevenue.map((m) => {
-              const height = `${(Number(m.revenue) / maxRevenue) * 100}%`
+      {error && (
+        <div className="mb-4 mt-6 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">
+          {error}
+        </div>
+      )}
+
+      {/* Categories */}
+      <section className="mt-8">
+        <h2 className="mb-4 text-xl font-bold text-foreground">تصفح حسب التصنيف</h2>
+        {loading ? (
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-10 w-28 flex-shrink-0 animate-pulse rounded-full bg-border" />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => navigate(`/products?category=${c.id}`)}
+                className="rounded-full border border-border bg-surface px-5 py-2 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Featured products */}
+      <section className="mt-8">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-foreground">منتجات مميزة</h2>
+          <button
+            onClick={() => navigate('/products')}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            عرض الكل
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-border bg-surface p-3">
+                <div className="mb-3 aspect-square animate-pulse rounded-lg bg-border" />
+                <div className="mb-2 h-5 w-3/4 animate-pulse rounded-md bg-border" />
+                <div className="h-4 w-1/2 animate-pulse rounded-md bg-border" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {featured.map((p) => {
+              const variant = p.variants?.find((v) => v.is_active !== false) || p.variants?.[0]
+              const price = variant?.price ?? 0
               return (
-                <div key={m.month} className="flex flex-1 flex-col items-center gap-2">
-                  <div
-                    className="w-full max-w-[2.5rem] rounded-t-md bg-primary/80"
-                    style={{ height }}
-                    title={`${formatMoney(m.revenue)} د.ل`}
-                  />
-                  <div className="text-xs text-muted">
-                    {new Date(`${m.month}-01`).toLocaleDateString('en-US', { month: 'short' })}
+                <div
+                  key={p.id}
+                  onClick={() => navigate(`/products/${p.id}`)}
+                  className="group cursor-pointer overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition hover:border-primary hover:shadow-md"
+                >
+                  <div className="relative aspect-square bg-background">
+                    {p.image_url ? (
+                      <img
+                        src={p.image_url}
+                        alt={p.name}
+                        className="h-full w-full object-cover transition group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-muted">لا توجد صورة</div>
+                    )}
+                    <button
+                      onClick={(e) => handleAdd(p, e)}
+                      disabled={adding === p.id}
+                      className="absolute bottom-3 start-3 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 disabled:opacity-60"
+                    >
+                      <PlusIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-foreground">{p.name}</h3>
+                    <div className="mt-2 text-lg font-bold text-primary">{formatMoney(price)} د.ل</div>
                   </div>
                 </div>
               )
             })}
           </div>
-        </Card>
-
-        <Card>
-          <div className="mb-4 font-semibold text-foreground">حالات الطلبات</div>
-          <div className="space-y-3">
-            {statusEntries.map(([status, count]) => (
-              <div key={status} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full" style={{ background: statusColors[status] || '#78716c' }} />
-                  <span className="text-foreground">{statusLabels[status] || status}</span>
-                </div>
-                <span className="font-semibold text-muted">{count}</span>
-              </div>
-            ))}
-            {statusEntries.length === 0 && <div className="text-sm text-muted">لا توجد طلبات.</div>}
-          </div>
-        </Card>
-      </div>
-
-      <Card className="mt-6">
-        <div className="mb-4 font-semibold text-foreground">آخر الطلبات</div>
-        <div className="divide-y divide-border">
-          {recentOrders.length === 0 && <div className="py-4 text-sm text-muted">لا توجد طلبات.</div>}
-          {recentOrders.map((o) => (
-            <div key={o.id} className="flex items-center justify-between py-3 text-sm">
-              <div>
-                <div className="font-medium text-foreground">طلب #{o.id}</div>
-                <div className="text-xs text-muted">{o.user?.name ?? '-'}</div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-muted">{formatMoney(o.total_amount)} د.ل</span>
-                <span
-                  className="rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
-                  style={{ background: statusColors[o.status] || '#78716c' }}
-                >
-                  {statusLabels[o.status] || o.status}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </>
+        )}
+      </section>
+    </div>
   )
 }

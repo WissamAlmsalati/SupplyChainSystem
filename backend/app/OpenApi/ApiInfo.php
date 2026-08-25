@@ -5,12 +5,12 @@ namespace App\OpenApi;
 /**
  * @OA\Info(
  *     version="1.0.0",
- *     title="Cafe Supply Chain API",
+ *     title="Al-Sahel Cafe Supplies API",
  *     description="REST API documentation split by platform: Admin Dashboard, Cafe Mobile App, and Public Storefront.",
  * )
  *
  * @OA\Server(
- *     url="/api",
+ *     url="/api/v1",
  *     description="Local development server"
  * )
  *

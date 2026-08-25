@@ -7,6 +7,7 @@ import Input from '../components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import DataTable from '../components/DataTable'
 import Badge from '../components/ui/Badge'
+import { PageSkeleton } from '../components/ui/Skeleton'
 
 export default function DeliveryZoneDetail() {
   const { id } = useParams()
@@ -121,12 +122,12 @@ export default function DeliveryZoneDetail() {
     },
   ]
 
-  if (loading) return <div className="text-muted">جاري التحميل...</div>
+  if (loading) return <PageSkeleton />
   if (!zone) return <div className="text-danger">{error || 'المنطقة غير موجودة.'}</div>
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">تفاصيل منطقة التوصيل</h1>
           <p className="mt-1 text-muted">{zone.name || 'منطقة توصيل'}</p>

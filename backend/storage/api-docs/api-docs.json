@@ -1,13 +1,13 @@
 {
     "openapi": "3.0.0",
     "info": {
-        "title": "Cafe Supply Chain API",
+        "title": "Al-Sahel Cafe Supplies API",
         "description": "REST API documentation split by platform: Admin Dashboard, Cafe Mobile App, and Public Storefront.",
         "version": "1.0.0"
     },
     "servers": [
         {
-            "url": "/api",
+            "url": "/api/v1",
             "description": "Local development server"
         }
     ],
@@ -155,6 +155,7 @@
                     "Auth"
                 ],
                 "summary": "Log in and receive an access token",
+                "description": "Cafe users must login with phone_number and password. The response is a bare bearer token with no permissions. Admin and delegate users may use email instead of phone_number and will receive permissions in the response.",
                 "operationId": "67d6d0fdd54fba132e1b6f55ca254183",
                 "requestBody": {
                     "required": true,
@@ -162,6 +163,10 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/AuthLoginRequest"
+                            },
+                            "example": {
+                                "phone_number": "0912345678",
+                                "password": "password"
                             }
                         }
                     }
@@ -173,6 +178,9 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AuthResponse"
+                                },
+                                "example": {
+                                    "token": "1|laravel_sanctum_bearer_token_here"
                                 }
                             }
                         }
@@ -238,26 +246,39 @@
                 }
             }
         },
-        "/logout": {
+        "/cafe/register": {
             "post": {
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Revoke the current access token",
-                "operationId": "28d48c13fca984400ac8de99f54ee13a",
-                "responses": {
-                    "200": {
-                        "description": "Logged out successfully"
-                    },
-                    "401": {
-                        "description": "Unauthenticated"
+                "summary": "Register a new cafe (pending admin approval)",
+                "operationId": "caaf1719c560e5070b1899f6815484ff",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CafeRegisterRequest"
+                            }
+                        }
                     }
                 },
-                "security": [
-                    {
-                        "bearerAuth": []
+                "responses": {
+                    "201": {
+                        "description": "Registration pending approval"
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
                     }
-                ]
+                },
+                "security": []
             }
         },
         "/me": {
@@ -556,6 +577,20 @@
                 }
             }
         },
+        "/cafe/dashboard": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Dashboard"
+                ],
+                "summary": "Get cafe dashboard analytics",
+                "operationId": "5cd571b6ab0f33cb7d5e6a2f2433a2a9",
+                "responses": {
+                    "200": {
+                        "description": "Dashboard data"
+                    }
+                }
+            }
+        },
         "/cafe/orders": {
             "get": {
                 "tags": [
@@ -654,7 +689,7 @@
                 "tags": [
                     "Cafe Mobile Orders"
                 ],
-                "summary": "Update order status",
+                "summary": "Confirm order receipt (only after the delegate marks it delivered)",
                 "operationId": "766c6aac15f0b1777050785478dff042",
                 "parameters": [
                     {
@@ -673,7 +708,10 @@
                             "schema": {
                                 "properties": {
                                     "status": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "enum": [
+                                            "received"
+                                        ]
                                     }
                                 },
                                 "type": "object"
@@ -683,10 +721,37 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Status updated"
+                        "description": "Receipt confirmed"
                     },
-                    "403": {
-                        "description": "Forbidden"
+                    "422": {
+                        "description": "Invalid status or order not delivered yet"
+                    }
+                }
+            }
+        },
+        "/cafe/orders/{id}/cancel-request": {
+            "post": {
+                "tags": [
+                    "Cafe Mobile Orders"
+                ],
+                "summary": "Request order cancellation (reviewed by admin)",
+                "operationId": "ed7b3b9d607a603f8155adcca0cb4c83",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cancellation requested"
+                    },
+                    "422": {
+                        "description": "Order cannot be cancelled in its current state"
                     }
                 }
             }
@@ -790,6 +855,31 @@
                         "description": "Forbidden"
                     }
                 }
+            },
+            "delete": {
+                "tags": [
+                    "Cafe Mobile Branches"
+                ],
+                "summary": "Delete a cafe branch",
+                "operationId": "97aeba5e7f05dd277545f6d6e3da20f3",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Branch deleted"
+                    },
+                    "409": {
+                        "description": "Branch has orders"
+                    }
+                }
             }
         },
         "/cafe/profile": {
@@ -832,6 +922,20 @@
                 "responses": {
                     "200": {
                         "description": "Profile updated"
+                    }
+                }
+            }
+        },
+        "/cafe/delivery-zones": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Branches"
+                ],
+                "summary": "List active delivery zones for map branch placement",
+                "operationId": "b15b8a190b3b5da333be486589960f5c",
+                "responses": {
+                    "200": {
+                        "description": "List of delivery zones"
                     }
                 }
             }
@@ -924,6 +1028,186 @@
                     },
                     "404": {
                         "description": "Product not found"
+                    }
+                }
+            }
+        },
+        "/cafe/cart": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Cart"
+                ],
+                "summary": "Get the current cafe user's active cart",
+                "operationId": "6060ee36043911b3bf78c0e8124264cb",
+                "responses": {
+                    "200": {
+                        "description": "Cart details"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Cafe Mobile Cart"
+                ],
+                "summary": "Clear the current cart",
+                "operationId": "3d1c3c31061f190c715e27a63812ac78",
+                "responses": {
+                    "200": {
+                        "description": "Cart cleared"
+                    }
+                }
+            }
+        },
+        "/cafe/cart/items": {
+            "post": {
+                "tags": [
+                    "Cafe Mobile Cart"
+                ],
+                "summary": "Add an item to the cafe user's cart",
+                "operationId": "794d9d7b496382a657bffa19d118ea51",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "branch_id": {
+                                        "type": "integer"
+                                    },
+                                    "product_variant_id": {
+                                        "type": "integer"
+                                    },
+                                    "quantity": {
+                                        "type": "integer"
+                                    },
+                                    "price_at_add": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Item added"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/cafe/cart/items/{id}": {
+            "put": {
+                "tags": [
+                    "Cafe Mobile Cart"
+                ],
+                "summary": "Update a cart item quantity",
+                "operationId": "521658b853f50f47b5ca429cb284d5f9",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "quantity": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Item updated"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Cafe Mobile Cart"
+                ],
+                "summary": "Remove an item from the cart",
+                "operationId": "6923636b1fd67f8b3030e0bf36169f2a",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Item removed"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                }
+            }
+        },
+        "/cafe/cart/checkout": {
+            "post": {
+                "tags": [
+                    "Cafe Mobile Cart"
+                ],
+                "summary": "Checkout the cart and create an order",
+                "operationId": "79b4162afa1df0c7ae1dd0acddcde684",
+                "responses": {
+                    "201": {
+                        "description": "Order created"
+                    },
+                    "400": {
+                        "description": "Cart is empty"
+                    }
+                }
+            }
+        },
+        "/cafe/orders/{id}/delegate": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Orders"
+                ],
+                "summary": "Get the assigned delegate live location for a cafe order",
+                "operationId": "02a3ac627b7c11bde9239ee5916d1a8c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Delegate location"
+                    },
+                    "404": {
+                        "description": "No delegate assigned"
                     }
                 }
             }
@@ -1202,6 +1486,108 @@
                         "description": "Category deleted"
                     }
                 }
+            }
+        },
+        "/dashboard": {
+            "get": {
+                "tags": [
+                    "Admin Dashboard"
+                ],
+                "summary": "Get admin dashboard analytics",
+                "description": "Returns overview statistics, recent orders, monthly revenue, low stock alerts, and activity logs.",
+                "operationId": "faae45987996934eda46ad27a6f61dea",
+                "responses": {
+                    "200": {
+                        "description": "Dashboard data",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "stats": {
+                                            "properties": {
+                                                "orders": {
+                                                    "type": "integer",
+                                                    "example": 188
+                                                },
+                                                "products": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "branches": {
+                                                    "type": "integer",
+                                                    "example": 10
+                                                },
+                                                "revenue": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 9903.31
+                                                },
+                                                "lowStock": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "ordersByStatus": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "integer"
+                                            }
+                                        },
+                                        "recentOrders": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "topProducts": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "monthlyRevenue": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "month": {
+                                                        "type": "string",
+                                                        "example": "2026-08"
+                                                    },
+                                                    "revenue": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 1071.75
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "recentLogs": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "lowStockItems": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/delegates": {
@@ -1504,7 +1890,7 @@
                 "tags": [
                     "Delegate Mobile"
                 ],
-                "summary": "Update status of an assigned order",
+                "summary": "Mark an assigned order as delivered",
                 "operationId": "45ff765c6dc091e5c2f6db889aac118b",
                 "parameters": [
                     {
@@ -2687,6 +3073,46 @@
                     }
                 }
             }
+        },
+        "/warehouses/{warehouse}/expand-hex": {
+            "post": {
+                "tags": [
+                    "Admin Warehouses"
+                ],
+                "summary": "Split warehouse hex into child hex delivery zones",
+                "description": "Expand a warehouse hex into child hex delivery zones.",
+                "operationId": "e6b740f4a0f7f407f5ee9af37d61f492",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "child_resolution": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Delivery zones created"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -2924,14 +3350,21 @@
                 "type": "object"
             },
             "AuthLoginRequest": {
+                "description": "Cafe users must login with phone_number and password only. Email is allowed for admin and delegate users only.",
                 "required": [
-                    "email",
                     "password"
                 ],
                 "properties": {
                     "email": {
+                        "description": "Use for admin/delegate login only. Cafe users must NOT use email.",
                         "type": "string",
-                        "format": "email"
+                        "format": "email",
+                        "nullable": true
+                    },
+                    "phone_number": {
+                        "description": "Required for cafe users. Example: 0912345678",
+                        "type": "string",
+                        "nullable": true
                     },
                     "password": {
                         "type": "string",
@@ -2973,16 +3406,73 @@
                 },
                 "type": "object"
             },
+            "CafeRegisterRequest": {
+                "required": [
+                    "cafe_name",
+                    "phone_number",
+                    "password",
+                    "address"
+                ],
+                "properties": {
+                    "cafe_name": {
+                        "type": "string",
+                        "maxLength": 150
+                    },
+                    "logo": {
+                        "type": "string",
+                        "format": "binary",
+                        "nullable": true
+                    },
+                    "phone_number": {
+                        "type": "string",
+                        "maxLength": 20
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 150,
+                        "nullable": true
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "minLength": 6
+                    },
+                    "address": {
+                        "type": "string",
+                        "maxLength": 1000
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "maximum": 90,
+                        "minimum": -90,
+                        "nullable": true
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "maximum": 180,
+                        "minimum": -180,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "AuthResponse": {
+                "description": "For cafe users the response contains only the bearer token. Admin and delegate responses also include permissions.",
                 "properties": {
                     "token": {
+                        "description": "Bearer token to use in the Authorization header",
                         "type": "string"
                     },
                     "permissions": {
+                        "description": "Included for admin/delegate users only. Omitted for cafe users.",
                         "type": "array",
                         "items": {
                             "type": "string"
-                        }
+                        },
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -3266,6 +3756,10 @@
             "description": "Admin platform cafe management"
         },
         {
+            "name": "Cafe Mobile Dashboard",
+            "description": "Cafe mobile app dashboard"
+        },
+        {
             "name": "Cafe Mobile Orders",
             "description": "Cafe mobile app order management"
         },
@@ -3288,6 +3782,10 @@
         {
             "name": "Admin Categories",
             "description": "Admin platform category management"
+        },
+        {
+            "name": "Admin Dashboard",
+            "description": "Admin platform analytics"
         },
         {
             "name": "Delegates",
@@ -3320,6 +3818,10 @@
         {
             "name": "Admin Warehouses",
             "description": "Admin platform warehouse management"
+        },
+        {
+            "name": "Cafe Mobile Cart",
+            "description": "Cafe Mobile Cart"
         }
     ],
     "security": [

@@ -1,0 +1,12 @@
+{
+  "name": "al-sahel-bruno",
+  "version": "1.0.0",
+  "description": "Bruno API collection for الساحل لمستلزمات المقاهي",
+  "scripts": {
+    "run:local": "cd cafe-api && bru run --env local",
+    "run:local:reporter": "cd cafe-api && bru run --env local --reporter html"
+  },
+  "devDependencies": {
+    "@usebruno/cli": "^1.40.0"
+  }
+}

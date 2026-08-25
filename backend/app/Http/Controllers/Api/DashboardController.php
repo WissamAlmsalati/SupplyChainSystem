@@ -17,6 +17,37 @@ use Illuminate\Support\Facades\DB;
  */
 class DashboardController extends BaseApiController
 {
+    /**
+     * @OA\Get(
+     *     path="/dashboard",
+     *     tags={"Admin Dashboard"},
+     *     summary="Get admin dashboard analytics",
+     *     description="Returns overview statistics, recent orders, monthly revenue, low stock alerts, and activity logs.",
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Dashboard data",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="stats", type="object",
+     *                 @OA\Property(property="orders", type="integer", example=188),
+     *                 @OA\Property(property="products", type="integer", example=12),
+     *                 @OA\Property(property="branches", type="integer", example=10),
+     *                 @OA\Property(property="revenue", type="number", format="float", example=9903.31),
+     *                 @OA\Property(property="lowStock", type="integer", example=3)
+     *             ),
+     *             @OA\Property(property="ordersByStatus", type="object", additionalProperties={"type": "integer"}),
+     *             @OA\Property(property="recentOrders", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="topProducts", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="monthlyRevenue", type="array", @OA\Items(
+     *                 @OA\Property(property="month", type="string", example="2026-08"),
+     *                 @OA\Property(property="revenue", type="number", format="float", example=1071.75)
+     *             )),
+     *             @OA\Property(property="recentLogs", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="lowStockItems", type="array", @OA\Items(type="object"))
+     *         )
+     *     )
+     * )
+     */
     public function index(): JsonResponse
     {
         $orders = Order::all();
@@ -49,6 +80,7 @@ class DashboardController extends BaseApiController
 
                 return [
                     'id' => $variant?->id,
+                    'product_id' => $variant?->product?->id,
                     'name' => $label,
                     'quantity' => (int) $item->total_qty,
                 ];
@@ -69,7 +101,7 @@ class DashboardController extends BaseApiController
             }
             $month = Carbon::parse($order->order_date)->format('Y-m');
             if (isset($monthlyRevenue[$month])) {
-                $monthlyRevenue[$month]['revenue'] += (float) $order->total_amount;
+                $monthlyRevenue[$month]['revenue'] = round($monthlyRevenue[$month]['revenue'] + (float) $order->total_amount, 2);
             }
         }
 
@@ -80,7 +112,7 @@ class DashboardController extends BaseApiController
                 'orders' => $orders->count(),
                 'products' => $products,
                 'branches' => $branches,
-                'revenue' => number_format($revenue, 2),
+                'revenue' => round($revenue, 2),
                 'lowStock' => $lowStock->count(),
             ],
             'ordersByStatus' => $ordersByStatus,

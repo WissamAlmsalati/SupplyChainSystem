@@ -105,27 +105,44 @@ class CafeMobileEndpointsTest extends TestCase
 
     protected function token(): string
     {
-        $res = $this->postJson('/api/login', [
-            'email' => 'cafe@test.com',
+        $res = $this->postJson('/api/v1/login', [
+            'phone_number' => '0911111111',
             'password' => 'password',
         ]);
 
         $res->assertOk();
         $this->assertArrayHasKey('token', $res->json());
-        $this->assertArrayHasKey('permissions', $res->json());
 
         return $res->json('token');;
     }
 
-    public function test_cafe_login_returns_token_and_permissions(): void
+    public function test_cafe_login_returns_token_without_permissions(): void
     {
-        $this->token();
+        $res = $this->postJson('/api/v1/login', [
+            'phone_number' => '0911111111',
+            'password' => 'password',
+        ]);
+
+        $res->assertOk();
+        $this->assertArrayHasKey('token', $res->json());
+        $this->assertArrayNotHasKey('permissions', $res->json());
+    }
+
+    public function test_cafe_cannot_login_with_email(): void
+    {
+        $res = $this->postJson('/api/v1/login', [
+            'email' => 'cafe@test.com',
+            'password' => 'password',
+        ]);
+
+        $res->assertForbidden()
+            ->assertJsonPath('message', 'يجب تسجيل الدخول برقم الهاتف');
     }
 
     public function test_cafe_me_returns_user(): void
     {
         $token = $this->token();
-        $this->getJson('/api/me', ['Authorization' => "Bearer $token"])
+        $this->getJson('/api/v1/me', ['Authorization' => "Bearer $token"])
             ->assertOk()
             ->assertJsonPath('email', 'cafe@test.com');
     }
@@ -133,7 +150,7 @@ class CafeMobileEndpointsTest extends TestCase
     public function test_cafe_profile(): void
     {
         $token = $this->token();
-        $this->getJson('/api/cafe/profile', ['Authorization' => "Bearer $token"])
+        $this->getJson('/api/v1/cafe/profile', ['Authorization' => "Bearer $token"])
             ->assertOk()
             ->assertJsonPath('cafe.name', 'مقهى اختبار');
     }
@@ -141,7 +158,7 @@ class CafeMobileEndpointsTest extends TestCase
     public function test_cafe_branches_list(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/cafe/branches', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/cafe/branches', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
         $this->assertCount(1, $res->json('data'));
     }
@@ -149,7 +166,7 @@ class CafeMobileEndpointsTest extends TestCase
     public function test_cafe_branch_create(): void
     {
         $token = $this->token();
-        $res = $this->postJson('/api/cafe/branches', [
+        $res = $this->postJson('/api/v1/cafe/branches', [
             'name' => 'فرع جديد',
             'city' => 'بنغازي',
             'street' => 'شارع جمال',
@@ -165,7 +182,7 @@ class CafeMobileEndpointsTest extends TestCase
     public function test_cafe_branch_orders(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/cafe/branches/' . $this->branch->id . '/orders', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/cafe/branches/' . $this->branch->id . '/orders', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
         $this->assertIsArray($res->json('data'));
     }
@@ -173,7 +190,7 @@ class CafeMobileEndpointsTest extends TestCase
     public function test_cafe_orders_list(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/cafe/orders', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/cafe/orders', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
         $this->assertIsArray($res->json('data'));
     }
@@ -181,7 +198,7 @@ class CafeMobileEndpointsTest extends TestCase
     public function test_cafe_order_create(): void
     {
         $token = $this->token();
-        $res = $this->postJson('/api/cafe/orders', [
+        $res = $this->postJson('/api/v1/cafe/orders', [
             'branch_id' => $this->branch->id,
             'items' => [
                 [
@@ -203,7 +220,7 @@ class CafeMobileEndpointsTest extends TestCase
     public function test_cafe_categories_list(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/cafe/categories', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/cafe/categories', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
         $this->assertCount(1, $res->json('data'));
     }
@@ -211,7 +228,7 @@ class CafeMobileEndpointsTest extends TestCase
     public function test_cafe_products_list(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/cafe/products', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/cafe/products', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
         $this->assertCount(1, $res->json('data'));
     }
@@ -219,7 +236,7 @@ class CafeMobileEndpointsTest extends TestCase
     public function test_cafe_product_variants(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/cafe/products/' . $this->variant->product_id . '/variants', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/cafe/products/' . $this->variant->product_id . '/variants', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
         $this->assertCount(1, $res->json('data'));
     }
@@ -233,14 +250,14 @@ class CafeMobileEndpointsTest extends TestCase
         ]);
 
         $token = $this->token();
-        $res = $this->getJson('/api/inventory', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/inventory', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
     }
 
     public function test_cafe_can_list_delivery_zones_for_map(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/cafe/delivery-zones', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/cafe/delivery-zones', ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
         $this->assertCount(1, $res->json('data'));

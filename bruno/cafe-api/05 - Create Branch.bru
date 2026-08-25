@@ -1,0 +1,45 @@
+meta {
+  name: Create Branch
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/cafe/branches
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "فرع اختبار",
+    "city": "طرابلس",
+    "street": "شارع الاختبار",
+    "latitude": 27.1,
+    "longitude": 17.1,
+    "is_active": true
+  }
+}
+
+script:post-response {
+  const json = res.getBody();
+  if (json.data && json.data.id) {
+    bru.setVar("createdBranchId", json.data.id);
+  }
+}
+
+tests {
+  test("status is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("returns created branch", function() {
+    const json = res.getBody();
+    expect(json.data.id).to.be.a('number');
+    expect(json.data.name).to.be.a('string');
+  });
+}

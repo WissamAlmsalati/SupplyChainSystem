@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApiResource, useApiList } from '../hooks/useApiResource'
 import { useModulePermission } from '../hooks/usePermission'
+import { useAuth } from '../context/AuthContext'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
@@ -57,9 +59,12 @@ function opName(op) {
 }
 
 export default function UserTypes() {
-  const { items, loading, error, create, update, remove } = useApiResource('/user-types')
+  const navigate = useNavigate()
+  const [search, setSearch] = useState('')
+  const { items, loading, error, create, update, remove } = useApiResource('/user-types', { search })
   const permissions = useApiList('/permissions')
   const { canCreate, canEdit, canDelete } = useModulePermission('USER_TYPES')
+  const { hasFeature } = useAuth()
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
@@ -149,9 +154,18 @@ export default function UserTypes() {
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">أنواع المستخدمين (الأدوار)</h1>
-        {canCreate && <Button variant="primary" onClick={openCreate}>إضافة دور</Button>}
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="بحث..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+          />
+          {canCreate && hasFeature('add_role') && <Button variant="primary" onClick={openCreate}>إضافة دور</Button>}
+        </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
       <DataTable
@@ -159,12 +173,13 @@ export default function UserTypes() {
         rows={items}
         loading={loading}
         emptyText="لا توجد أدوار."
-        actions={canEdit || canDelete ? (row) => (
+        onRowClick={(row) => navigate(`/user-types/${row.id}`)}
+        actions={(row) => (
           <>
             {canEdit && <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>تعديل</Button>}
             {canDelete && <Button variant="danger" size="sm" onClick={() => remove(row.id)}>حذف</Button>}
           </>
-        ) : undefined}
+        )}
       />
       <Modal title={editing ? 'تعديل دور' : 'إضافة دور'} open={modal} onClose={close}>
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -40,7 +40,7 @@ class DelegateEndpointsTest extends TestCase
 
     protected function token(): string
     {
-        $res = $this->postJson('/api/login', [
+        $res = $this->postJson('/api/v1/login', [
             'email' => 'admin@test.com',
             'password' => 'password',
         ]);
@@ -62,7 +62,7 @@ class DelegateEndpointsTest extends TestCase
         ]);
 
         $token = $this->token();
-        $res = $this->getJson('/api/delegates', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/delegates', ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
         $this->assertCount(1, $res->json('data'));
@@ -71,7 +71,7 @@ class DelegateEndpointsTest extends TestCase
     public function test_admin_can_create_delegate(): void
     {
         $token = $this->token();
-        $res = $this->postJson('/api/delegates', [
+        $res = $this->postJson('/api/v1/delegates', [
             'name' => 'New Delegate',
             'email' => 'new.delegate@test.com',
             'mobile_number' => '0944444444',
@@ -97,7 +97,7 @@ class DelegateEndpointsTest extends TestCase
         ]);
 
         $token = $this->token();
-        $res = $this->putJson('/api/delegates/' . $delegate->id, [
+        $res = $this->putJson('/api/v1/delegates/' . $delegate->id, [
             'name' => 'Delegate Updated',
             'email' => 'delegate.updated@test.com',
             'is_active' => false,
@@ -122,7 +122,7 @@ class DelegateEndpointsTest extends TestCase
         ]);
 
         $token = $this->token();
-        $res = $this->deleteJson('/api/delegates/' . $delegate->id, [], ['Authorization' => "Bearer $token"]);
+        $res = $this->deleteJson('/api/v1/delegates/' . $delegate->id, [], ['Authorization' => "Bearer $token"]);
 
         $res->assertNoContent();
         $this->assertDatabaseMissing('app_user', ['id' => $delegate->id]);
@@ -139,7 +139,7 @@ class DelegateEndpointsTest extends TestCase
         ]);
 
         $token = $this->token();
-        $res = $this->postJson('/api/delegates/' . $delegate->id . '/toggle-active', [], ['Authorization' => "Bearer $token"]);
+        $res = $this->postJson('/api/v1/delegates/' . $delegate->id . '/toggle-active', [], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
         $this->assertDatabaseHas('app_user', [

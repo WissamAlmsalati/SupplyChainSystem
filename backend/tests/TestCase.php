@@ -13,7 +13,7 @@ abstract class TestCase extends BaseTestCase
      */
     public function createApplication(): Application
     {
-        foreach ([
+        $defaults = [
             'DB_CONNECTION' => 'mysql',
             'DB_HOST' => 'db',
             'DB_PORT' => '3306',
@@ -21,10 +21,15 @@ abstract class TestCase extends BaseTestCase
             'DB_USERNAME' => 'cafe_user',
             'DB_PASSWORD' => 'cafe_pass',
             'DB_URL' => '',
-        ] as $key => $value) {
-            putenv("{$key}={$value}");
-            $_ENV[$key] = $value;
-            $_SERVER[$key] = $value;
+        ];
+
+        foreach ($defaults as $key => $value) {
+            $envValue = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+            $envValue = $envValue !== false && $envValue !== '' ? $envValue : $value;
+
+            putenv("{$key}={$envValue}");
+            $_ENV[$key] = $envValue;
+            $_SERVER[$key] = $envValue;
         }
 
         $app = require __DIR__.'/../bootstrap/app.php';

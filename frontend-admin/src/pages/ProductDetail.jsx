@@ -6,6 +6,7 @@ import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
+import { PageSkeleton } from '../components/ui/Skeleton'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -13,7 +14,8 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [imageUrls, setImageUrls] = useState({})
+  const [imageFiles, setImageFiles] = useState({})
+  const [imagePreviews, setImagePreviews] = useState({})
   const [saving, setSaving] = useState({})
   const { canCreate: canCreateImage, canEdit: canEditImage, canDelete: canDeleteImage } = useModulePermission('PRODUCT_IMAGES')
 
@@ -39,17 +41,26 @@ export default function ProductDetail() {
     setProduct(res.data?.data ?? res.data)
   }
 
+  const handleFileChange = (variantId, file) => {
+    setImageFiles((prev) => ({ ...prev, [variantId]: file }))
+    setImagePreviews((prev) => ({
+      ...prev,
+      [variantId]: file ? URL.createObjectURL(file) : null,
+    }))
+  }
+
   const addImage = async (variantId) => {
-    const url = imageUrls[variantId]?.trim()
-    if (!url) return
+    const file = imageFiles[variantId]
+    if (!file) return
     setSaving((prev) => ({ ...prev, [variantId]: true }))
     try {
-      await client.post('/product-images', {
-        product_variant_id: variantId,
-        url,
-        is_primary: false,
-      })
-      setImageUrls((prev) => ({ ...prev, [variantId]: '' }))
+      const data = new FormData()
+      data.append('product_variant_id', variantId)
+      data.append('image', file)
+      data.append('is_primary', '0')
+      await client.postForm('/product-images', data)
+      setImageFiles((prev) => ({ ...prev, [variantId]: null }))
+      setImagePreviews((prev) => ({ ...prev, [variantId]: null }))
       await refresh()
     } catch (err) {
       setError(err.response?.data?.message || 'فشل إضافة الصورة')
@@ -87,12 +98,12 @@ export default function ProductDetail() {
     }
   }
 
-  if (loading) return <div className="text-muted">جاري التحميل...</div>
+  if (loading) return <PageSkeleton />
   if (!product) return <div className="text-danger">{error || 'المنتج غير موجود.'}</div>
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">تفاصيل المنتج</h1>
           <p className="mt-1 text-muted">{product.name}</p>
@@ -155,7 +166,7 @@ export default function ProductDetail() {
                   variant.images.map((img) => (
                     <div key={img.id} className="group relative">
                       <img
-                        src={img.url}
+                        src={img.image_url || img.url}
                         alt=""
                         className="h-24 w-24 rounded-lg border border-border object-cover"
                       />
@@ -192,18 +203,27 @@ export default function ProductDetail() {
               </div>
 
               {canCreateImage && (
-                <div className="flex items-end gap-2">
-                  <Input
-                    label="رابط صورة جديدة"
-                    value={imageUrls[variant.id] || ''}
-                    onChange={(e) => setImageUrls((prev) => ({ ...prev, [variant.id]: e.target.value }))}
-                    placeholder="https://example.com/image.jpg"
-                    className="flex-1"
-                  />
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="flex-1">
+                    <label className="mb-1.5 block text-sm font-medium text-muted">صورة جديدة</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(variant.id, e.target.files[0])}
+                      className="block w-full text-sm text-foreground file:mr-4 file:rounded file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+                    />
+                  </div>
+                  {imagePreviews[variant.id] && (
+                    <img
+                      src={imagePreviews[variant.id]}
+                      alt=""
+                      className="h-16 w-16 rounded-lg border border-border object-cover"
+                    />
+                  )}
                   <Button
                     variant="primary"
                     onClick={() => addImage(variant.id)}
-                    disabled={saving[variant.id] || !imageUrls[variant.id]?.trim()}
+                    disabled={saving[variant.id] || !imageFiles[variant.id]}
                   >
                     {saving[variant.id] ? 'جاري الإضافة...' : 'إضافة'}
                   </Button>

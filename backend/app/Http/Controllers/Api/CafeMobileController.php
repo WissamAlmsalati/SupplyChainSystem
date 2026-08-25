@@ -5,9 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Api\CafeBranchRequest;
 use App\Models\Cafe;
 use App\Models\CafeBranch;
+use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Category;
+use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\DelegateAssignmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,8 +57,22 @@ class CafeMobileController extends BaseApiController
      */
     public function orders(Request $request): JsonResponse
     {
-        $orders = $this->orderScope()->orderByDesc('order_date')->get();
-        return $this->jsonResponse(['data' => $orders]);
+        $query = $this->orderScope()->orderByDesc('order_date');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->integer('branch_id'));
+        }
+        if ($request->filled('from')) {
+            $query->whereDate('order_date', '>=', $request->input('from'));
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('order_date', '<=', $request->input('to'));
+        }
+
+        return $this->jsonResponse($query->paginate($request->integer('per_page', 15)));
     }
 
     /**
@@ -67,15 +85,18 @@ class CafeMobileController extends BaseApiController
      *     @OA\Response(response=404, description="Branch not found")
      * )
      */
-    public function branchOrders(int $id): JsonResponse
+    public function branchOrders(Request $request, int $id): JsonResponse
     {
         $branch = $this->branchScope()->findOrFail($id);
-        $orders = $this->orderScope()
+        $query = $this->orderScope()
             ->where('branch_id', $branch->id)
-            ->orderByDesc('order_date')
-            ->get();
+            ->orderByDesc('order_date');
 
-        return $this->jsonResponse(['data' => $orders]);
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        return $this->jsonResponse($query->paginate($request->integer('per_page', 15)));
     }
 
     /**
@@ -98,19 +119,63 @@ class CafeMobileController extends BaseApiController
      * @OA\Put(
      *     path="/cafe/orders/{id}/status",
      *     tags={"Cafe Mobile Orders"},
-     *     summary="Update order status",
+     *     summary="Confirm order receipt (only after the delegate marks it delivered)",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="status", type="string"))),
-     *     @OA\Response(response=200, description="Status updated"),
-     *     @OA\Response(response=403, description="Forbidden")
+     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="status", type="string", enum={"received"}))),
+     *     @OA\Response(response=200, description="Receipt confirmed"),
+     *     @OA\Response(response=422, description="Invalid status or order not delivered yet")
      * )
      */
     public function updateOrderStatus(Request $request, int $id): JsonResponse
     {
-        $request->validate(['status' => 'required|string|max:30']);
+        $request->validate(['status' => ['required', 'string', 'in:received']]);
+
         $order = $this->orderScope()->findOrFail($id);
-        $order->update(['status' => $request->input('status')]);
+
+        if ($order->status !== 'delivered') {
+            return $this->jsonResponse(['message' => 'لا يمكن تأكيد الاستلام إلا بعد التسليم'], 422);
+        }
+
+        $order->update(['status' => 'received']);
+        $order->statusLogs()->create([
+            'status' => 'received',
+            'changed_by' => auth()->id(),
+            'changed_at' => now(),
+        ]);
+
         return $this->jsonResponse($order->load(['user', 'branch', 'deliveryZone']));
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/cafe/orders/{id}/cancel-request",
+     *     tags={"Cafe Mobile Orders"},
+     *     summary="Request order cancellation (reviewed by admin)",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Cancellation requested"),
+     *     @OA\Response(response=422, description="Order cannot be cancelled in its current state")
+     * )
+     */
+    public function requestCancellation(int $id): JsonResponse
+    {
+        $order = $this->orderScope()->findOrFail($id);
+
+        if ($order->status !== 'pending') {
+            return $this->jsonResponse(['message' => 'لا يمكن طلب الإلغاء إلا للطلبات قيد الانتظار'], 422);
+        }
+
+        $order->update(['status' => 'cancellation_requested']);
+        $order->statusLogs()->create([
+            'status' => 'cancellation_requested',
+            'changed_by' => auth()->id(),
+            'changed_at' => now(),
+        ]);
+
+        return $this->jsonResponse([
+            'id' => $order->id,
+            'status' => $order->status,
+            'message' => 'تم إرسال طلب الإلغاء، سيتم مراجعته من الإدارة',
+        ]);
     }
 
     /**
@@ -130,14 +195,23 @@ class CafeMobileController extends BaseApiController
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_variant_id' => ['required', 'integer', 'exists:product_variant,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
-            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $items = $data['items'];
         $branch = CafeBranch::with('deliveryZone')->find($data['branch_id']);
         if (! $branch || $branch->cafe_id !== $this->cafeId()) {
             return $this->jsonResponse(['message' => 'غير مصرح'], 403);
         }
+
+        // ponytail: price is always taken server-side from the variant; client-sent prices are ignored
+        $variants = ProductVariant::whereIn('id', collect($data['items'])->pluck('product_variant_id'))
+            ->get()
+            ->keyBy('id');
+
+        $items = collect($data['items'])->map(fn ($item) => [
+            'product_variant_id' => $item['product_variant_id'],
+            'quantity' => $item['quantity'],
+            'unit_price' => $variants[$item['product_variant_id']]->price,
+        ])->all();
 
         $subtotal = collect($items)->sum(fn ($item) => $item['quantity'] * $item['unit_price']);
         $deliveryFee = $branch->deliveryZone?->delivery_price ?? 0;
@@ -155,6 +229,7 @@ class CafeMobileController extends BaseApiController
         ];
 
         $order = DB::transaction(function () use ($orderData, $items) {
+            $orderData['order_number'] = Order::generateOrderNumber();
             $order = Order::create($orderData);
             $order->items()->createMany($items);
             return $order;
@@ -197,7 +272,7 @@ class CafeMobileController extends BaseApiController
      */
     public function showBranch(int $id): JsonResponse
     {
-        $branch = $this->branchScope()->with(['cafe', 'deliveryZone', 'orders'])->findOrFail($id);
+        $branch = $this->branchScope()->with(['cafe', 'deliveryZone'])->findOrFail($id);
         return $this->jsonResponse($branch);
     }
 
@@ -241,6 +316,29 @@ class CafeMobileController extends BaseApiController
         $data['cafe_id'] = $this->cafeId();
         $branch->update($data);
         return $this->jsonResponse($branch->load(['cafe', 'deliveryZone']));
+    }
+
+    /**
+     * @OA\Delete(
+     *     path="/cafe/branches/{id}",
+     *     tags={"Cafe Mobile Branches"},
+     *     summary="Delete a cafe branch",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Branch deleted"),
+     *     @OA\Response(response=409, description="Branch has orders")
+     * )
+     */
+    public function destroyBranch(int $id): JsonResponse
+    {
+        $branch = $this->branchScope()->findOrFail($id);
+
+        if ($branch->orders()->exists()) {
+            return $this->jsonResponse(['message' => 'لا يمكن حذف فرع لديه طلبات'], 409);
+        }
+
+        $branch->delete();
+
+        return $this->jsonResponse(['message' => 'تم حذف الفرع بنجاح']);
     }
 
     /**
@@ -323,13 +421,35 @@ class CafeMobileController extends BaseApiController
      */
     public function products(Request $request): JsonResponse
     {
-        $query = Product::select(['id', 'name', 'description', 'image']);
+        $query = Product::with(['variants.images']);
 
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->integer('category_id'));
         }
 
-        return $this->jsonResponse(['data' => $query->get()]);
+        $products = $query->get()->map(function (Product $product) {
+            $primaryImage = $product->variants
+                ->flatMap(fn ($v) => $v->images)
+                ->first(fn ($img) => $img->is_primary);
+
+            if (! $primaryImage) {
+                $primaryImage = $product->variants
+                    ->flatMap(fn ($v) => $v->images)
+                    ->first();
+            }
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'category_id' => $product->category_id,
+                'image_url' => $product->image_url ?: $primaryImage?->image_url,
+                'min_price' => $product->variants->min('price'),
+                'variants' => $product->variants,
+            ];
+        });
+
+        return $this->jsonResponse(['data' => $products]);
     }
 
     /**
@@ -344,7 +464,7 @@ class CafeMobileController extends BaseApiController
      */
     public function showProduct(int $id): JsonResponse
     {
-        $product = Product::with(['category', 'variants', 'supplier'])->findOrFail($id);
+        $product = Product::with(['category', 'variants.images', 'supplier'])->findOrFail($id);
         return $this->jsonResponse($product);
     }
 
@@ -361,6 +481,250 @@ class CafeMobileController extends BaseApiController
     public function productVariants(int $id): JsonResponse
     {
         $product = Product::findOrFail($id);
-        return $this->jsonResponse(['data' => $product->variants]);
+        return $this->jsonResponse(['data' => $product->variants()->with('images')->get()]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/cafe/cart",
+     *     tags={"Cafe Mobile Cart"},
+     *     summary="Get the current cafe user's active cart",
+     *     @OA\Response(response=200, description="Cart details")
+     * )
+     */
+    public function cart(): JsonResponse
+    {
+        $cart = $this->currentCart();
+
+        return $this->jsonResponse([
+            'data' => $cart?->load(['branch', 'items.productVariant.product']),
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/cafe/cart/items",
+     *     tags={"Cafe Mobile Cart"},
+     *     summary="Add an item to the cafe user's cart",
+     *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *         @OA\Property(property="branch_id", type="integer"),
+     *         @OA\Property(property="product_variant_id", type="integer"),
+     *         @OA\Property(property="quantity", type="integer"),
+     *         @OA\Property(property="price_at_add", type="number", format="float", nullable=true)
+     *     )),
+     *     @OA\Response(response=201, description="Item added"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function addCartItem(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'branch_id' => ['required', 'integer', 'exists:cafe_branch,id'],
+            'product_variant_id' => ['required', 'integer', 'exists:product_variant,id'],
+            'quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $branch = $this->branchScope()->findOrFail($data['branch_id']);
+        $variant = ProductVariant::findOrFail($data['product_variant_id']);
+
+        $cart = $this->currentCart($branch->id);
+
+        // ponytail: one branch per cart; reset items if branch changes
+        if ($cart->branch_id && $cart->branch_id !== $branch->id) {
+            $cart->items()->delete();
+        }
+        $cart->update(['branch_id' => $branch->id]);
+
+        $item = $cart->items()->updateOrCreate(
+            ['product_variant_id' => $variant->id],
+            [
+                'quantity' => $data['quantity'],
+                'price_at_add' => $variant->price,
+            ]
+        );
+
+        return $this->jsonResponse([
+            'data' => $item->load('productVariant.product'),
+            'cart' => $cart->load(['branch', 'items.productVariant.product']),
+        ], 201);
+    }
+
+    /**
+     * @OA\Put(
+     *     path="/cafe/cart/items/{id}",
+     *     tags={"Cafe Mobile Cart"},
+     *     summary="Update a cart item quantity",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="quantity", type="integer"))),
+     *     @OA\Response(response=200, description="Item updated"),
+     *     @OA\Response(response=404, description="Not found")
+     * )
+     */
+    public function updateCartItem(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate(['quantity' => ['required', 'integer', 'min:1']]);
+
+        $cart = $this->currentCart();
+        if (! $cart) {
+            return $this->jsonResponse(['message' => 'السلة غير موجودة'], 404);
+        }
+
+        $item = $cart->items()->findOrFail($id);
+        $item->update(['quantity' => $data['quantity']]);
+
+        return $this->jsonResponse($cart->load(['branch', 'items.productVariant.product']));
+    }
+
+    /**
+     * @OA\Delete(
+     *     path="/cafe/cart/items/{id}",
+     *     tags={"Cafe Mobile Cart"},
+     *     summary="Remove an item from the cart",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Item removed"),
+     *     @OA\Response(response=404, description="Not found")
+     * )
+     */
+    public function removeCartItem(int $id): JsonResponse
+    {
+        $cart = $this->currentCart();
+        if (! $cart) {
+            return $this->jsonResponse(['message' => 'السلة غير موجودة'], 404);
+        }
+
+        $cart->items()->findOrFail($id)->delete();
+
+        return $this->jsonResponse($cart->load(['branch', 'items.productVariant.product']));
+    }
+
+    /**
+     * @OA\Delete(
+     *     path="/cafe/cart",
+     *     tags={"Cafe Mobile Cart"},
+     *     summary="Clear the current cart",
+     *     @OA\Response(response=200, description="Cart cleared")
+     * )
+     */
+    public function clearCart(): JsonResponse
+    {
+        $cart = $this->currentCart();
+        $cart?->items()->delete();
+        $cart?->delete();
+
+        return $this->jsonResponse(['message' => 'تم إفراغ السلة']);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/cafe/cart/checkout",
+     *     tags={"Cafe Mobile Cart"},
+     *     summary="Checkout the cart and create an order",
+     *     @OA\Response(response=201, description="Order created"),
+     *     @OA\Response(response=400, description="Cart is empty")
+     * )
+     */
+    public function checkout(): JsonResponse
+    {
+        $cart = $this->currentCart();
+
+        if (! $cart || $cart->items->isEmpty()) {
+            return $this->jsonResponse(['message' => 'السلة فارغة'], 400);
+        }
+
+        $branch = $this->branchScope()->findOrFail($cart->branch_id);
+        $items = $cart->items->map(fn (CartItem $item) => [
+            'product_variant_id' => $item->product_variant_id,
+            'quantity' => $item->quantity,
+            'unit_price' => $item->price_at_add,
+        ])->all();
+
+        $subtotal = $cart->items->sum(fn ($item) => $item->quantity * $item->price_at_add);
+        $deliveryFee = $branch->deliveryZone?->delivery_price ?? 0;
+
+        $orderData = [
+            'user_id' => auth()->id(),
+            'branch_id' => $branch->id,
+            'delegate_id' => null,
+            'delivery_zone_id' => $branch->delivery_zone_id,
+            'delivery_fee' => $deliveryFee,
+            'order_date' => now(),
+            'status' => 'pending',
+            'source' => 'cafe_app',
+            'total_amount' => $subtotal + $deliveryFee,
+        ];
+
+        $order = DB::transaction(function () use ($orderData, $items, $cart) {
+            $orderData['order_number'] = Order::generateOrderNumber();
+            $order = Order::create($orderData);
+            $order->items()->createMany($items);
+            $cart->items()->delete();
+            $cart->delete();
+            return $order;
+        });
+
+        $assigned = app(DelegateAssignmentService::class)->assignNearest($order);
+
+        return $this->jsonResponse([
+            'id' => $order->id,
+            'status' => $order->status,
+            'total_amount' => $order->total_amount,
+            'delegate_id' => $order->delegate_id,
+            'message' => 'تم إنشاء الطلب بنجاح',
+        ], 201);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/cafe/orders/{id}/delegate",
+     *     tags={"Cafe Mobile Orders"},
+     *     summary="Get the assigned delegate live location for a cafe order",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Delegate location"),
+     *     @OA\Response(response=404, description="No delegate assigned")
+     * )
+     */
+    public function orderDelegate(int $id): JsonResponse
+    {
+        $order = $this->orderScope()
+            ->with(['delegate'])
+            ->findOrFail($id);
+
+        if (! $order->delegate_id) {
+            return $this->jsonResponse(['message' => 'لا يوجد مندوب مخصص لهذا الطلب'], 404);
+        }
+
+        $delegate = $order->delegate;
+
+        return $this->jsonResponse([
+            'data' => [
+                'id' => $delegate->id,
+                'name' => $delegate->name,
+                'latitude' => $delegate->latitude,
+                'longitude' => $delegate->longitude,
+                'is_available' => $delegate->is_available,
+                'location_updated_at' => $delegate->location_updated_at?->toDateTimeString(),
+            ],
+        ]);
+    }
+
+    private function currentCart(?int $branchId = null): ?Cart
+    {
+        $cart = Cart::with('items')
+            ->where('user_id', auth()->id())
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', 'active');
+            })
+            ->first();
+
+        if (! $cart && $branchId) {
+            $cart = Cart::create([
+                'user_id' => auth()->id(),
+                'branch_id' => $branchId,
+                'status' => 'active',
+            ]);
+            $cart->load('items');
+        }
+
+        return $cart;
     }
 }

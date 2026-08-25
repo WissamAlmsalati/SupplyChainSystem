@@ -7,6 +7,19 @@ import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
 
+const statusLabels = {
+  pending: 'معلّق',
+  processing: 'قيد المعالجة',
+  completed: 'مكتمل',
+  delivered: 'تم التوصيل',
+  cancelled: 'ملغي',
+  failed: 'فاشل',
+  confirmed: 'مؤكد',
+  shipped: 'تم الشحن',
+  ordered: 'تم الطلب',
+  received: 'مستلم',
+}
+
 const initial = { warehouse_id: '', order_date: '', status: 'pending' }
 
 function statusVariant(status) {
@@ -68,14 +81,14 @@ export default function PurchaseOrders() {
   const columns = [
     { key: 'id', label: 'الرقم', render: (r) => `#${r.id}` },
     { key: 'warehouse', label: 'المستودع', render: (r) => r.warehouse?.name ?? '-' },
-    { key: 'status', label: 'الحالة', render: (r) => <Badge variant={statusVariant(r.status)}>{r.status ?? '-'}</Badge> },
+    { key: 'status', label: 'الحالة', render: (r) => <Badge variant={statusVariant(r.status)}>{statusLabels[r.status] || r.status || '-'}</Badge> },
     { key: 'order_date', label: 'تاريخ الطلب' },
-    { key: 'created_at', label: 'تاريخ الإنشاء', render: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString('ar-SA') : '-' },
+    { key: 'created_at', label: 'تاريخ الإنشاء', render: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString('en-US') : '-' },
   ]
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">طلبات الشراء</h1>
         {canCreate && <Button variant="primary" onClick={openCreate}>إضافة طلب شراء</Button>}
       </header>

@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,7 +15,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const user = await login(email, password)
+      const user = await login(phoneNumber, password)
       if (user?.user_type?.name === 'delegate') {
         navigate('/delegate')
         return
@@ -36,10 +36,12 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 shadow-lg">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-2xl font-bold text-primary-foreground">
-            م
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">تطبيق المقهى / المندوب</h1>
+          <img
+            src="/logo.svg"
+            alt="الساحل لمستلزمات المقاهي"
+            className="mx-auto mb-4 h-20 w-auto"
+          />
+          <h1 className="text-2xl font-bold text-foreground">الساحل لمستلزمات المقاهي</h1>
           <p className="mt-1 text-sm text-muted">تسجيل الدخول إلى حساب مقهاك أو حساب المندوب</p>
         </div>
 
@@ -51,14 +53,14 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted">البريد الإلكتروني</label>
+            <label className="mb-1.5 block text-sm font-medium text-muted">رقم الهاتف</label>
             <input
-              type="email"
+              type="tel"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
               className="w-full rounded-lg border border-border-strong bg-background px-4 py-2.5 text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
-              placeholder="cafe@example.com"
+              placeholder="0912345678"
             />
           </div>
           <div>
@@ -80,6 +82,13 @@ export default function Login() {
             {loading ? 'جاري الدخول...' : 'دخول'}
           </button>
         </form>
+
+        <div className="mt-6 text-center text-sm text-muted">
+          ما عندك حساب؟{' '}
+          <Link to="/register" className="font-medium text-primary hover:underline">
+            سجّل مقهاك
+          </Link>
+        </div>
       </div>
     </div>
   )

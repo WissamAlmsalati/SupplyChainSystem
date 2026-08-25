@@ -10,7 +10,7 @@ return [
 
             'routes' => [
                 'api' => 'api/documentation',
-                'docs' => 'docs',
+                'docs' => 'docs/json',
                 'asset' => 'docs/asset',
                 'oauth2_callback' => 'api/oauth2-callback',
                 'middleware' => [
@@ -62,7 +62,7 @@ return [
 
             'routes' => [
                 'api' => 'api/documentation/cafe',
-                'docs' => 'docs/cafe',
+                'docs' => 'docs/cafe/json',
                 'asset' => 'docs/cafe/asset',
                 'oauth2_callback' => 'api/oauth2-callback/cafe',
                 'middleware' => [

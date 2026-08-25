@@ -1,0 +1,36 @@
+meta {
+  name: Branches List
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/cafe/branches
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  const json = res.getBody();
+  if (Array.isArray(json.data) && json.data.length > 0) {
+    bru.setVar("branchId", json.data[0].id);
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("returns array of branches", function() {
+    const json = res.getBody();
+    expect(json.data).to.be.an('array');
+    if (json.data.length > 0) {
+      expect(json.data[0].id).to.be.a('number');
+    }
+  });
+}

@@ -11,7 +11,8 @@ import client from '../api/client'
 
 export default function Orders() {
   const navigate = useNavigate()
-  const { items, loading, error, pagination, setPage, update, fetch } = useApiResource('/orders')
+  const [search, setSearch] = useState('')
+  const { items, loading, error, pagination, setPage, update, fetch } = useApiResource('/orders', { search })
   const delegates = useApiList('/delegates')
   const [statusOrder, setStatusOrder] = useState(null)
   const [statusModal, setStatusModal] = useState(false)
@@ -80,6 +81,8 @@ export default function Orders() {
     delivered: 'تم التوصيل',
     cancelled: 'ملغي',
     failed: 'فاشل',
+    confirmed: 'مؤكد',
+    shipped: 'تم الشحن',
   }
 
   function statusVariant(status) {
@@ -87,12 +90,12 @@ export default function Orders() {
     const s = String(status).toLowerCase()
     if (['completed', 'delivered', 'paid'].includes(s)) return 'success'
     if (['cancelled', 'failed'].includes(s)) return 'danger'
-    if (['pending', 'processing'].includes(s)) return 'warning'
+    if (['pending', 'processing', 'confirmed', 'shipped'].includes(s)) return 'warning'
     return 'default'
   }
 
   const columns = [
-    { key: 'id', label: 'الرقم', render: (r) => `#${r.id}` },
+    { key: 'order_number', label: 'رقم الطلب', render: (r) => r.order_number ?? `#${r.id}` },
     { key: 'status', label: 'الحالة', render: (r) => <Badge variant={statusVariant(r.status)}>{statusLabels[r.status] || r.status || '-'}</Badge> },
     {
       key: 'source',
@@ -108,18 +111,27 @@ export default function Orders() {
     { key: 'user', label: 'المستخدم', render: (r) => r.user?.name ?? '-' },
     { key: 'branch', label: 'الفرع', render: (r) => r.branch?.name ?? '-' },
     { key: 'delegate', label: 'المندوب', render: (r) => r.delegate?.name ?? <span className="text-muted">-</span> },
-    { key: 'created_at', label: 'تاريخ الإنشاء', render: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString('ar-SA') : '-' },
+    { key: 'created_at', label: 'تاريخ الإنشاء', render: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString('en-US') : '-' },
   ]
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">الطلبات</h1>
-        {canCreate && (
-          <Button variant="primary" onClick={() => setQuickOpen(true)}>
-            + طلب جديد
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="بحث..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+          />
+          {canCreate && (
+            <Button variant="primary" onClick={() => setQuickOpen(true)}>
+              + طلب جديد
+            </Button>
+          )}
+        </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
 
@@ -131,9 +143,9 @@ export default function Orders() {
         pagination={pagination}
         onPageChange={setPage}
         emptyText="لا توجد طلبات."
+        onRowClick={(row) => navigate(`/orders/${row.id}`)}
         actions={(row) => (
           <>
-            <Button variant="secondary" size="sm" onClick={() => navigate(`/orders/${row.id}`)}>عرض</Button>
             {canEdit && <Button variant="primary" size="sm" onClick={() => openStatus(row)}>الحالة</Button>}
             {canEdit && <Button variant="default" size="sm" onClick={() => openDelegate(row)}>مندوب</Button>}
           </>

@@ -11,7 +11,7 @@ export default function Layout() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background lg:flex-row">
       <Nav />
-      <main className="flex-1 overflow-auto px-6 lg:px-8 pb-6 lg:pb-8">
+      <main className="flex-1 overflow-auto px-4 lg:px-6 pb-6 lg:pb-8">
         <Outlet />
       </main>
     </div>

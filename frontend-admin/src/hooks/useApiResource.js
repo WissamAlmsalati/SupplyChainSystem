@@ -1,25 +1,43 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import client from '../api/client'
 
-export function useApiResource(path) {
+export function useApiResource(path, extraParams = {}) {
   const basePath = path.split('?')[0]
   const queryString = path.split('?')[1] || ''
+  const [searchParams, setSearchParams] = useSearchParams()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState({
     current_page: 1,
     last_page: 1,
     per_page: 15,
     total: 0,
   })
+  const extraParamsKey = JSON.stringify(extraParams)
+  const previousParamsKey = useRef(extraParamsKey)
+  const previousPath = useRef(basePath)
+
+  const page = Number(searchParams.get('page')) > 0 ? Number(searchParams.get('page')) : 1
+
+  const setPage = useCallback((newPage) => {
+    setSearchParams((prev) => {
+      prev.set('page', String(newPage))
+      return prev
+    }, { replace: true })
+  }, [setSearchParams])
 
   const buildPath = useCallback(() => {
     const params = new URLSearchParams(queryString)
+    Object.entries(extraParams).forEach(([key, value]) => {
+      if (value !== '' && value !== null && value !== undefined) {
+        params.set(key, String(value))
+      }
+    })
     params.set('page', String(page))
     return `${basePath}?${params.toString()}`
-  }, [queryString, page])
+  }, [queryString, page, extraParamsKey])
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -51,8 +69,21 @@ export function useApiResource(path) {
   }, [buildPath])
 
   useEffect(() => {
-    setPage(1)
-  }, [path])
+    const pathChanged = previousPath.current !== basePath
+    const paramsChanged = previousParamsKey.current !== extraParamsKey
+
+    if (!pathChanged && !paramsChanged) {
+      return
+    }
+
+    previousPath.current = basePath
+    previousParamsKey.current = extraParamsKey
+
+    setSearchParams((prev) => {
+      prev.delete('page')
+      return prev
+    }, { replace: true })
+  }, [basePath, extraParamsKey, setSearchParams])
 
   useEffect(() => {
     fetch()

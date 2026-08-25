@@ -1,0 +1,23 @@
+PHPUnit 11.5.56 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.2.32
+Configuration: /Users/wissamalmsalati/cafe-supply-chain/backend/phpunit.host.xml
+
+......................................FF                          40 / 40 (100%)
+
+Time: 00:01.335, Memory: 50.50 MB
+
+There were 2 failures:
+
+1) Tests\Feature\WarehouseHexTest::test_warehouse_hex_is_computed_from_lat_lng_resolution
+Failed asserting that a NULL is not empty.
+
+/Users/wissamalmsalati/cafe-supply-chain/backend/tests/Feature/WarehouseHexTest.php:37
+
+2) Tests\Feature\WarehouseHexTest::test_expand_hex_creates_child_delivery_zones
+Failed asserting that actual size 1 matches expected size 7.
+
+/Users/wissamalmsalati/cafe-supply-chain/backend/tests/Feature/WarehouseHexTest.php:56
+
+FAILURES!
+Tests: 40, Assertions: 133, Failures: 2.

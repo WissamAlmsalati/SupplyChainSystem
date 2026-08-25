@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import client from '../api/client'
 
 const statusLabels = {
@@ -6,8 +7,12 @@ const statusLabels = {
   processing: 'قيد المعالجة',
   completed: 'مكتمل',
   delivered: 'تم التوصيل',
+  received: 'تم الاستلام',
+  cancellation_requested: 'طلب إلغاء',
   cancelled: 'ملغي',
   failed: 'فاشل',
+  confirmed: 'مؤكد',
+  shipped: 'تم الشحن',
 }
 
 const statusColors = {
@@ -15,17 +20,22 @@ const statusColors = {
   processing: '#0f766e',
   completed: '#16a34a',
   delivered: '#16a34a',
+  received: '#15803d',
+  cancellation_requested: '#9333ea',
   cancelled: '#dc2626',
   failed: '#dc2626',
+  confirmed: '#2563eb',
+  shipped: '#9333ea',
 }
 
-const availableStatuses = ['pending', 'processing', 'completed', 'delivered', 'cancelled', 'failed']
-
 function formatMoney(value) {
-  return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const num = Number(value)
+  if (!Number.isFinite(num)) return '0.00'
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 export default function Orders() {
+  const navigate = useNavigate()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -37,9 +47,9 @@ export default function Orders() {
     setLoading(true)
     setError('')
     try {
-      const res = await client.get(`/orders?page=${page}`)
-      setOrders(res.data.data)
-      setLastPage(res.data.last_page)
+      const res = await client.get(`/cafe/orders?page=${page}`)
+      setOrders(res.data.data ?? [])
+      setLastPage(res.data.last_page ?? 1)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تحميل الطلبات')
     } finally {
@@ -51,13 +61,13 @@ export default function Orders() {
     load()
   }, [page])
 
-  const updateStatus = async (order, status) => {
+  const confirmReceipt = async (order) => {
     setUpdating(order.id)
     try {
-      await client.put(`/orders/${order.id}`, { status })
+      await client.put(`/cafe/orders/${order.id}/status`, { status: 'received' })
       load()
     } catch (err) {
-      setError(err.response?.data?.message || 'فشل تحديث الحالة')
+      setError(err.response?.data?.message || 'فشل تأكيد الاستلام')
     } finally {
       setUpdating(null)
     }
@@ -65,9 +75,11 @@ export default function Orders() {
 
   return (
     <>
-      <header className="mb-6 pt-6">
-        <h1 className="text-2xl font-extrabold text-foreground">طلباتي</h1>
-        <p className="mt-1 text-muted">إدارة طلبات فروع مقهاك</p>
+      <header className="mb-6 flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold text-foreground">طلباتي</h1>
+          <p className="mt-1 text-muted">طلبات فروع مقهاك فقط</p>
+        </div>
       </header>
 
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
@@ -77,39 +89,64 @@ export default function Orders() {
           <thead className="border-b border-border bg-background text-muted">
             <tr>
               <th className="px-4 py-3 text-start">#</th>
-              <th className="px-4 py-3 text-start">العميل</th>
+              <th className="px-4 py-3 text-start">رقم الطلب</th>
               <th className="px-4 py-3 text-start">الفرع</th>
               <th className="px-4 py-3 text-start">الحالة</th>
               <th className="px-4 py-3 text-end">الإجمالي</th>
               <th className="px-4 py-3 text-start">التاريخ</th>
+              <th className="px-4 py-3 text-start">إجراء</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">جاري التحميل...</td></tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-3"><div className="h-4 w-10 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-28 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-6 w-24 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3 text-end"><div className="ms-auto h-4 w-20 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-16 animate-pulse rounded-md bg-border" /></td>
+                </tr>
+              ))
             ) : orders.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">لا توجد طلبات.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted">لا توجد طلبات.</td></tr>
             ) : (
               orders.map((o) => (
-                <tr key={o.id} className="hover:bg-background/50">
+                <tr
+                  key={o.id}
+                  onClick={() => navigate(`/orders/${o.id}`)}
+                  className="cursor-pointer hover:bg-background/50"
+                >
                   <td className="px-4 py-3">{o.id}</td>
-                  <td className="px-4 py-3">{o.user?.name ?? '-'}</td>
+                  <td className="px-4 py-3 font-medium">{o.order_number ?? `#${o.id}`}</td>
                   <td className="px-4 py-3">{o.branch?.name ?? '-'}</td>
                   <td className="px-4 py-3">
-                    <select
-                      value={o.status}
-                      disabled={updating === o.id}
-                      onChange={(e) => updateStatus(o, e.target.value)}
-                      className="rounded-md border border-border-strong bg-background px-2 py-1 text-xs"
+                    <span
+                      className="rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+                      style={{ background: statusColors[o.status] || '#78716c' }}
                     >
-                      {availableStatuses.map((s) => (
-                        <option key={s} value={s}>{statusLabels[s]}</option>
-                      ))}
-                    </select>
+                      {statusLabels[o.status] || o.status}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-end font-medium">{formatMoney(o.total_amount)} د.ل</td>
                   <td className="px-4 py-3 text-muted">
                     {o.order_date ? new Date(o.order_date).toLocaleDateString('en-US') : '-'}
+                  </td>
+                  <td className="px-4 py-3">
+                    {o.status === 'delivered' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          confirmReceipt(o)
+                        }}
+                        disabled={updating === o.id}
+                        className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                      >
+                        {updating === o.id ? '...' : 'تأكيد الاستلام'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

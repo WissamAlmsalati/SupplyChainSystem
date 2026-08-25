@@ -17,12 +17,26 @@ class ProductImage extends Model
     protected $fillable = [
         'product_variant_id',
         'url',
+        'image',
         'is_primary',
+    ];
+
+    protected $appends = [
+        'image_url',
     ];
 
     protected $casts = [
         'is_primary' => 'boolean',
     ];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        if ($this->image) {
+            return asset('storage/' . $this->image);
+        }
+
+        return $this->url ?: null;
+    }
 
     public function productVariant(): BelongsTo
     {

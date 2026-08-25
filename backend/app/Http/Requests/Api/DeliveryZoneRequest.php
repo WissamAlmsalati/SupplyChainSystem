@@ -14,6 +14,7 @@ class DeliveryZoneRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'warehouse_id' => ['nullable', 'integer', 'exists:warehouse,id'],
             'hex_id' => ['required', 'string', 'max:40'],
             'name' => ['nullable', 'string', 'max:100'],
             'delivery_price' => ['required', 'numeric', 'min:0'],

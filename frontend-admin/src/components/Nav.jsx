@@ -1,51 +1,95 @@
+import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Warehouse,
+  MapPin,
+  Map,
+  Tags,
+  Coffee,
+  Users,
+  Truck,
+  ShieldCheck,
+  ClipboardList,
+  UserPlus,
+  PanelLeftClose,
+  PanelLeftOpen,
+  LogOut,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Button from './ui/Button'
+
+const icons = {
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Warehouse,
+  MapPin,
+  Map,
+  Tags,
+  Coffee,
+  Users,
+  Truck,
+  ShieldCheck,
+  ClipboardList,
+  UserPlus,
+}
 
 const groups = [
   {
     title: 'العمليات',
     links: [
-      { to: '/', label: 'الرئيسية', permission: 'DASHBOARD_VIEW' },
-      { to: '/orders', label: 'الطلبات', permission: 'ORDERS_VIEW' },
-      { to: '/products', label: 'المنتجات', permission: 'PRODUCTS_VIEW' },
-      { to: '/inventory', label: 'المخزون', permission: 'INVENTORY_VIEW' },
+      { to: '/', label: 'الرئيسية', icon: 'LayoutDashboard', permission: 'DASHBOARD_VIEW' },
+      { to: '/orders', label: 'الطلبات', icon: 'ShoppingCart', permission: 'ORDERS_VIEW' },
+      { to: '/products', label: 'المنتجات', icon: 'Package', permission: 'PRODUCTS_VIEW' },
+      { to: '/inventory', label: 'المخزون', icon: 'Warehouse', permission: 'INVENTORY_VIEW' },
     ],
   },
   {
     title: 'اللوجستيات',
     links: [
-      { to: '/warehouses', label: 'المستودعات', permission: 'WAREHOUSES_VIEW' },
-      { to: '/cafe-branches', label: 'فروع المقاهي', permission: 'CAFE_BRANCHES_VIEW' },
-      { to: '/delivery-zones', label: 'مناطق التوصيل', permission: 'DELIVERY_ZONES_VIEW' },
-      { to: '/map', label: 'الخريطة' },
+      { to: '/warehouses', label: 'المستودعات', icon: 'Warehouse', permission: 'WAREHOUSES_VIEW' },
+      { to: '/cafe-branches', label: 'فروع المقاهي', icon: 'MapPin', permission: 'CAFE_BRANCHES_VIEW' },
+      { to: '/delivery-zones', label: 'مناطق التوصيل', icon: 'Map', permission: 'DELIVERY_ZONES_VIEW' },
+      { to: '/map', label: 'الخريطة', icon: 'Map' },
     ],
   },
   {
     title: 'الكتالوج',
     links: [
-      { to: '/categories', label: 'التصنيفات', permission: 'CATEGORIES_VIEW' },
+      { to: '/categories', label: 'التصنيفات', icon: 'Tags', permission: 'CATEGORIES_VIEW' },
     ],
   },
   {
     title: 'الإدارة',
     links: [
-      { to: '/cafes', label: 'المقاهي', permission: 'CAFES_VIEW' },
-      { to: '/users', label: 'المستخدمين', permission: 'USERS_VIEW' },
-      { to: '/delegates', label: 'المناديب', permission: 'DELEGATES_VIEW' },
-      { to: '/user-types', label: 'الأدوار والصلاحيات', permission: 'USER_TYPES_VIEW' },
+      { to: '/cafes', label: 'المقاهي', icon: 'Coffee', permission: 'CAFES_VIEW' },
+      { to: '/cafe-registrations', label: 'طلبات تسجيل المقاهي', icon: 'UserPlus', permission: 'CAFES_VIEW' },
+      { to: '/users', label: 'المستخدمين', icon: 'Users', permission: 'USERS_VIEW' },
+      { to: '/delegates', label: 'المناديب', icon: 'Truck', permission: 'DELEGATES_VIEW' },
+      { to: '/user-types', label: 'الأدوار والصلاحيات', icon: 'ShieldCheck', permission: 'USER_TYPES_VIEW' },
     ],
   },
   {
     title: 'النظام',
     links: [
-      { to: '/activity-logs', label: 'سجل النشاطات', permission: 'ACTIVITY_LOGS_VIEW' },
+      { to: '/activity-logs', label: 'سجل النشاطات', icon: 'ClipboardList', permission: 'ACTIVITY_LOGS_VIEW' },
     ],
   },
 ]
 
 export default function Nav() {
   const { user, logout, hasAnyPermission } = useAuth()
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('nav-collapsed') === 'true'
+  })
+
+  useEffect(() => {
+    window.localStorage.setItem('nav-collapsed', String(collapsed))
+  }, [collapsed])
 
   const visibleGroups = groups
     .map((group) => ({
@@ -59,56 +103,68 @@ export default function Nav() {
     .filter((group) => group.links.length > 0)
 
   return (
-    <aside className="flex h-auto flex-col border-b border-border bg-surface lg:h-full lg:w-64 lg:flex-shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-l">
-      <div className="p-5">
+    <aside
+      className={`flex h-auto flex-col border-b border-border bg-surface transition-all duration-200 lg:h-full lg:flex-shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-l ${
+        collapsed ? 'lg:w-20' : 'lg:w-64'
+      }`}
+    >
+      <div className={`flex items-center p-5 ${collapsed ? 'lg:flex-col lg:justify-center lg:gap-2' : 'justify-between'}`}>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 3v16a2 2 0 0 0 2 2h16" />
-              <path d="m19 9-5 5-4-4-3 3" />
-            </svg>
-          </div>
-          <div>
-            <div className="font-bold text-foreground">سلسلة الإمداد</div>
-            <div className="text-xs text-muted">لوحة البائع</div>
-          </div>
+          <img
+            src="/favicon.svg"
+            alt="logo"
+            className="h-10 w-10 rounded-lg object-contain"
+          />
+          {!collapsed && (
+            <div>
+              <div className="font-bold text-foreground">الساحل</div>
+              <div className="text-xs text-muted">لمستلزمات المقاهي</div>
+            </div>
+          )}
         </div>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="rounded-md p-2 text-muted hover:bg-background hover:text-foreground"
+          title={collapsed ? 'توسيع' : 'تصغير'}
+        >
+          {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-3 lg:overflow-visible">
         <div className="space-y-5">
           {visibleGroups.map((group) => (
             <div key={group.title}>
-              <div className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted">
-                {group.title}
-              </div>
+              {!collapsed && (
+                <div className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted">
+                  {group.title}
+                </div>
+              )}
               <ul className="space-y-1">
-                {group.links.map((link) => (
-                  <li key={link.to}>
-                    <NavLink
-                      to={link.to}
-                      className={({ isActive }) =>
-                        `flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                          isActive
-                            ? 'bg-primary !text-white'
-                            : 'text-muted hover:bg-background hover:text-foreground'
-                        }`
-                      }
-                    >
-                      {link.label}
-                    </NavLink>
-                  </li>
-                ))}
+                {group.links.map((link) => {
+                  const Icon = link.icon ? icons[link.icon] : null
+                  return (
+                    <li key={link.to}>
+                      <NavLink
+                        to={link.to}
+                        title={collapsed ? link.label : undefined}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                            collapsed ? 'lg:justify-center' : ''
+                          } ${
+                            isActive
+                              ? 'bg-primary !text-white'
+                              : 'text-muted hover:bg-background hover:text-foreground'
+                          }`
+                        }
+                      >
+                        {Icon && <Icon className="h-5 w-5 flex-shrink-0" />}
+                        {!collapsed && link.label}
+                      </NavLink>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
@@ -116,10 +172,19 @@ export default function Nav() {
       </nav>
 
       <div className="border-t border-border p-4">
-        <div className="mb-1 font-semibold text-foreground">{user?.name}</div>
-        <div className="mb-3 text-xs text-muted break-words">{user?.email}</div>
-        <Button variant="secondary" className="w-full" onClick={logout}>
-          تسجيل الخروج
+        {!collapsed && (
+          <>
+            <div className="mb-1 font-semibold text-foreground">{user?.name}</div>
+            <div className="mb-3 text-xs text-muted break-words">{user?.email}</div>
+          </>
+        )}
+        <Button
+          variant="secondary"
+          className={`${collapsed ? 'lg:px-2' : 'w-full'}`}
+          onClick={logout}
+          title="تسجيل الخروج"
+        >
+          {collapsed ? <LogOut className="h-5 w-5" /> : 'تسجيل الخروج'}
         </Button>
       </div>
     </aside>

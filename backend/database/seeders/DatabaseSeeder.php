@@ -13,6 +13,8 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             LibyanDataSeeder::class,
             UserSeeder::class,
+            PremiumFeatureSeeder::class,
+            OrderSeeder::class,
         ]);
     }
 }

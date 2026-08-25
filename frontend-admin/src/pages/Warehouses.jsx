@@ -1,18 +1,25 @@
 import { useState } from 'react'
-import { useApiResource } from '../hooks/useApiResource'
+import { useNavigate } from 'react-router-dom'
+import { useApiResource, useApiList } from '../hooks/useApiResource'
 import { useModulePermission } from '../hooks/usePermission'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
 import MapPicker from '../components/MapPicker'
+import WarehouseZonePicker from '../components/WarehouseZonePicker'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
+import client from '../api/client'
 
-const initial = { name: '', city: '', latitude: '', longitude: '' }
+const initial = { name: '', city: '', latitude: '', longitude: '', resolution: 5, hex_ids: [] }
 
 export default function Warehouses() {
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/warehouses')
+  const navigate = useNavigate()
+  const [search, setSearch] = useState('')
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/warehouses', { search })
+  const zones = useApiList('/delivery-zones?per_page=10000')
   const [modal, setModal] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [zonePickerOpen, setZonePickerOpen] = useState(false)
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -25,7 +32,14 @@ export default function Warehouses() {
   }
 
   const openEdit = (item) => {
-    setForm({ ...initial, ...item, latitude: item.latitude ?? '', longitude: item.longitude ?? '' })
+    setForm({
+      ...initial,
+      ...item,
+      latitude: item.latitude ?? '',
+      longitude: item.longitude ?? '',
+      resolution: item.resolution ?? 5,
+      hex_ids: item.delivery_zones?.map((z) => z.hex_id) ?? [],
+    })
     setEditing(item)
     setModal(true)
   }
@@ -43,6 +57,8 @@ export default function Warehouses() {
       const data = { ...form }
       if (data.latitude === '') data.latitude = null
       if (data.longitude === '') data.longitude = null
+      if (data.resolution === '') data.resolution = null
+      else data.resolution = Number(data.resolution)
       if (editing) await update(editing.id, data)
       else await create(data)
       close()
@@ -51,18 +67,32 @@ export default function Warehouses() {
     }
   }
 
+  const handleZoneSave = async (hexIds) => {
+    setForm({ ...form, hex_ids: hexIds })
+  }
+
   const columns = [
     { key: 'name', label: 'الاسم' },
     { key: 'city', label: 'المدينة' },
     { key: 'latitude', label: 'خط العرض' },
     { key: 'longitude', label: 'خط الطول' },
+    { key: 'zones_count', label: 'عدد المناطق', render: (r) => r.delivery_zones?.length ?? r.zones_count ?? 0 },
   ]
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">المستودعات</h1>
-        {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مستودع</Button>}
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="بحث..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+          />
+          {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مستودع</Button>}
+        </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
       <DataTable
@@ -72,12 +102,13 @@ export default function Warehouses() {
         pagination={pagination}
         onPageChange={setPage}
         emptyText="لا توجد مستودعات."
-        actions={canEdit || canDelete ? (row) => (
+        onRowClick={(row) => navigate(`/warehouses/${row.id}`)}
+        actions={(row) => (
           <>
             {canEdit && <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>تعديل</Button>}
             {canDelete && <Button variant="danger" size="sm" onClick={() => remove(row.id)}>حذف</Button>}
           </>
-        ) : undefined}
+        )}
       />
       <Modal title={editing ? 'تعديل مستودع' : 'إضافة مستودع'} open={modal} onClose={close}>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -96,7 +127,10 @@ export default function Warehouses() {
             <label className="mb-1.5 block text-sm font-medium text-muted">الموقع</label>
             <div className="flex items-center gap-2">
               <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
-                {form.latitude && form.longitude ? 'تغيير على الخريطة' : 'اختيار على الخريطة'}
+                {form.latitude && form.longitude ? 'تغيير موقع المستودع' : 'اختيار موقع المستودع'}
+              </Button>
+              <Button type="button" variant="primary" size="sm" onClick={() => setZonePickerOpen(true)}>
+                تحديد مناطق التوصيل ({form.hex_ids.length})
               </Button>
               <span className="text-sm text-muted">
                 {form.latitude && form.longitude
@@ -116,6 +150,13 @@ export default function Warehouses() {
         onClose={() => setPickerOpen(false)}
         initial={form.latitude && form.longitude ? { lat: Number(form.latitude), lng: Number(form.longitude) } : null}
         onSelect={({ lat, lng }) => setForm({ ...form, latitude: String(lat), longitude: String(lng) })}
+      />
+      <WarehouseZonePicker
+        open={zonePickerOpen}
+        onClose={() => setZonePickerOpen(false)}
+        onSave={handleZoneSave}
+        initialHexIds={form.hex_ids}
+        zones={zones}
       />
     </>
   )

@@ -136,7 +136,7 @@ class DelegateMobileController extends BaseApiController
      * @OA\Post(
      *     path="/delegate/orders/{id}/status",
      *     tags={"Delegate Mobile"},
-     *     summary="Update status of an assigned order",
+     *     summary="Mark an assigned order as delivered",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="status", type="string"))),
      *     @OA\Response(response=200, description="Status updated"),
@@ -151,11 +151,11 @@ class DelegateMobileController extends BaseApiController
         }
 
         $data = $request->validate([
-            'status' => ['required', 'string', 'in:pending,processing,completed,delivered,cancelled,failed'],
+            'status' => ['required', 'string', 'in:delivered'],
         ]);
 
         $order = Order::where('delegate_id', auth()->id())->findOrFail($id);
-        $order->update(['status' => $data['status']]);
+        $order->update(['status' => 'delivered']);
 
         return $this->jsonResponse([
             'id' => $order->id,

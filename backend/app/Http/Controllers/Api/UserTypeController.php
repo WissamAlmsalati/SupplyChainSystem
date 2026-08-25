@@ -5,19 +5,31 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Api\UserTypeRequest;
 use App\Models\UserType;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * @OA\Tag(name="Admin Roles", description="Admin platform roles and permissions")
  */
 class UserTypeController extends BaseApiController
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return $this->jsonResponse(UserType::with('permissions')->paginate(15));
+        $query = UserType::with('permissions');
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        return $this->jsonResponse($query->paginate(15));
     }
 
     public function store(UserTypeRequest $request): JsonResponse
     {
+        if ($forbidden = $this->requireFeature('add_role')) {
+            return $forbidden;
+        }
+
         $userType = UserType::create($request->validated());
         $userType->permissions()->sync($request->input('permission_ids', []));
         return $this->jsonResponse($userType->load('permissions'), 201);

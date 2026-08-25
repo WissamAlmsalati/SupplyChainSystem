@@ -1,0 +1,31 @@
+meta {
+  name: Delivery Zones
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/cafe/delivery-zones
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("returns zones with hex_id and price", function() {
+    const json = res.getBody();
+    expect(json.data).to.be.an('array');
+    if (json.data.length > 0) {
+      expect(json.data[0].hex_id).to.be.a('string');
+      expect(Number(json.data[0].delivery_price)).to.be.a('number');
+      expect(Number(json.data[0].delivery_price)).to.be.greaterThan(0);
+    }
+  });
+}

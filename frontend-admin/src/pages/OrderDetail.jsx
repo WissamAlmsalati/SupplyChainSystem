@@ -4,6 +4,7 @@ import client from '../api/client'
 import Button from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
+import { PageSkeleton } from '../components/ui/Skeleton'
 
 const statusColors = {
   pending: '#d97706',
@@ -12,6 +13,8 @@ const statusColors = {
   delivered: '#16a34a',
   cancelled: '#dc2626',
   failed: '#dc2626',
+  confirmed: '#2563eb',
+  shipped: '#9333ea',
 }
 
 const statusLabels = {
@@ -21,6 +24,8 @@ const statusLabels = {
   delivered: 'تم التوصيل',
   cancelled: 'ملغي',
   failed: 'فاشل',
+  confirmed: 'مؤكد',
+  shipped: 'تم الشحن',
 }
 
 function formatMoney(value) {
@@ -69,7 +74,7 @@ export default function OrderDetail() {
     }, 100)
   }
 
-  if (loading) return <div className="text-muted">جاري التحميل...</div>
+  if (loading) return <PageSkeleton />
   if (!order) return <div className="text-danger">{error || 'الطلب غير موجود.'}</div>
 
   const itemsTotal = (order.items ?? []).reduce(
@@ -84,7 +89,7 @@ export default function OrderDetail() {
       <header className="mb-6 flex flex-col gap-4 print:hidden sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">تفاصيل الطلب</h1>
-          <p className="mt-1 text-muted">طلب #{order.id}</p>
+          <p className="mt-1 text-muted">رقم الطلب: {order.order_number ?? `#${order.id}`}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={() => navigate('/orders')}>العودة للطلبات</Button>
@@ -233,13 +238,16 @@ export default function OrderDetail() {
         <div className="relative z-10">
           {/* Header */}
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="text-2xl font-bold tracking-tight">سلسلة إمداد المقاهي</div>
-            <div className="mt-1 text-sm text-muted">نظام إدارة المخزون والطلبات</div>
-            <div className="mt-3 text-xs text-muted">
-              <div>ليبيا</div>
-              <div>البريد: info@cafe-supply.ly</div>
-              <div>الجوال: 091-0000000</div>
+          <div className="flex items-start gap-4">
+            <img src="/favicon.svg" alt="الساحل" className="h-16 w-16 rounded-lg object-contain" />
+            <div>
+              <div className="text-2xl font-bold tracking-tight">الساحل لمستلزمات المقاهي</div>
+              <div className="mt-1 text-sm text-muted">نظام إدارة المخزون والطلبات</div>
+              <div className="mt-3 text-xs text-muted">
+                <div>ليبيا</div>
+                <div>البريد: info@cafe-supply.ly</div>
+                <div>الجوال: 091-0000000</div>
+              </div>
             </div>
           </div>
           <div className="sm:text-end">
@@ -262,7 +270,7 @@ export default function OrderDetail() {
           </div>
           <div className="sm:text-end">
             <div className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">تفاصيل الطلب</div>
-            <div className="text-sm"><span className="text-muted">رقم الطلب:</span> #{order.id}</div>
+            <div className="text-sm"><span className="text-muted">رقم الطلب:</span> {order.order_number ?? `#${order.id}`}</div>
             <div className="text-sm"><span className="text-muted">الفرع:</span> {order.branch?.name ?? '-'}</div>
             <div className="text-sm"><span className="text-muted">المدينة:</span> {order.branch?.city ?? '-'}</div>
             <div className="text-sm"><span className="text-muted">منطقة التوصيل:</span> {order.delivery_zone?.name ?? '-'}</div>
