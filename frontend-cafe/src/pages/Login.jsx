@@ -83,7 +83,12 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-muted">
+        <div className="mt-4 text-center text-sm">
+          <Link to="/forgot-password" className="font-medium text-primary hover:underline">
+            نسيت كلمة المرور؟
+          </Link>
+        </div>
+        <div className="mt-4 text-center text-sm text-muted">
           ما عندك حساب؟{' '}
           <Link to="/register" className="font-medium text-primary hover:underline">
             سجّل مقهاك

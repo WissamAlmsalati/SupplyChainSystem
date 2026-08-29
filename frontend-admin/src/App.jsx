@@ -27,6 +27,8 @@ import DeliveryZoneDetail from './pages/DeliveryZoneDetail'
 import UserTypes from './pages/UserTypes'
 import UserTypeDetail from './pages/UserTypeDetail'
 import ActivityLogs from './pages/ActivityLogs'
+import Notifications from './pages/Notifications'
+import PremiumFeatures from './pages/PremiumFeatures'
 import Map from './pages/Map'
 import NotFound from './pages/NotFound'
 
@@ -67,6 +69,8 @@ function App() {
         <Route path="/user-types" element={<RequirePermission permission="USER_TYPES_VIEW"><UserTypes /></RequirePermission>} />
         <Route path="/user-types/:id" element={<RequirePermission permission="USER_TYPES_VIEW"><UserTypeDetail /></RequirePermission>} />
         <Route path="/activity-logs" element={<RequirePermission permission="ACTIVITY_LOGS_VIEW"><ActivityLogs /></RequirePermission>} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/premium-features" element={<PremiumFeatures />} />
         <Route path="/map" element={<Map />} />
       </Route>
       <Route path="*" element={<NotFound />} />

@@ -47,10 +47,6 @@ class InventoryController extends BaseApiController
      */
     public function store(InventoryRequest $request): JsonResponse
     {
-        if ($forbidden = $this->requireFeature('add_inventory')) {
-            return $forbidden;
-        }
-
         $validated = $request->validated();
         $inventory = Inventory::updateOrCreate(
             [

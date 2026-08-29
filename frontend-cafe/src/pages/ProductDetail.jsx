@@ -175,8 +175,35 @@ export default function ProductDetail() {
           </div>
 
           {selectedVariant && (
-            <div className="text-lg font-semibold text-foreground">
-              السعر: {formatMoney(selectedVariant.price)} د.ل
+            <div className="space-y-1 text-lg font-semibold text-foreground">
+              <div>السعر: {formatMoney(selectedVariant.sell_price ?? selectedVariant.price)} د.ل</div>
+              {selectedVariant.cost_price && (
+                <div className="text-sm font-normal text-muted">
+                  تكلفة: {formatMoney(selectedVariant.cost_price)} د.ل
+                </div>
+              )}
+              {selectedVariant.sku && (
+                <div className="text-sm font-normal text-muted">SKU: {selectedVariant.sku}</div>
+              )}
+              {selectedVariant.barcode && (
+                <div className="text-sm font-normal text-muted">Barcode: {selectedVariant.barcode}</div>
+              )}
+              {selectedVariant.stock_quantity !== null && selectedVariant.stock_quantity !== undefined && (
+                <div className="text-sm font-normal text-muted">المخزون: {selectedVariant.stock_quantity}</div>
+              )}
+              {selectedVariant.status && (
+                <div className="text-sm font-normal text-muted">الحالة: {selectedVariant.status}</div>
+              )}
+              {selectedVariant.manufacturing_year && (
+                <div className="text-sm font-normal text-muted">
+                  سنة التصنيع: {selectedVariant.manufacturing_year}
+                </div>
+              )}
+              {selectedVariant.expiry_date && (
+                <div className="text-sm font-normal text-muted">
+                  ينتهي الصلاحية: {new Date(selectedVariant.expiry_date).toLocaleDateString('ar-LY')}
+                </div>
+              )}
             </div>
           )}
 

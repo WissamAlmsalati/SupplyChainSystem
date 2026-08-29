@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   ClipboardList,
   UserPlus,
+  Bell,
+  Star,
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
@@ -35,6 +37,8 @@ const icons = {
   ShieldCheck,
   ClipboardList,
   UserPlus,
+  Bell,
+  Star,
 }
 
 const groups = [
@@ -76,6 +80,8 @@ const groups = [
     title: 'النظام',
     links: [
       { to: '/activity-logs', label: 'سجل النشاطات', icon: 'ClipboardList', permission: 'ACTIVITY_LOGS_VIEW' },
+      { to: '/notifications', label: 'الإشعارات', icon: 'Bell' },
+      { to: '/premium-features', label: 'الميزات المميزة', icon: 'Star' },
     ],
   },
 ]

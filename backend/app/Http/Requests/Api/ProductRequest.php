@@ -17,7 +17,10 @@ class ProductRequest extends FormRequest
             'category_id' => ['required', 'integer', 'exists:category,id'],
             'supplier_id' => ['nullable', 'integer', 'exists:supplier,id'],
             'name' => ['required', 'string', 'max:150'],
+            'brand' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string'],
+            'tags' => ['nullable', 'array'],
+            'tags.*' => ['string', 'max:50'],
             'image' => ['nullable', 'image', 'max:2048'],
         ];
     }

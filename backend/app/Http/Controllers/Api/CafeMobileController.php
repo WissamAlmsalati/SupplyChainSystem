@@ -9,6 +9,7 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\DeliveryZone;
+use App\Models\Notification;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -171,6 +172,13 @@ class CafeMobileController extends BaseApiController
             'changed_at' => now(),
         ]);
 
+        Notification::notifyAdmins(
+            'طلب إلغاء',
+            "طلب إلغاء للطلب رقم {$order->order_number}",
+            "/orders/{$order->id}",
+            'cancellation'
+        );
+
         return $this->jsonResponse([
             'id' => $order->id,
             'status' => $order->status,
@@ -236,6 +244,13 @@ class CafeMobileController extends BaseApiController
         });
 
         $assigned = app(DelegateAssignmentService::class)->assignNearest($order);
+
+        Notification::notifyAdmins(
+            'طلب جديد من مقهى',
+            "تم إنشاء طلب جديد برقم {$order->order_number}",
+            "/orders/{$order->id}",
+            'order'
+        );
 
         return $this->jsonResponse([
             'id' => $order->id,
@@ -441,10 +456,12 @@ class CafeMobileController extends BaseApiController
             return [
                 'id' => $product->id,
                 'name' => $product->name,
+                'brand' => $product->brand,
+                'tags' => $product->tags,
                 'description' => $product->description,
                 'category_id' => $product->category_id,
                 'image_url' => $product->image_url ?: $primaryImage?->image_url,
-                'min_price' => $product->variants->min('price'),
+                'min_price' => $product->variants->min(fn ($v) => $v->sell_price ?? $v->price),
                 'variants' => $product->variants,
             ];
         });
@@ -663,6 +680,13 @@ class CafeMobileController extends BaseApiController
         });
 
         $assigned = app(DelegateAssignmentService::class)->assignNearest($order);
+
+        Notification::notifyAdmins(
+            'طلب جديد من سلة مقهى',
+            "تم إنشاء طلب جديد برقم {$order->order_number}",
+            "/orders/{$order->id}",
+            'order'
+        );
 
         return $this->jsonResponse([
             'id' => $order->id,

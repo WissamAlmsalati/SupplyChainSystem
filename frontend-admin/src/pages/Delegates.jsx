@@ -95,7 +95,7 @@ export default function Delegates() {
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">المناديب</h1>
         <div className="flex items-center gap-3">
           <input

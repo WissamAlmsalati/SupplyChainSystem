@@ -82,7 +82,7 @@ export default function UserDetail() {
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">تفاصيل المستخدم</h1>
           <p className="mt-1 text-muted">{user.name || 'مستخدم'}</p>

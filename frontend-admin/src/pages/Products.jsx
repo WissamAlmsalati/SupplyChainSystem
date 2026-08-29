@@ -7,7 +7,7 @@ import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 
-const initial = { name: '', description: '', category_id: '' }
+const initial = { name: '', brand: '', description: '', category_id: '', tags: '' }
 
 export default function Products() {
   const navigate = useNavigate()
@@ -35,6 +35,8 @@ export default function Products() {
       ...initial,
       ...item,
       category_id: item.category_id ?? '',
+      brand: item.brand ?? '',
+      tags: Array.isArray(item.tags) ? item.tags.join(', ') : item.tags ?? '',
     })
     setImageFile(null)
     setImagePreview(item.image_url)
@@ -60,7 +62,15 @@ export default function Products() {
     const data = new FormData()
     data.append('name', form.name)
     data.append('category_id', form.category_id)
+    if (form.brand) data.append('brand', form.brand)
     if (form.description) data.append('description', form.description)
+    if (form.tags) {
+      form.tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .forEach((t) => data.append('tags[]', t))
+    }
     if (imageFile) data.append('image', imageFile)
     return data
   }
@@ -96,7 +106,7 @@ export default function Products() {
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">المنتجات</h1>
         <div className="flex items-center gap-3">
           <input
@@ -133,6 +143,11 @@ export default function Products() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
           />
+          <Input
+            label="العلامة التجارية (Brand)"
+            value={form.brand}
+            onChange={(e) => setForm({ ...form, brand: e.target.value })}
+          />
           <div>
             <label className="mb-1.5 block text-sm font-medium text-muted">التصنيف</label>
             <select
@@ -156,6 +171,12 @@ export default function Products() {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </div>
+          <Input
+            label="الوسوم (Tags) مفصولة بفاصلة"
+            value={form.tags}
+            onChange={(e) => setForm({ ...form, tags: e.target.value })}
+            placeholder="مثال: قهوة, ساخن, مشروبات"
+          />
           <div>
             <label className="mb-1.5 block text-sm font-medium text-muted">الصورة</label>
             <input

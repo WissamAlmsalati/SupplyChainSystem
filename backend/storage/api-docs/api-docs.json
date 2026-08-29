@@ -2204,6 +2204,105 @@
                 }
             }
         },
+        "/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List current user notifications",
+                "operationId": "b1274a2aaae8a4295a7e1925e8d8090f",
+                "parameters": [
+                    {
+                        "name": "unread_only",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of notifications"
+                    }
+                }
+            }
+        },
+        "/notifications/unread-count": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get unread notification count",
+                "operationId": "85697ee523a5dace428185c95efb9f2f",
+                "responses": {
+                    "200": {
+                        "description": "Unread count"
+                    }
+                }
+            }
+        },
+        "/notifications/{id}/read": {
+            "put": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark a notification as read",
+                "operationId": "a28a3f705edbab5a620d9b567f97d739",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Marked as read"
+                    }
+                }
+            }
+        },
+        "/notifications/mark-all-read": {
+            "put": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "operationId": "4d53e3eb9d0e49c14388b10eed7f8b18",
+                "responses": {
+                    "200": {
+                        "description": "All marked as read"
+                    }
+                }
+            }
+        },
+        "/notifications/{id}": {
+            "delete": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Delete a notification",
+                "operationId": "0f28a0400610f81f01e2d25ce4e0edff",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    }
+                }
+            }
+        },
         "/orders": {
             "get": {
                 "tags": [
@@ -2383,6 +2482,134 @@
                     },
                     "422": {
                         "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/cafe/forgot-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Request password reset OTP for cafe user",
+                "operationId": "e072038abf86ac865ba8dba534094253",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "mobile_number": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP sent"
+                    },
+                    "404": {
+                        "description": "Mobile number not found"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/cafe/reset-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Reset cafe user password with OTP",
+                "operationId": "b9a24c3608851164857dc221491aacf1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "token": {
+                                        "type": "string"
+                                    },
+                                    "otp": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password reset successfully"
+                    },
+                    "422": {
+                        "description": "Invalid or expired token/OTP"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/premium-features": {
+            "get": {
+                "tags": [
+                    "Premium Features"
+                ],
+                "summary": "List premium features",
+                "operationId": "63a698b4eda0008d3de01333db730d45",
+                "responses": {
+                    "200": {
+                        "description": "List of premium features"
+                    }
+                }
+            }
+        },
+        "/premium-features/{id}": {
+            "put": {
+                "tags": [
+                    "Premium Features"
+                ],
+                "summary": "Update a premium feature status",
+                "operationId": "e7623ce83b9b09bc4742bfdd60717ecf",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Feature updated"
                     }
                 }
             }
@@ -3804,8 +4031,16 @@
             "description": "Admin platform inventory management"
         },
         {
+            "name": "Notifications",
+            "description": "User notifications"
+        },
+        {
             "name": "Admin Orders",
             "description": "Admin platform order management"
+        },
+        {
+            "name": "Premium Features",
+            "description": "System premium features management"
         },
         {
             "name": "Admin Products",

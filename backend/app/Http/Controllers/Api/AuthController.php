@@ -7,6 +7,8 @@ use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Http\Requests\Api\Auth\RegisterRequest;
 use App\Models\AppUser;
 use App\Models\Cafe;
+use App\Models\Notification;
+use App\Models\PremiumFeature;
 use App\Models\UserType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -154,6 +156,7 @@ class AuthController extends BaseApiController
     public function registerCafe(CafeRegisterRequest $request): JsonResponse
     {
         $cafeType = UserType::where('name', 'cafe')->firstOrFail();
+        $autoApprove = PremiumFeature::isActive('cafe_auto_approve');
 
         $cafe = Cafe::create([
             'name' => $request->validated('cafe_name'),
@@ -162,7 +165,7 @@ class AuthController extends BaseApiController
             'latitude' => $request->validated('latitude'),
             'longitude' => $request->validated('longitude'),
             'image' => $this->storeImage($request->file('logo')),
-            'is_active' => false,
+            'is_active' => $autoApprove,
         ]);
 
         AppUser::create([
@@ -172,11 +175,29 @@ class AuthController extends BaseApiController
             'password_hash' => Hash::make($request->validated('password')),
             'user_type_id' => $cafeType->id,
             'cafe_id' => $cafe->id,
-            'is_active' => false,
+            'is_active' => $autoApprove,
         ]);
 
+        if ($autoApprove) {
+            Notification::notifyAdmins(
+                'مقهى جديد مفعل تلقائياً',
+                "تم تسجيل وتفعيل مقهى جديد: {$cafe->name}",
+                '/cafes',
+                'cafe_registration'
+            );
+        } else {
+            Notification::notifyAdmins(
+                'طلب تسجيل مقهى جديد',
+                "طلب مقهى جديد ينتظر الموافقة: {$cafe->name}",
+                '/cafe-registrations/pending',
+                'cafe_registration'
+            );
+        }
+
         return $this->jsonResponse([
-            'message' => 'تم إرسال طلب التسجيل بنجاح، سيتم التواصل معك بعد الموافقة',
+            'message' => $autoApprove
+                ? 'تم تسجيل مقهاك وتفعيله، يمكنك تسجيل الدخول الآن'
+                : 'تم إرسال طلب التسجيل بنجاح، سيتم التواصل معك بعد الموافقة',
             'cafe' => $cafe,
         ], 201);
     }

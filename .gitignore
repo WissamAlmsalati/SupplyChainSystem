@@ -14,6 +14,9 @@
 /.zed
 /auth.json
 .composer
+/admin/node_modules
+/cafe/node_modules
+/bruno/node_modules
 /frontend-admin/node_modules
 /frontend-admin/dist
 /frontend-cafe/node_modules
@@ -21,6 +24,7 @@
 /vendor
 /backend/vendor
 /backend/node_modules
+/backend/storage/mysql
 /backend/public/build
 /backend/public/hot
 /backend/public/storage

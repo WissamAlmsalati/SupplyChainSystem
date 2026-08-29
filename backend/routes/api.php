@@ -15,12 +15,15 @@ use App\Http\Controllers\Api\DelegateController;
 use App\Http\Controllers\Api\DelegateMobileController;
 use App\Http\Controllers\Api\DeliveryZoneController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderItemController;
 use App\Http\Controllers\Api\OrderStatusLogController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\PremiumFeatureController;
 use App\Models\PremiumFeature;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductImageController;
@@ -45,6 +48,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('cafe/register', [AuthController::class, 'registerCafe'])->name('cafe.register');
+    Route::post('cafe/forgot-password', [PasswordResetController::class, 'sendOtp'])->name('cafe.forgot-password');
+    Route::post('cafe/reset-password', [PasswordResetController::class, 'resetPassword'])->name('cafe.reset-password');
 
     Route::get('products', [ProductController::class, 'index']);
     Route::get('products/{product}', [ProductController::class, 'show']);
@@ -57,7 +62,8 @@ Route::prefix('v1')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('cafe/dashboard', [CafeDashboardController::class, 'index'])->name('cafe.dashboard');
-        Route::get('premium-features', fn () => PremiumFeature::active()->pluck('code'))->name('premium-features');
+        Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');
+        Route::put('premium-features/{premiumFeature}', [PremiumFeatureController::class, 'update'])->name('premium-features.update');
 
         Route::prefix('cafe')->name('cafe.')->group(function () {
             Route::get('profile', [CafeMobileController::class, 'profile'])->name('profile');
@@ -96,6 +102,11 @@ Route::prefix('v1')->group(function () {
             Route::get('orders/{id}', [DelegateMobileController::class, 'showOrder'])->name('orders.show');
             Route::post('orders/{id}/status', [DelegateMobileController::class, 'updateOrderStatus'])->name('orders.status');
         });
+
+        Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+        Route::put('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+        Route::apiResource('notifications', NotificationController::class)->only(['index', 'destroy']);
+        Route::put('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
         Route::apiResources([
             'activity-logs' => ActivityLogController::class,

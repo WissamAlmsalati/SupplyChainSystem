@@ -756,6 +756,81 @@
                     }
                 }
             }
+        },
+        "/cafe/forgot-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Request password reset OTP for cafe user",
+                "operationId": "e072038abf86ac865ba8dba534094253",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "mobile_number": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP sent"
+                    },
+                    "404": {
+                        "description": "Mobile number not found"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/cafe/reset-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Reset cafe user password with OTP",
+                "operationId": "b9a24c3608851164857dc221491aacf1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "token": {
+                                        "type": "string"
+                                    },
+                                    "otp": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password reset successfully"
+                    },
+                    "422": {
+                        "description": "Invalid or expired token/OTP"
+                    }
+                },
+                "security": []
+            }
         }
     },
     "components": {
@@ -1054,9 +1129,7 @@
                     "cafe_name",
                     "phone_number",
                     "password",
-                    "address",
-                    "latitude",
-                    "longitude"
+                    "address"
                 ],
                 "properties": {
                     "cafe_name": {
@@ -1091,13 +1164,15 @@
                         "type": "number",
                         "format": "float",
                         "maximum": 90,
-                        "minimum": -90
+                        "minimum": -90,
+                        "nullable": true
                     },
                     "longitude": {
                         "type": "number",
                         "format": "float",
                         "maximum": 180,
-                        "minimum": -180
+                        "minimum": -180,
+                        "nullable": true
                     }
                 },
                 "type": "object"

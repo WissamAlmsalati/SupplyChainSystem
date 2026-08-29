@@ -21,12 +21,24 @@ class ProductVariant extends Model
         'attribute_name',
         'attribute_value',
         'price',
+        'sell_price',
+        'cost_price',
+        'manufacturing_year',
+        'expiry_date',
+        'barcode',
+        'stock_quantity',
         'is_active',
+        'status',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'price' => 'decimal:2',
+        'sell_price' => 'decimal:2',
+        'cost_price' => 'decimal:2',
+        'manufacturing_year' => 'integer',
+        'expiry_date' => 'date',
+        'stock_quantity' => 'integer',
     ];
 
     public function product(): BelongsTo

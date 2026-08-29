@@ -139,7 +139,7 @@ export default function Products() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredProducts.map((p) => {
             const variant = p.variants?.find((v) => v.is_active !== false) || p.variants?.[0]
-            const price = variant?.price ?? p.min_price ?? 0
+            const price = variant?.sell_price ?? variant?.price ?? p.min_price ?? 0
             return (
               <div
                 key={p.id}

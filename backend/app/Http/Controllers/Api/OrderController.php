@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Api\OrderRequest;
 use App\Models\AppUser;
 use App\Models\CafeBranch;
+use App\Models\Notification;
 use App\Models\Order;
 use App\Services\DelegateAssignmentService;
 use Illuminate\Http\JsonResponse;
@@ -106,6 +107,13 @@ class OrderController extends BaseApiController
         });
 
         app(DelegateAssignmentService::class)->assignNearest($order);
+
+        Notification::notifyAdmins(
+            'طلب جديد',
+            "تم إنشاء طلب جديد برقم {$order->order_number}",
+            "/orders/{$order->id}",
+            'order'
+        );
 
         return $this->jsonResponse($order->load(['user', 'branch', 'deliveryZone', 'items.productVariant']), 201);
     }

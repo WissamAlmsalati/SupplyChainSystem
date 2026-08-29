@@ -19,8 +19,14 @@ class Product extends Model
         'category_id',
         'supplier_id',
         'name',
+        'brand',
         'description',
+        'tags',
         'image',
+    ];
+
+    protected $casts = [
+        'tags' => 'array',
     ];
 
     protected $appends = [

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useApiResource } from '../hooks/useApiResource'
 import echo from '../echo'
 import client from '../api/client'
@@ -69,6 +69,7 @@ const LIBYA_POLYGON = [
 
 export default function Map() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { items: warehouses, loading: whLoading } = useApiResource('/warehouses')
   const { items: branches, loading: branchLoading } = useApiResource('/cafe-branches')
   const { items: delegates, loading: delegateLoading } = useApiResource('/delegates')
@@ -76,9 +77,9 @@ export default function Map() {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const clickHandlerRef = useRef(null)
-  const [layer, setLayer] = useState('all')
-  const [gridVisible, setGridVisible] = useState(true)
-  const [showPricedOnly, setShowPricedOnly] = useState(false)
+  const [layer, setLayer] = useState(searchParams.get('layer') || 'all')
+  const [gridVisible, setGridVisible] = useState(searchParams.get('grid') !== '0')
+  const [showPricedOnly, setShowPricedOnly] = useState(searchParams.get('priced') === '1')
   const [modal, setModal] = useState(false)
   const [pendingCell, setPendingCell] = useState(null)
   const [editingZone, setEditingZone] = useState(null)
@@ -108,6 +109,15 @@ export default function Map() {
       return []
     }
   }, [])
+
+  useEffect(() => {
+    setSearchParams((prev) => {
+      if (prev.get('layer') !== layer) prev.set('layer', layer)
+      prev.set('grid', gridVisible ? '1' : '0')
+      prev.set('priced', showPricedOnly ? '1' : '0')
+      return prev
+    }, { replace: true })
+  }, [layer, gridVisible, showPricedOnly])
 
   useEffect(() => {
     if (mapInstanceRef.current) return
@@ -314,7 +324,7 @@ export default function Map() {
 
   return (
     <>
-      <header className="mb-6 flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">الخريطة</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant={layer === 'warehouses' ? 'primary' : 'secondary'} size="sm" onClick={() => setLayer('warehouses')}>المستودعات</Button>
