@@ -10,17 +10,6 @@ import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { latLngToCell, cellToBoundary, cellToLatLng, polygonToCells } from 'h3-js'
 
-const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
-  delivered: 'تم التوصيل',
-  cancelled: 'ملغي',
-  failed: 'فاشل',
-  confirmed: 'مؤكد',
-  shipped: 'تم الشحن',
-}
-
 const defaultIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -70,10 +59,10 @@ const LIBYA_POLYGON = [
 export default function Map() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { items: warehouses, loading: whLoading } = useApiResource('/warehouses')
-  const { items: branches, loading: branchLoading } = useApiResource('/cafe-branches')
-  const { items: delegates, loading: delegateLoading } = useApiResource('/delegates')
-  const { items: zones, loading: zoneLoading, fetch } = useApiResource('/delivery-zones?per_page=10000')
+  const { items: warehouses, loading: whLoading } = useApiResource('/warehouses', {}, { persistPage: false })
+  const { items: branches, loading: branchLoading } = useApiResource('/cafe-branches', {}, { persistPage: false })
+  const { items: delegates, loading: delegateLoading } = useApiResource('/delegates', {}, { persistPage: false })
+  const { items: zones, loading: zoneLoading, fetch } = useApiResource('/delivery-zones?per_page=10000', {}, { persistPage: false })
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const clickHandlerRef = useRef(null)

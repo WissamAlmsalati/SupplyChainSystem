@@ -54,7 +54,8 @@ export default function Cart() {
     setSuccess('')
     try {
       const res = await checkout()
-      setSuccess(`${res.message || 'تم إنشاء الطلب بنجاح'} — رقم الطلب: ${res.id}`)
+      const orderId = res.data?.id ?? res.id
+      setSuccess(`${res.message || 'تم إنشاء الطلب بنجاح'} — رقم الطلب: ${orderId}`)
       setTimeout(() => navigate('/orders'), 2000)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل إتمام الطلب')

@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import client from '../api/client'
 
-export function useApiResource(path, extraParams = {}) {
+export function useApiResource(path, extraParams = {}, options = {}) {
+  const { persistPage = true } = options
   const basePath = path.split('?')[0]
   const queryString = path.split('?')[1] || ''
   const [searchParams, setSearchParams] = useSearchParams()
@@ -15,18 +16,24 @@ export function useApiResource(path, extraParams = {}) {
     per_page: 15,
     total: 0,
   })
+  const [internalPage, setInternalPage] = useState(1)
   const extraParamsKey = JSON.stringify(extraParams)
   const previousParamsKey = useRef(extraParamsKey)
   const previousPath = useRef(basePath)
 
-  const page = Number(searchParams.get('page')) > 0 ? Number(searchParams.get('page')) : 1
+  const urlPage = Number(searchParams.get('page')) > 0 ? Number(searchParams.get('page')) : 1
+  const page = persistPage ? urlPage : internalPage
 
   const setPage = useCallback((newPage) => {
-    setSearchParams((prev) => {
-      prev.set('page', String(newPage))
-      return prev
-    }, { replace: true })
-  }, [setSearchParams])
+    if (persistPage) {
+      setSearchParams((prev) => {
+        prev.set('page', String(newPage))
+        return prev
+      }, { replace: true })
+    } else {
+      setInternalPage(newPage)
+    }
+  }, [persistPage, setSearchParams])
 
   const buildPath = useCallback(() => {
     const params = new URLSearchParams(queryString)
@@ -79,11 +86,15 @@ export function useApiResource(path, extraParams = {}) {
     previousPath.current = basePath
     previousParamsKey.current = extraParamsKey
 
-    setSearchParams((prev) => {
-      prev.delete('page')
-      return prev
-    }, { replace: true })
-  }, [basePath, extraParamsKey, setSearchParams])
+    if (persistPage) {
+      setSearchParams((prev) => {
+        prev.delete('page')
+        return prev
+      }, { replace: true })
+    } else {
+      setInternalPage(1)
+    }
+  }, [basePath, extraParamsKey, persistPage, setSearchParams])
 
   useEffect(() => {
     fetch()

@@ -3,30 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import Button from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
-import Badge from '../components/ui/Badge'
+import { statusLabels, StatusBadge } from '../lib/status'
 import { PageSkeleton } from '../components/ui/Skeleton'
-
-const statusColors = {
-  pending: '#d97706',
-  processing: '#0f766e',
-  completed: '#16a34a',
-  delivered: '#16a34a',
-  cancelled: '#dc2626',
-  failed: '#dc2626',
-  confirmed: '#2563eb',
-  shipped: '#9333ea',
-}
-
-const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
-  delivered: 'تم التوصيل',
-  cancelled: 'ملغي',
-  failed: 'فاشل',
-  confirmed: 'مؤكد',
-  shipped: 'تم الشحن',
-}
 
 function formatMoney(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -112,9 +90,7 @@ export default function OrderDetail() {
           <CardContent className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted">الحالة</span>
-              <Badge variant={order.status === 'completed' || order.status === 'delivered' ? 'success' : order.status === 'cancelled' || order.status === 'failed' ? 'danger' : 'warning'}>
-                {statusLabels[order.status] || order.status}
-              </Badge>
+              <StatusBadge status={order.status} />
             </div>
             {order.source === 'add order from dashboard' && (
               <div className="flex items-center justify-between">

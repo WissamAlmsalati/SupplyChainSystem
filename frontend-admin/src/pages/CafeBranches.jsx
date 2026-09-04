@@ -132,7 +132,7 @@ export default function CafeBranches() {
             placeholder="بحث..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+            className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           {canCreate && <Button variant="primary" onClick={openCreate}>إضافة فرع</Button>}
         </div>

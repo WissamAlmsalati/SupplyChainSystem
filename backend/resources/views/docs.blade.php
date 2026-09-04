@@ -66,15 +66,15 @@
         <h1>الساحل لمستلزمات المقاهي</h1>
         <p>توثيق الـ APIs — اختر المنصة اللي تبي تشوف دوكومنتيشنها</p>
         <div class="cards">
-            <a class="card" href="{{ route('scalar.admin') }}">
+            <a class="card" href="/docs/admin">
                 <h2>Admin Dashboard</h2>
                 <span>لوحة تحكم الأدمن</span>
             </a>
-            <a class="card" href="{{ route('scalar.cafe') }}">
+            <a class="card" href="/docs/cafe">
                 <h2>Cafe Mobile App</h2>
                 <span>تطبيق المقاهي</span>
             </a>
-            <a class="card" href="{{ route('scalar.delegate') }}">
+            <a class="card" href="/docs/delegate-scalar">
                 <h2>Delegate Mobile App</h2>
                 <span>تطبيق المناديب</span>
             </a>

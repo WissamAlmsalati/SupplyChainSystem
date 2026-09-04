@@ -158,6 +158,7 @@ export default function UserTypeDetail() {
             rows={users}
             loading={false}
             emptyText="لا يوجد مستخدمون مسندون لهذا الدور."
+            onRowClick={(row) => navigate(`/users/${row.id}`)}
           />
         </CardContent>
       </Card>

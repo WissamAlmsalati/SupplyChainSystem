@@ -7,7 +7,7 @@ import 'leaflet/dist/leaflet.css'
 import Button from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import DataTable from '../components/DataTable'
-import Badge from '../components/ui/Badge'
+import { StatusBadge } from '../lib/status'
 import { PageSkeleton } from '../components/ui/Skeleton'
 
 const delegateIcon = L.divIcon({
@@ -23,28 +23,6 @@ const delegateOfflineIcon = L.divIcon({
   iconSize: [16, 16],
   iconAnchor: [8, 8],
 })
-
-const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
-  delivered: 'تم التوصيل',
-  cancelled: 'ملغي',
-  failed: 'فاشل',
-  confirmed: 'مؤكد',
-  shipped: 'تم الشحن',
-}
-
-const statusColors = {
-  pending: '#d97706',
-  processing: '#0f766e',
-  completed: '#16a34a',
-  delivered: '#16a34a',
-  cancelled: '#dc2626',
-  failed: '#dc2626',
-  confirmed: '#2563eb',
-  shipped: '#9333ea',
-}
 
 function formatMoney(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -144,11 +122,7 @@ export default function DelegateDetail() {
     {
       key: 'status',
       label: 'الحالة',
-      render: (r) => (
-        <Badge variant={r.status === 'completed' || r.status === 'delivered' ? 'success' : 'warning'}>
-          {statusLabels[r.status] || r.status}
-        </Badge>
-      ),
+      render: (r) => <StatusBadge status={r.status} />,
     },
     { key: 'total_amount', label: 'الإجمالي', render: (r) => `${formatMoney(r.total_amount)} د.ل` },
   ]

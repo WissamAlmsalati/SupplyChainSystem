@@ -57,10 +57,10 @@ export default function Register() {
     if (logo) data.append('logo', logo)
 
     try {
-      await client.post('/cafe/register', data, {
+      const res = await client.post('/cafe/register', data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      setSuccess('تم إرسال طلب التسجيل بنجاح، سيتم مراجعته والتواصل معك قريبًا.')
+      setSuccess(res.data?.message || 'تم إرسال طلب التسجيل بنجاح، سيتم مراجعته والتواصل معك قريبًا.')
       setTimeout(() => navigate('/login'), 3000)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل إرسال طلب التسجيل')

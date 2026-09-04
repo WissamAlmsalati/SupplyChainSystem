@@ -41,7 +41,7 @@ export default function DataTable({ columns, rows, loading, emptyText, actions, 
                   </Td>
                 ))}
                 {actions && (
-                  <Td>
+                  <Td onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       {actions(row)}
                     </div>

@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // ponytail: force Arabic for all API validation and framework messages
+        app()->setLocale('ar');
     }
 }

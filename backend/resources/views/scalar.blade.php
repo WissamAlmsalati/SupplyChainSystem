@@ -9,8 +9,8 @@
 <body>
     <script
         id="api-reference"
-        data-url="{{ url($url) }}"
+        data-url="{{ $url }}"
     ></script>
-    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.28.11"></script>
 </body>
 </html>

@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import QuickOrderModal from '../components/QuickOrderModal'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
+import { statusLabels, StatusBadge } from '../lib/status'
 import client from '../api/client'
 
 export default function Orders() {
@@ -74,29 +75,9 @@ export default function Orders() {
     }
   }
 
-  const statusLabels = {
-    pending: 'معلّق',
-    processing: 'قيد المعالجة',
-    completed: 'مكتمل',
-    delivered: 'تم التوصيل',
-    cancelled: 'ملغي',
-    failed: 'فاشل',
-    confirmed: 'مؤكد',
-    shipped: 'تم الشحن',
-  }
-
-  function statusVariant(status) {
-    if (!status) return 'default'
-    const s = String(status).toLowerCase()
-    if (['completed', 'delivered', 'paid'].includes(s)) return 'success'
-    if (['cancelled', 'failed'].includes(s)) return 'danger'
-    if (['pending', 'processing', 'confirmed', 'shipped'].includes(s)) return 'warning'
-    return 'default'
-  }
-
   const columns = [
     { key: 'order_number', label: 'رقم الطلب', render: (r) => r.order_number ?? `#${r.id}` },
-    { key: 'status', label: 'الحالة', render: (r) => <Badge variant={statusVariant(r.status)}>{statusLabels[r.status] || r.status || '-'}</Badge> },
+    { key: 'status', label: 'الحالة', render: (r) => <StatusBadge status={r.status} /> },
     {
       key: 'source',
       label: 'المصدر',
@@ -124,7 +105,7 @@ export default function Orders() {
             placeholder="بحث..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+            className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           {canCreate && (
             <Button variant="primary" onClick={() => setQuickOpen(true)}>

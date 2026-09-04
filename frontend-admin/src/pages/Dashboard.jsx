@@ -7,33 +7,23 @@ import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import QuickOrderModal from '../components/QuickOrderModal'
 import { Skeleton, SkeletonCard } from '../components/ui/Skeleton'
-
-const statusColors = {
-  pending: '#d97706',
-  processing: '#0f766e',
-  completed: '#16a34a',
-  delivered: '#16a34a',
-  cancelled: '#dc2626',
-  failed: '#dc2626',
-  confirmed: '#2563eb',
-  shipped: '#9333ea',
-}
-
-const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
-  delivered: 'تم التوصيل',
-  cancelled: 'ملغي',
-  failed: 'فاشل',
-  confirmed: 'مؤكد',
-  shipped: 'تم الشحن',
-}
+import { statusLabels, statusColors, StatusBadge } from '../lib/status'
 
 function formatMoney(value) {
   const num = typeof value === 'number' ? value : Number(String(value).replace(/,/g, ''))
   if (!Number.isFinite(num)) return '0.00'
   return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const arabicMonths = [
+  'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
+  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+]
+
+function formatMonthLabel(monthKey) {
+  const [year, month] = monthKey.split('-')
+  const monthName = arabicMonths[(parseInt(month, 10) || 1) - 1] || month
+  return `${monthName} ${year}`
 }
 
 export default function Dashboard() {
@@ -142,8 +132,8 @@ export default function Dashboard() {
                         title={`${m.month}: ${formatMoney(revenue)} د.ل`}
                       />
                     </div>
-                    <div className="text-xs text-muted">
-                      {new Date(`${m.month}-01`).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    <div className="text-xs text-muted whitespace-nowrap" style={{ writingMode: 'horizontal-tb' }}>
+                      {formatMonthLabel(m.month)}
                     </div>
                   </div>
                 )
@@ -283,9 +273,7 @@ export default function Dashboard() {
                       {o.source === 'add order from dashboard' && (
                         <Badge variant="primary">من الـ Dashboard</Badge>
                       )}
-                      <Badge variant={o.status === 'completed' ? 'success' : 'warning'}>
-                        {statusLabels[o.status] || o.status}
-                      </Badge>
+                      <StatusBadge status={o.status} />
                     </div>
                   </li>
                 ))}

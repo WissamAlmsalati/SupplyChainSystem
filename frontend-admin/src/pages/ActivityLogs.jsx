@@ -18,23 +18,21 @@ const actionVariants = {
 }
 
 export default function ActivityLogs() {
-  const [filters, setFilters] = useState({ search: '', action: '', entity_type: '' })
-  const [appliedFilters, setAppliedFilters] = useState({})
+  const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState({ action: '', entity_type: '' })
+  const [appliedFilters, setAppliedFilters] = useState({ action: '', entity_type: '' })
 
-  const buildPath = () => {
-    const params = new URLSearchParams()
-    if (appliedFilters.search) params.set('search', appliedFilters.search)
-    if (appliedFilters.action) params.set('action', appliedFilters.action)
-    if (appliedFilters.entity_type) params.set('entity_type', appliedFilters.entity_type)
-    return `/activity-logs?${params.toString()}`
-  }
-
-  const { items, loading, error, pagination, setPage } = useApiResource(buildPath())
+  const { items, loading, error, pagination, setPage } = useApiResource('/activity-logs', {
+    search,
+    action: appliedFilters.action,
+    entity_type: appliedFilters.entity_type,
+  })
 
   const applyFilters = () => setAppliedFilters(filters)
   const resetFilters = () => {
-    setFilters({ search: '', action: '', entity_type: '' })
-    setAppliedFilters({})
+    setFilters({ action: '', entity_type: '' })
+    setAppliedFilters({ action: '', entity_type: '' })
+    setSearch('')
   }
 
   const columns = [
@@ -57,16 +55,18 @@ export default function ActivityLogs() {
     <>
       <header className="flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">سجل النشاطات</h1>
+        <input
+          type="text"
+          placeholder="بحث..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
       </header>
 
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
 
-      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-surface p-4 sm:grid-cols-4">
-        <Input
-          placeholder="بحث..."
-          value={filters.search}
-          onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-        />
+      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-surface p-4 sm:grid-cols-3">
         <select
           className="w-full rounded-md border border-border-strong bg-background px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
           value={filters.action}

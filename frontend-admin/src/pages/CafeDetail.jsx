@@ -107,11 +107,7 @@ export default function CafeDetail() {
             rows={branches}
             loading={false}
             emptyText="لا توجد فروع مسجلة لهذا المقهى."
-            actions={(row) => (
-              <Button variant="secondary" size="sm" onClick={() => navigate(`/cafe-branches/${row.id}`)}>
-                عرض الطلبيات
-              </Button>
-            )}
+            onRowClick={(row) => navigate(`/cafe-branches/${row.id}`)}
           />
         </CardContent>
       </Card>

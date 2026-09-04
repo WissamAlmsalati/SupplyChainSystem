@@ -4,17 +4,6 @@ import Modal from './Modal'
 import Button from './ui/Button'
 import Input from './ui/Input'
 
-const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
-  delivered: 'تم التوصيل',
-  cancelled: 'ملغي',
-  failed: 'فاشل',
-  confirmed: 'مؤكد',
-  shipped: 'تم الشحن',
-}
-
 export default function QuickOrderModal({ open, onClose, onCreated }) {
   const [users, setUsers] = useState([])
   const [branches, setBranches] = useState([])

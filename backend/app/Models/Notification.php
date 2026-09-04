@@ -27,7 +27,7 @@ class Notification extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(AppUser::class);
     }
 
     public function scopeUnread($query)
@@ -42,7 +42,7 @@ class Notification extends Model
 
     public static function notifyAdmins(string $title, ?string $message = null, ?string $link = null, string $type = 'info'): void
     {
-        $admins = User::whereHas('userType', fn ($q) => $q->whereIn('name', ['admin', 'super_admin']))
+        $admins = AppUser::whereHas('userType', fn ($q) => $q->whereIn('name', ['admin', 'super_admin']))
             ->pluck('id');
 
         $records = $admins->map(fn ($userId) => [

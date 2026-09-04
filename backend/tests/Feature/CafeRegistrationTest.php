@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AppUser;
 use App\Models\Cafe;
+use App\Models\PremiumFeature;
 use App\Models\UserType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -16,7 +17,9 @@ class CafeRegistrationTest extends TestCase
     use RefreshDatabase;
 
     protected AppUser $admin;
+
     protected AppUser $cafeUser;
+
     protected Cafe $cafe;
 
     protected function setUp(): void
@@ -238,7 +241,61 @@ class CafeRegistrationTest extends TestCase
     {
         $this->postJson('/api/v1/cafe/register', [])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['cafe_name', 'phone_number', 'password', 'address', 'latitude', 'longitude']);
+            ->assertJsonValidationErrors(['cafe_name', 'phone_number', 'password', 'address'])
+            ->assertJsonMissingValidationErrors(['latitude', 'longitude']);
+    }
+
+    public function test_cafe_can_register_without_location(): void
+    {
+        $response = $this->postJson('/api/v1/cafe/register', [
+            'cafe_name' => 'مقهى بلا موقع',
+            'phone_number' => '0922222223',
+            'password' => 'secret123',
+            'address' => 'طرابلس',
+        ]);
+
+        $response->assertCreated();
+
+        $this->assertDatabaseHas('cafe', [
+            'name' => 'مقهى بلا موقع',
+            'address' => 'طرابلس',
+            'latitude' => null,
+            'longitude' => null,
+            'is_active' => false,
+        ]);
+    }
+
+    public function test_auto_approve_creates_active_cafe_and_allows_login(): void
+    {
+        PremiumFeature::updateOrCreate(
+            ['code' => 'cafe_auto_approve'],
+            ['name' => 'تفعيل تلقائي للمقاهي', 'is_active' => true]
+        );
+
+        $response = $this->postJson('/api/v1/cafe/register', [
+            'cafe_name' => 'مقهى تلقائي',
+            'phone_number' => '0922222224',
+            'password' => 'secret123',
+            'address' => 'بنغازي',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('message', 'تم تسجيل مقهاك وتفعيله، يمكنك تسجيل الدخول الآن');
+
+        $this->assertDatabaseHas('cafe', [
+            'name' => 'مقهى تلقائي',
+            'is_active' => true,
+        ]);
+
+        $this->assertDatabaseHas('app_user', [
+            'mobile_number' => '0922222224',
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/api/v1/login', [
+            'phone_number' => '0922222224',
+            'password' => 'secret123',
+        ])->assertOk();
     }
 
     protected function adminToken(): string

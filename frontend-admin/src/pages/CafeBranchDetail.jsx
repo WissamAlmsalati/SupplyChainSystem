@@ -4,19 +4,8 @@ import client from '../api/client'
 import Button from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import DataTable from '../components/DataTable'
-import Badge from '../components/ui/Badge'
+import { StatusBadge } from '../lib/status'
 import { PageSkeleton } from '../components/ui/Skeleton'
-
-const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
-  delivered: 'تم التوصيل',
-  cancelled: 'ملغي',
-  failed: 'فاشل',
-  confirmed: 'مؤكد',
-  shipped: 'تم الشحن',
-}
 
 function formatMoney(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -48,16 +37,11 @@ export default function CafeBranchDetail() {
 
   const orderColumns = [
     { key: 'order_number', label: 'رقم الطلب', render: (r) => r.order_number ?? `#${r.id}` },
-    { key: 'id', label: '#' },
     { key: 'user', label: 'المستخدم', render: (r) => r.user?.name ?? '-' },
     {
       key: 'status',
       label: 'الحالة',
-      render: (r) => (
-        <Badge variant={r.status === 'completed' || r.status === 'delivered' ? 'success' : 'warning'}>
-          {statusLabels[r.status] || r.status}
-        </Badge>
-      ),
+      render: (r) => <StatusBadge status={r.status} />,
     },
     { key: 'total_amount', label: 'الإجمالي', render: (r) => `${formatMoney(r.total_amount)} د.ل` },
     { key: 'order_date', label: 'التاريخ', render: (r) => r.order_date ? new Date(r.order_date).toLocaleDateString('en-US') : '-' },
@@ -126,6 +110,7 @@ export default function CafeBranchDetail() {
             rows={orders}
             loading={false}
             emptyText="لا توجد طلبيات لهذا الفرع."
+            onRowClick={(row) => navigate(`/orders/${row.id}`)}
           />
         </CardContent>
       </Card>

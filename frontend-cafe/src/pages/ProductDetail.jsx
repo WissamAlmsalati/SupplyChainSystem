@@ -201,7 +201,7 @@ export default function ProductDetail() {
               )}
               {selectedVariant.expiry_date && (
                 <div className="text-sm font-normal text-muted">
-                  ينتهي الصلاحية: {new Date(selectedVariant.expiry_date).toLocaleDateString('ar-LY')}
+                  ينتهي الصلاحية: {new Date(selectedVariant.expiry_date).toLocaleDateString('en-US')}
                 </div>
               )}
             </div>
