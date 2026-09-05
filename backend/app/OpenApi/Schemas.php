@@ -119,15 +119,11 @@ namespace App\OpenApi;
  * @OA\Schema(
  *     schema="CafeRegisterRequest",
  *     type="object",
- *     required={"cafe_name", "phone_number", "password", "address"},
- *     @OA\Property(property="cafe_name", type="string", maxLength=150),
- *     @OA\Property(property="logo", type="string", format="binary", nullable=true),
+ *     required={"name", "phone_number", "password"},
+ *     @OA\Property(property="name", type="string", maxLength=100),
  *     @OA\Property(property="phone_number", type="string", maxLength=20),
  *     @OA\Property(property="email", type="string", format="email", nullable=true, maxLength=150),
  *     @OA\Property(property="password", type="string", format="password", minLength=6),
- *     @OA\Property(property="address", type="string", maxLength=1000),
- *     @OA\Property(property="latitude", type="number", format="float", nullable=true, minimum=-90, maximum=90),
- *     @OA\Property(property="longitude", type="number", format="float", nullable=true, minimum=-180, maximum=180),
  * )
  *
  * @OA\Schema(

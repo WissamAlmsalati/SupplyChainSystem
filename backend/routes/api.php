@@ -61,13 +61,18 @@ Route::prefix('v1')->group(function () {
         Route::get('me', [AuthController::class, 'me']);
         Route::post('register', [AuthController::class, 'register']);
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
-        Route::get('cafe/dashboard', [CafeDashboardController::class, 'index'])->name('cafe.dashboard');
+        Route::get('cafe/dashboard', [CafeDashboardController::class, 'index'])->middleware('cafe.ready')->name('cafe.dashboard');
         Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');
         Route::put('premium-features/{premiumFeature}', [PremiumFeatureController::class, 'update'])->name('premium-features.update');
 
         Route::prefix('cafe')->name('cafe.')->group(function () {
+            // Profile endpoints stay reachable before the cafe exists / is approved.
             Route::get('profile', [CafeMobileController::class, 'profile'])->name('profile');
+            Route::post('profile', [CafeMobileController::class, 'storeCafe'])->name('profile.store');
             Route::put('profile', [CafeMobileController::class, 'updateProfile'])->name('profile.update');
+        });
+
+        Route::prefix('cafe')->name('cafe.')->middleware('cafe.ready')->group(function () {
             Route::get('orders', [CafeMobileController::class, 'orders'])->name('orders.index');
             Route::post('orders', [CafeMobileController::class, 'storeOrder'])->name('orders.store');
             Route::get('orders/{id}', [CafeMobileController::class, 'showOrder'])->name('orders.show');

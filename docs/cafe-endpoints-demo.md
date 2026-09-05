@@ -620,21 +620,62 @@ Only `pending` orders can be requested for cancellation.
 }
 ```
 
-## Step 14: POST /api/v1/cafe/register — Register a new cafe (pending approval)
+## Step 14: POST /api/v1/cafe/register — Create a cafe account (user only)
 **Request:** `POST /api/v1/cafe/register`
 
-**Body:** multipart/form-data
+The account is created active with **no cafe attached**. The owner logs in, then adds the cafe from inside the app (Step 14b/14c).
 
 ```json
 {
-    "cafe_name": "مقهى جديد",
-    "logo": "<image file>",
+    "name": "صاحب المقهى",
     "phone_number": "0922222222",
     "email": "newcafe@example.com",
-    "password": "secret123",
-    "address": "طرابلس، شارع الرشيد",
-    "latitude": 32.8872,
-    "longitude": 13.1913
+    "password": "secret123"
+}
+```
+
+**Response:** `201`
+
+```json
+{
+    "success": true,
+    "message": "تم إنشاء الحساب بنجاح، يمكنك تسجيل الدخول الآن",
+    "data": {
+        "user": {
+            "name": "صاحب المقهى",
+            "phone_number": "0922222222"
+        }
+    }
+}
+```
+
+## Step 14b: GET /api/v1/cafe/profile — First call after login: does the user have a cafe?
+**Request:** `GET /api/v1/cafe/profile` (Bearer token)
+
+Login itself also returns `has_cafe` for cafe users: `{"token": "...", "has_cafe": false}`.
+
+**Response:** `200` (no cafe yet)
+
+```json
+{
+    "has_cafe": false,
+    "cafe": null,
+    "user": { "id": 21, "name": "صاحب المقهى", "email": null, "mobile_number": "0922222222" }
+}
+```
+
+While `has_cafe` is false, every other `/cafe/*` endpoint (orders, cart, branches, dashboard) returns `403` with `"has_cafe": false`. While the cafe exists but is not approved yet they return `403` with `"cafe_active": false`.
+
+## Step 14c: POST /api/v1/cafe/profile — Add the cafe (pending admin approval)
+**Request:** `POST /api/v1/cafe/profile` (Bearer token)
+
+**Body:** multipart/form-data. `contact_info` defaults to the user's phone number.
+
+```json
+{
+    "name": "مقهى جديد",
+    "contact_info": "0922222222",
+    "logo": "<image file>"
 }
 ```
 
@@ -649,10 +690,6 @@ Only `pending` orders can be requested for cancellation.
             "id": 20,
             "name": "مقهى جديد",
             "contact_info": "0922222222",
-            "address": "طرابلس، شارع الرشيد",
-            "latitude": "32.88720000",
-            "longitude": "13.19130000",
-            "image": "cafes/...",
             "image_url": "http://localhost/storage/cafes/...",
             "is_active": false
         }
@@ -660,7 +697,9 @@ Only `pending` orders can be requested for cancellation.
 }
 ```
 
-> The cafe and its owner user are created with `is_active = false`. The user cannot log in until an admin approves the request.
+`409` if the user already has a cafe. Admins approve or reject via `/cafe-registrations/{id}/approve|reject`; rejecting deletes the cafe but keeps the account so the owner can submit again.
+
+> The account can log in immediately. Only the cafe waits for admin approval; until then ordering endpoints return 403.
 
 ## Step 15: POST /api/v1/login (phone or email) for approved cafes
 **Request:** `POST /api/v1/login`

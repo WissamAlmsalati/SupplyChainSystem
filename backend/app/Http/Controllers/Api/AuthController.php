@@ -7,14 +7,10 @@ use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Http\Requests\Api\Auth\RegisterRequest;
 use App\Models\AppUser;
 use App\Models\Cafe;
-use App\Models\Notification;
-use App\Models\PremiumFeature;
 use App\Models\UserType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * @OA\Tag(name="Auth", description="Shared authentication endpoints")
@@ -80,6 +76,8 @@ class AuthController extends BaseApiController
         // ponytail: hide permissions for cafe users for now without deleting the loading code
         if ($user->userType?->name !== 'cafe') {
             $response['permissions'] = $codes;
+        } else {
+            $response['has_cafe'] = ! is_null($user->cafe_id);
         }
 
         return $this->jsonResponse($response);
@@ -146,59 +144,34 @@ class AuthController extends BaseApiController
      * @OA\Post(
      *     path="/cafe/register",
      *     tags={"Auth"},
-     *     summary="Register a new cafe (pending admin approval)",
+     *     summary="Register a cafe account (user only, cafe is added after login)",
+     *     description="Creates an active cafe-type user with no cafe attached. After logging in, call GET /cafe/profile to check has_cafe, then POST /cafe/profile to add the cafe.",
      *     security={},
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CafeRegisterRequest")),
-     *     @OA\Response(response=201, description="Registration pending approval"),
+     *     @OA\Response(response=201, description="Account created"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
      */
     public function registerCafe(CafeRegisterRequest $request): JsonResponse
     {
         $cafeType = UserType::where('name', 'cafe')->firstOrFail();
-        $autoApprove = PremiumFeature::isActive('cafe_auto_approve');
 
-        $cafe = Cafe::create([
-            'name' => $request->validated('cafe_name'),
-            'contact_info' => $request->validated('phone_number'),
-            'address' => $request->validated('address'),
-            'latitude' => $request->validated('latitude'),
-            'longitude' => $request->validated('longitude'),
-            'image' => $this->storeImage($request->file('logo')),
-            'is_active' => $autoApprove,
-        ]);
-
-        AppUser::create([
-            'name' => $request->validated('cafe_name'),
+        $user = AppUser::create([
+            'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'mobile_number' => $request->validated('phone_number'),
             'password_hash' => Hash::make($request->validated('password')),
             'user_type_id' => $cafeType->id,
-            'cafe_id' => $cafe->id,
-            'is_active' => $autoApprove,
+            'cafe_id' => null,
+            'is_active' => true,
         ]);
 
-        if ($autoApprove) {
-            Notification::notifyAdmins(
-                'مقهى جديد مفعل تلقائياً',
-                "تم تسجيل وتفعيل مقهى جديد: {$cafe->name}",
-                '/cafes',
-                'cafe_registration'
-            );
-        } else {
-            Notification::notifyAdmins(
-                'طلب تسجيل مقهى جديد',
-                "طلب مقهى جديد ينتظر الموافقة: {$cafe->name}",
-                '/cafe-registrations/pending',
-                'cafe_registration'
-            );
-        }
-
         return $this->jsonResponse([
-            'message' => $autoApprove
-                ? 'تم تسجيل مقهاك وتفعيله، يمكنك تسجيل الدخول الآن'
-                : 'تم إرسال طلب التسجيل بنجاح، سيتم التواصل معك بعد الموافقة',
-            'cafe' => $cafe,
+            'message' => 'تم إنشاء الحساب بنجاح، يمكنك تسجيل الدخول الآن',
+            'user' => [
+                'name' => $user->name,
+                'phone_number' => $user->mobile_number,
+            ],
         ], 201);
     }
 
@@ -207,15 +180,6 @@ class AuthController extends BaseApiController
         $request->user()->currentAccessToken()->delete();
 
         return $this->jsonResponse(['message' => 'تم تسجيل الخروج بنجاح']);
-    }
-
-    private function storeImage(?UploadedFile $file): ?string
-    {
-        if (! $file) {
-            return null;
-        }
-
-        return $file->store('cafes', 'public');
     }
 
     /**

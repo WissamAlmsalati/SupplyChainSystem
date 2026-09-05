@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\DeliveryZone;
 use App\Models\Notification;
 use App\Models\Order;
+use App\Models\PremiumFeature;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\DelegateAssignmentService;
@@ -360,17 +361,89 @@ class CafeMobileController extends BaseApiController
      * @OA\Get(
      *     path="/cafe/profile",
      *     tags={"Cafe Mobile Profile"},
-     *     summary="Get cafe profile",
+     *     summary="Get cafe profile (first call after login: check has_cafe)",
+     *     description="Returns has_cafe=false with cafe=null when the user has not added a cafe yet. Otherwise returns the cafe with its branches and is_active approval state.",
      *     @OA\Response(response=200, description="Cafe profile")
      * )
      */
     public function profile(): JsonResponse
     {
-        $cafe = Cafe::with('branches')->findOrFail($this->cafeId());
+        $cafe = $this->cafeId() ? Cafe::with('branches')->find($this->cafeId()) : null;
+
         return $this->jsonResponse([
+            'has_cafe' => ! is_null($cafe),
             'cafe' => $cafe,
             'user' => auth()->user()?->only(['id', 'name', 'email', 'mobile_number']),
         ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/cafe/profile",
+     *     tags={"Cafe Mobile Profile"},
+     *     summary="Add the cafe for the logged-in user (pending admin approval)",
+     *     @OA\RequestBody(required=true, @OA\MediaType(mediaType="multipart/form-data", @OA\Schema(
+     *         required={"name"},
+     *         @OA\Property(property="name", type="string", maxLength=150),
+     *         @OA\Property(property="contact_info", type="string", maxLength=200, nullable=true, description="Defaults to the user's phone number"),
+     *         @OA\Property(property="logo", type="string", format="binary", nullable=true)
+     *     ))),
+     *     @OA\Response(response=201, description="Cafe created"),
+     *     @OA\Response(response=409, description="User already has a cafe"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function storeCafe(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        if (! $this->isCafeUser()) {
+            return $this->jsonResponse(['message' => 'غير مصرح'], 403);
+        }
+
+        if ($user->cafe_id) {
+            return $this->jsonResponse(['message' => 'لديك مقهى مسجل بالفعل'], 409);
+        }
+
+        $data = $request->validate([
+            'name' => 'required|string|max:150',
+            'contact_info' => 'nullable|string|max:200',
+            'logo' => 'nullable|image|max:2048',
+        ]);
+
+        $autoApprove = PremiumFeature::isActive('cafe_auto_approve');
+
+        $cafe = Cafe::create([
+            'name' => $data['name'],
+            'contact_info' => $data['contact_info'] ?? $user->mobile_number,
+            'image' => $request->file('logo')?->store('cafes', 'public'),
+            'is_active' => $autoApprove,
+        ]);
+
+        $user->update(['cafe_id' => $cafe->id]);
+
+        if ($autoApprove) {
+            Notification::notifyAdmins(
+                'مقهى جديد مفعل تلقائياً',
+                "تم تسجيل وتفعيل مقهى جديد: {$cafe->name}",
+                '/cafes',
+                'cafe_registration'
+            );
+        } else {
+            Notification::notifyAdmins(
+                'طلب تسجيل مقهى جديد',
+                "طلب مقهى جديد ينتظر الموافقة: {$cafe->name}",
+                '/cafe-registrations/pending',
+                'cafe_registration'
+            );
+        }
+
+        return $this->jsonResponse([
+            'message' => $autoApprove
+                ? 'تم تسجيل مقهاك وتفعيله'
+                : 'تم إرسال طلب التسجيل بنجاح، سيتم التواصل معك بعد الموافقة',
+            'cafe' => $cafe->only(['id', 'name', 'contact_info', 'image_url', 'is_active']),
+        ], 201);
     }
 
     /**

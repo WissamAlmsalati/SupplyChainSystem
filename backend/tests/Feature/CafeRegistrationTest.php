@@ -58,78 +58,163 @@ class CafeRegistrationTest extends TestCase
         ]);
     }
 
-    public function test_cafe_can_register_with_required_fields(): void
+    public function test_register_creates_user_only_without_cafe(): void
     {
         $response = $this->postJson('/api/v1/cafe/register', [
-            'cafe_name' => 'مقهى جديد',
+            'name' => 'صاحب مقهى',
             'phone_number' => '0922222222',
             'password' => 'secret123',
-            'address' => 'طرابلس، شارع الرشيد',
-            'latitude' => 32.8872,
-            'longitude' => 13.1913,
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('message', 'تم إرسال طلب التسجيل بنجاح، سيتم التواصل معك بعد الموافقة');
-
-        $this->assertDatabaseHas('cafe', [
-            'name' => 'مقهى جديد',
-            'contact_info' => '0922222222',
-            'address' => 'طرابلس، شارع الرشيد',
-            'latitude' => 32.8872,
-            'longitude' => 13.1913,
-            'is_active' => false,
-        ]);
+            ->assertJsonPath('message', 'تم إنشاء الحساب بنجاح، يمكنك تسجيل الدخول الآن')
+            ->assertJsonPath('data.user.name', 'صاحب مقهى')
+            ->assertJsonPath('data.user.phone_number', '0922222222')
+            ->assertJsonMissingPath('data.user.id');
 
         $this->assertDatabaseHas('app_user', [
+            'name' => 'صاحب مقهى',
             'mobile_number' => '0922222222',
-            'is_active' => false,
+            'cafe_id' => null,
+            'is_active' => true,
         ]);
+
+        $this->assertDatabaseCount('cafe', 1); // only the seeded cafe
     }
 
-    public function test_cafe_registration_accepts_optional_email_and_logo(): void
+    public function test_registration_requires_mandatory_fields(): void
     {
-        $logo = UploadedFile::fake()->image('logo.jpg');
+        $this->postJson('/api/v1/cafe/register', [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['name', 'phone_number', 'password'])
+            ->assertJsonMissingValidationErrors(['address', 'cafe_name']);
+    }
 
-        $response = $this->postJson('/api/v1/cafe/register', [
-            'cafe_name' => 'مقهى بشعار',
+    public function test_registration_accepts_optional_email(): void
+    {
+        $this->postJson('/api/v1/cafe/register', [
+            'name' => 'صاحب مقهى',
             'phone_number' => '0922222222',
             'email' => 'newcafe@example.com',
             'password' => 'secret123',
-            'address' => 'بنغازي',
-            'latitude' => 32.0,
-            'longitude' => 20.0,
-            'logo' => $logo,
-        ]);
+        ])->assertCreated();
 
-        $response->assertCreated();
-
-        $cafe = Cafe::where('name', 'مقهى بشعار')->first();
-        $this->assertNotNull($cafe->image);
-        Storage::disk('public')->assertExists($cafe->image);
         $this->assertDatabaseHas('app_user', [
             'email' => 'newcafe@example.com',
             'mobile_number' => '0922222222',
         ]);
     }
 
-    public function test_unapproved_cafe_cannot_login(): void
+    public function test_new_user_can_login_and_has_cafe_is_false(): void
     {
-        AppUser::create([
-            'name' => 'Pending Cafe',
-            'email' => 'pending@test.com',
-            'mobile_number' => '0933333333',
-            'password_hash' => Hash::make('password'),
-            'user_type_id' => UserType::where('name', 'cafe')->first()->id,
-            'cafe_id' => Cafe::create(['name' => 'Pending', 'is_active' => false])->id,
-            'is_active' => false,
+        $this->postJson('/api/v1/cafe/register', [
+            'name' => 'صاحب مقهى',
+            'phone_number' => '0922222222',
+            'password' => 'secret123',
+        ])->assertCreated();
+
+        $login = $this->postJson('/api/v1/login', [
+            'phone_number' => '0922222222',
+            'password' => 'secret123',
         ]);
 
+        $login->assertOk()->assertJsonPath('has_cafe', false);
+
+        $this->getJson('/api/v1/cafe/profile', $this->auth($login->json('token')))->assertOk()
+            ->assertJsonPath('has_cafe', false)
+            ->assertJsonPath('cafe', null)
+            ->assertJsonPath('user.name', 'صاحب مقهى');
+    }
+
+    public function test_login_reports_has_cafe_true_for_existing_cafe_user(): void
+    {
         $this->postJson('/api/v1/login', [
-            'phone_number' => '0933333333',
+            'phone_number' => '0911111111',
             'password' => 'password',
-        ])->assertForbidden()
-            ->assertJsonPath('message', 'الحساب غير نشط، يرجى انتظار موافقة الإدارة');
+        ])->assertOk()->assertJsonPath('has_cafe', true);
+    }
+
+    public function test_user_without_cafe_is_blocked_from_cafe_endpoints(): void
+    {
+        $token = $this->registerAndLogin('0922222222');
+
+        $this->getJson('/api/v1/cafe/orders', $this->auth($token))
+            ->assertForbidden()
+            ->assertJsonPath('has_cafe', false)
+            ->assertJsonPath('message', 'يجب إضافة بيانات المقهى أولاً');
+
+        $this->getJson('/api/v1/cafe/dashboard', $this->auth($token))
+            ->assertForbidden();
+    }
+
+    public function test_user_can_add_cafe_after_login_pending_approval(): void
+    {
+        Storage::fake('public');
+        $token = $this->registerAndLogin('0922222222');
+
+        $response = $this->postJson('/api/v1/cafe/profile', [
+            'name' => 'مقهى جديد',
+            'logo' => UploadedFile::fake()->image('logo.jpg'),
+        ], $this->auth($token));
+
+        $response->assertCreated()
+            ->assertJsonPath('message', 'تم إرسال طلب التسجيل بنجاح، سيتم التواصل معك بعد الموافقة')
+            ->assertJsonPath('data.cafe.name', 'مقهى جديد')
+            ->assertJsonPath('data.cafe.contact_info', '0922222222')
+            ->assertJsonPath('data.cafe.is_active', false);
+
+        $cafe = Cafe::where('name', 'مقهى جديد')->first();
+        $this->assertNotNull($cafe->image);
+        Storage::disk('public')->assertExists($cafe->image);
+
+        $this->assertDatabaseHas('app_user', [
+            'mobile_number' => '0922222222',
+            'cafe_id' => $cafe->id,
+        ]);
+
+        // Profile now reports the cafe, but ordering stays blocked until approval.
+        $this->getJson('/api/v1/cafe/profile', $this->auth($token))
+            ->assertOk()
+            ->assertJsonPath('has_cafe', true)
+            ->assertJsonPath('cafe.name', 'مقهى جديد');
+
+        $this->getJson('/api/v1/cafe/orders', $this->auth($token))
+            ->assertForbidden()
+            ->assertJsonPath('cafe_active', false)
+            ->assertJsonPath('message', 'المقهى بانتظار موافقة الإدارة');
+    }
+
+    public function test_user_cannot_add_second_cafe(): void
+    {
+        $token = $this->cafeToken();
+
+        $this->postJson('/api/v1/cafe/profile', ['name' => 'مقهى ثاني'], $this->auth($token))->assertStatus(409);
+    }
+
+    public function test_add_cafe_requires_name(): void
+    {
+        $token = $this->registerAndLogin('0922222222');
+
+        $this->postJson('/api/v1/cafe/profile', [], $this->auth($token))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['name']);
+    }
+
+    public function test_auto_approve_activates_cafe_immediately(): void
+    {
+        PremiumFeature::updateOrCreate(
+            ['code' => 'cafe_auto_approve'],
+            ['name' => 'تفعيل تلقائي للمقاهي', 'is_active' => true]
+        );
+
+        $token = $this->registerAndLogin('0922222224');
+
+        $this->postJson('/api/v1/cafe/profile', ['name' => 'مقهى تلقائي'], $this->auth($token))->assertCreated()
+            ->assertJsonPath('message', 'تم تسجيل مقهاك وتفعيله')
+            ->assertJsonPath('data.cafe.is_active', true);
+
+        $this->getJson('/api/v1/cafe/orders', $this->auth($token))
+            ->assertOk();
     }
 
     public function test_login_with_phone_number_works_for_approved_cafe(): void
@@ -145,161 +230,89 @@ class CafeRegistrationTest extends TestCase
 
     public function test_admin_can_list_pending_registrations(): void
     {
-        $pendingCafe = Cafe::create([
-            'name' => 'Pending Cafe',
-            'is_active' => false,
-        ]);
+        $token = $this->registerAndLogin('0944444444');
+        $this->postJson('/api/v1/cafe/profile', ['name' => 'Pending Cafe'], $this->auth($token))->assertCreated();
 
-        AppUser::create([
-            'name' => 'Pending Owner',
-            'mobile_number' => '0944444444',
-            'password_hash' => Hash::make('password'),
-            'user_type_id' => UserType::where('name', 'cafe')->first()->id,
-            'cafe_id' => $pendingCafe->id,
-            'is_active' => false,
-        ]);
-
-        $token = $this->adminToken();
-
-        $response = $this->getJson('/api/v1/cafe-registrations/pending', [
-            'Authorization' => "Bearer $token",
-        ]);
+        $response = $this->getJson('/api/v1/cafe-registrations/pending', $this->auth($this->adminToken()));
 
         $response->assertOk()
-            ->assertJsonPath('data.0.name', 'Pending Cafe');
+            ->assertJsonPath('data.0.name', 'Pending Cafe')
+            ->assertJsonPath('data.0.app_users.0.mobile_number', '0944444444');
     }
 
     public function test_admin_can_approve_cafe_registration(): void
     {
-        $pendingCafe = Cafe::create([
-            'name' => 'Pending Cafe',
-            'is_active' => false,
-        ]);
+        $token = $this->registerAndLogin('0955555555');
+        $this->postJson('/api/v1/cafe/profile', ['name' => 'Pending Cafe'], $this->auth($token))->assertCreated();
+        $pendingCafe = Cafe::where('name', 'Pending Cafe')->first();
 
-        $pendingUser = AppUser::create([
-            'name' => 'Pending Owner',
-            'mobile_number' => '0955555555',
-            'password_hash' => Hash::make('password'),
-            'user_type_id' => UserType::where('name', 'cafe')->first()->id,
-            'cafe_id' => $pendingCafe->id,
-            'is_active' => false,
-        ]);
-
-        $token = $this->adminToken();
-
-        $this->postJson("/api/v1/cafe-registrations/{$pendingCafe->id}/approve", [], [
-            'Authorization' => "Bearer $token",
-        ])->assertOk()
+        $this->postJson("/api/v1/cafe-registrations/{$pendingCafe->id}/approve", [], $this->auth($this->adminToken()))->assertOk()
             ->assertJsonPath('message', 'تمت الموافقة على الطلب بنجاح');
 
         $this->assertTrue($pendingCafe->fresh()->is_active);
-        $this->assertTrue($pendingUser->fresh()->is_active);
 
-        $this->postJson('/api/v1/login', [
-            'phone_number' => '0955555555',
-            'password' => 'password',
-        ])->assertOk();
+        $this->getJson('/api/v1/cafe/orders', $this->auth($token))
+            ->assertOk();
     }
 
-    public function test_admin_can_reject_cafe_registration(): void
+    public function test_admin_can_reject_cafe_registration_and_user_keeps_account(): void
     {
-        $pendingCafe = Cafe::create([
-            'name' => 'Rejected Cafe',
-            'is_active' => false,
-        ]);
+        $token = $this->registerAndLogin('0966666666');
+        $this->postJson('/api/v1/cafe/profile', ['name' => 'Rejected Cafe'], $this->auth($token))->assertCreated();
+        $pendingCafe = Cafe::where('name', 'Rejected Cafe')->first();
 
-        AppUser::create([
-            'name' => 'Rejected Owner',
-            'mobile_number' => '0966666666',
-            'password_hash' => Hash::make('password'),
-            'user_type_id' => UserType::where('name', 'cafe')->first()->id,
-            'cafe_id' => $pendingCafe->id,
-            'is_active' => false,
-        ]);
-
-        $token = $this->adminToken();
-
-        $this->postJson("/api/v1/cafe-registrations/{$pendingCafe->id}/reject", [], [
-            'Authorization' => "Bearer $token",
-        ])->assertOk()
+        $this->postJson("/api/v1/cafe-registrations/{$pendingCafe->id}/reject", [], $this->auth($this->adminToken()))->assertOk()
             ->assertJsonPath('message', 'تم رفض الطلب بنجاح');
 
         $this->assertDatabaseMissing('cafe', ['name' => 'Rejected Cafe']);
-        $this->assertDatabaseMissing('app_user', ['mobile_number' => '0966666666']);
+        $this->assertDatabaseHas('app_user', ['mobile_number' => '0966666666', 'cafe_id' => null]);
+
+        // The owner can submit a new cafe.
+        $this->postJson('/api/v1/cafe/profile', ['name' => 'Second Try'], $this->auth($token))->assertCreated();
     }
 
     public function test_non_admin_cannot_access_registration_admin_routes(): void
     {
         $cafeToken = $this->cafeToken();
 
-        $this->getJson('/api/v1/cafe-registrations/pending', [
-            'Authorization' => "Bearer $cafeToken",
-        ])->assertForbidden();
+        $this->getJson('/api/v1/cafe-registrations/pending', $this->auth($cafeToken))->assertForbidden();
     }
 
-    public function test_registration_requires_mandatory_fields(): void
+    protected function registerAndLogin(string $phone): string
     {
-        $this->postJson('/api/v1/cafe/register', [])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['cafe_name', 'phone_number', 'password', 'address'])
-            ->assertJsonMissingValidationErrors(['latitude', 'longitude']);
+        $this->app['auth']->forgetGuards();
+
+        $this->postJson('/api/v1/cafe/register', [
+            'name' => 'Owner '.$phone,
+            'phone_number' => $phone,
+            'password' => 'secret123',
+        ])->assertCreated();
+
+        $response = $this->postJson('/api/v1/login', [
+            'phone_number' => $phone,
+            'password' => 'secret123',
+        ]);
+
+        $response->assertOk();
+
+        return $response->json('token');
     }
 
-    public function test_cafe_can_register_without_location(): void
+    /**
+     * Bearer headers for $token. Laravel keeps the resolved guard user
+     * between requests inside one test, so reset it when switching users.
+     */
+    protected function auth(string $token): array
     {
-        $response = $this->postJson('/api/v1/cafe/register', [
-            'cafe_name' => 'مقهى بلا موقع',
-            'phone_number' => '0922222223',
-            'password' => 'secret123',
-            'address' => 'طرابلس',
-        ]);
+        $this->app['auth']->forgetGuards();
 
-        $response->assertCreated();
-
-        $this->assertDatabaseHas('cafe', [
-            'name' => 'مقهى بلا موقع',
-            'address' => 'طرابلس',
-            'latitude' => null,
-            'longitude' => null,
-            'is_active' => false,
-        ]);
-    }
-
-    public function test_auto_approve_creates_active_cafe_and_allows_login(): void
-    {
-        PremiumFeature::updateOrCreate(
-            ['code' => 'cafe_auto_approve'],
-            ['name' => 'تفعيل تلقائي للمقاهي', 'is_active' => true]
-        );
-
-        $response = $this->postJson('/api/v1/cafe/register', [
-            'cafe_name' => 'مقهى تلقائي',
-            'phone_number' => '0922222224',
-            'password' => 'secret123',
-            'address' => 'بنغازي',
-        ]);
-
-        $response->assertCreated()
-            ->assertJsonPath('message', 'تم تسجيل مقهاك وتفعيله، يمكنك تسجيل الدخول الآن');
-
-        $this->assertDatabaseHas('cafe', [
-            'name' => 'مقهى تلقائي',
-            'is_active' => true,
-        ]);
-
-        $this->assertDatabaseHas('app_user', [
-            'mobile_number' => '0922222224',
-            'is_active' => true,
-        ]);
-
-        $this->postJson('/api/v1/login', [
-            'phone_number' => '0922222224',
-            'password' => 'secret123',
-        ])->assertOk();
+        return ['Authorization' => "Bearer $token"];
     }
 
     protected function adminToken(): string
     {
+        $this->app['auth']->forgetGuards();
+
         $response = $this->postJson('/api/v1/login', [
             'email' => 'admin@test.com',
             'password' => 'password',
@@ -312,6 +325,8 @@ class CafeRegistrationTest extends TestCase
 
     protected function cafeToken(): string
     {
+        $this->app['auth']->forgetGuards();
+
         $response = $this->postJson('/api/v1/login', [
             'phone_number' => '0911111111',
             'password' => 'password',
