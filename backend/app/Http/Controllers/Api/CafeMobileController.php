@@ -519,6 +519,10 @@ class CafeMobileController extends BaseApiController
             $query->where('category_id', $request->integer('category_id'));
         }
 
+        if ($request->filled('search')) {
+            return $this->jsonResponse(['data' => $this->searchProducts($request, $query)]);
+        }
+
         // ponytail: mobile list cards only need name/price/image — full description
         // and variants live in show() and /variants (quick-add uses default_variant_id).
         $products = $query->get()->map(function (Product $product) {
@@ -543,6 +547,47 @@ class CafeMobileController extends BaseApiController
         });
 
         return $this->jsonResponse(['data' => $products]);
+    }
+
+    /**
+     * Search returns product-shaped entries at variant level: each matched
+     * variant becomes "Product — variant" with its own price/image, so the
+     * mobile app renders results exactly like normal product cards.
+     */
+    private function searchProducts(Request $request, $query): array
+    {
+        $search = trim((string) $request->input('search'));
+        $results = [];
+
+        foreach ($query->get() as $product) {
+            $variantHit = false;
+            foreach ($product->variants as $variant) {
+                if (mb_stripos((string) $variant->attribute_value, $search) !== false) {
+                    $variantHit = true;
+                    $results[] = [
+                        'id' => $product->id,
+                        'variant_id' => $variant->id,
+                        'name' => $product->name . ' — ' . $variant->attribute_value,
+                        'image_url' => $variant->images->first()?->image_url ?: $product->image_url,
+                        'min_price' => $variant->sell_price ?? $variant->price,
+                        'category_id' => $product->category_id,
+                        'default_variant_id' => $variant->id,
+                    ];
+                }
+            }
+            if (! $variantHit && (mb_stripos($product->name, $search) !== false || in_array($search, $product->tags ?? []))) {
+                $results[] = [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'image_url' => $product->image_url ?: $product->variants->flatMap(fn ($v) => $v->images)->first()?->image_url,
+                    'min_price' => $product->variants->min(fn ($v) => $v->sell_price ?? $v->price),
+                    'category_id' => $product->category_id,
+                    'default_variant_id' => $product->variants->first()?->id,
+                ];
+            }
+        }
+
+        return $results;
     }
 
     /**

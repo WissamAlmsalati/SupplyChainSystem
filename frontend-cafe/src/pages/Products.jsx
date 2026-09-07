@@ -37,6 +37,7 @@ export default function Products() {
       try {
         const params = new URLSearchParams()
         if (categoryId) params.set('category_id', categoryId)
+        if (search.trim()) params.set('search', search.trim())
         const [productsRes, categoriesRes, branchesRes] = await Promise.all([
           client.get(`/cafe/products?${params.toString()}`),
           client.get('/cafe/categories'),
@@ -52,7 +53,7 @@ export default function Products() {
       }
     }
     load()
-  }, [categoryId])
+  }, [categoryId, search])
 
   const activeCategory = categories.find((c) => String(c.id) === categoryId)
   const cartBranchId = cart?.branch_id
@@ -78,9 +79,7 @@ export default function Products() {
     }
   }
 
-  const filteredProducts = search.trim()
-    ? products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
-    : products
+  const filteredProducts = products
 
   return (
     <>
