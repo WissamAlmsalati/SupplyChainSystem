@@ -57,9 +57,9 @@ class CafeMobileEnhancementsTest extends TestCase
             'mobile_number' => '0911111111',
             'password_hash' => Hash::make('password'),
             'user_type_id' => $cafeType->id,
-            'cafe_id' => $this->cafe->id,
             'is_active' => true,
         ]);
+        $this->cafeUser->syncCafeUser(['cafe_id' => $this->cafe->id]);
 
         $this->zone = DeliveryZone::create([
             'hex_id' => '842da29ffffffff',
@@ -260,10 +260,12 @@ class CafeMobileEnhancementsTest extends TestCase
             'mobile_number' => '0999999999',
             'password_hash' => Hash::make('password'),
             'user_type_id' => $delegateType->id,
+            'is_active' => true,
+        ]);
+        $delegate->syncCafeUser([
             'latitude' => 27.1,
             'longitude' => 17.1,
             'location_updated_at' => now(),
-            'is_active' => true,
         ]);
 
         $order = Order::create([

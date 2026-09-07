@@ -53,9 +53,9 @@ class CafeRegistrationTest extends TestCase
             'mobile_number' => '0911111111',
             'password_hash' => Hash::make('password'),
             'user_type_id' => $cafeType->id,
-            'cafe_id' => $this->cafe->id,
             'is_active' => true,
         ]);
+        $this->cafeUser->syncCafeUser(['cafe_id' => $this->cafe->id]);
     }
 
     public function test_register_creates_user_only_without_cafe(): void
@@ -72,10 +72,9 @@ class CafeRegistrationTest extends TestCase
             ->assertJsonPath('data.user.phone_number', '0922222222')
             ->assertJsonMissingPath('data.user.id');
 
-        $this->assertDatabaseHas('app_user', [
+        $this->assertDatabaseHas('user', [
             'name' => 'صاحب مقهى',
             'mobile_number' => '0922222222',
-            'cafe_id' => null,
             'is_active' => true,
         ]);
 
@@ -99,7 +98,7 @@ class CafeRegistrationTest extends TestCase
             'password' => 'secret123',
         ])->assertCreated();
 
-        $this->assertDatabaseHas('app_user', [
+        $this->assertDatabaseHas('user', [
             'email' => 'newcafe@example.com',
             'mobile_number' => '0922222222',
         ]);
@@ -167,9 +166,9 @@ class CafeRegistrationTest extends TestCase
         $this->assertNotNull($cafe->image);
         Storage::disk('public')->assertExists($cafe->image);
 
-        $this->assertDatabaseHas('app_user', [
-            'mobile_number' => '0922222222',
+        $this->assertDatabaseHas('cafe_user', [
             'cafe_id' => $cafe->id,
+            'user_id' => AppUser::where('mobile_number', '0922222222')->value('id'),
         ]);
 
         // Profile now reports the cafe, but ordering stays blocked until approval.
@@ -265,7 +264,8 @@ class CafeRegistrationTest extends TestCase
             ->assertJsonPath('message', 'تم رفض الطلب بنجاح');
 
         $this->assertDatabaseMissing('cafe', ['name' => 'Rejected Cafe']);
-        $this->assertDatabaseHas('app_user', ['mobile_number' => '0966666666', 'cafe_id' => null]);
+        $this->assertDatabaseHas('user', ['mobile_number' => '0966666666']);
+        $this->assertDatabaseMissing('cafe_user', ['user_id' => AppUser::where('mobile_number', '0966666666')->value('id')]);
 
         // The owner can submit a new cafe.
         $this->postJson('/api/v1/cafe/profile', ['name' => 'Second Try'], $this->auth($token))->assertCreated();

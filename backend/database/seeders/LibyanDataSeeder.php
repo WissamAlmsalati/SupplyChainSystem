@@ -12,7 +12,6 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\Supplier;
 use App\Models\UserType;
 use App\Models\Warehouse;
 use Illuminate\Database\Seeder;
@@ -47,14 +46,6 @@ class LibyanDataSeeder extends Seeder
         'وجبات خفيفة',
     ];
 
-    private array $suppliers = [
-        'مورد البن الليبي',
-        'مورد الحليب والألبان',
-        'مورد الخبز والمعجنات',
-        'مورد الفواكه والخضروات',
-        'مورد اللحوم والدواجن',
-    ];
-
     private array $warehouses = [
         'مستودع طرابلس الرئيسي',
         'مستودع بنغازي',
@@ -85,19 +76,8 @@ class LibyanDataSeeder extends Seeder
             'name' => 'مدير النظام',
             'email' => 'admin@example.com',
             'user_type_id' => $adminType?->id,
-            'cafe_id' => null,
             'password_hash' => Hash::make('password'),
         ]);
-
-        // Suppliers
-        $supplierRecords = [];
-        foreach ($this->suppliers as $i => $name) {
-            $supplierRecords[] = Supplier::create([
-                'name' => $name,
-                'contact_info' => '09' . (10 + $i) . '1234567',
-                'is_active' => true,
-            ]);
-        }
 
         // Warehouses
         $warehouseRecords = [];
@@ -137,7 +117,6 @@ class LibyanDataSeeder extends Seeder
                 'name' => $productData['name'],
                 'description' => $productData['name'] . ' من أفضل المنتجات',
                 'category_id' => $categoryRecords[$productData['category']]->id,
-                'supplier_id' => $supplierRecords[$i % count($supplierRecords)]->id,
             ]);
 
             foreach (['صغير', 'كبير'] as $size) {
@@ -179,9 +158,8 @@ class LibyanDataSeeder extends Seeder
                 'name' => 'مدير ' . $cafeName,
                 'email' => 'cafe' . ($i + 1) . '@example.com',
                 'user_type_id' => $cafeType?->id,
-                'cafe_id' => $cafe->id,
                 'password_hash' => Hash::make('password'),
-            ]);
+            ])->syncCafeUser(['cafe_id' => $cafe->id]);
 
             // Main branch
             CafeBranch::create([

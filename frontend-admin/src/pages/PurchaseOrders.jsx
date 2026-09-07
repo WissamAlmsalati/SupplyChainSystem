@@ -6,13 +6,16 @@ import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { statusLabels, StatusBadge } from '../lib/status'
+import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = { warehouse_id: '', order_date: '', status: 'pending' }
 
 export default function PurchaseOrders() {
   const [search, setSearch] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/purchase-orders', { search })
-  const warehouses = useApiList('/warehouses')
+  const [filterWarehouse, setFilterWarehouse] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/purchase-orders', { search, warehouse_id: filterWarehouse, status: filterStatus })
+  const warehouses = useApiList('/warehouses?per_page=10000')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
@@ -76,6 +79,23 @@ export default function PurchaseOrders() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <FilterSelect
+            label="المستودع"
+            value={filterWarehouse}
+            onChange={setFilterWarehouse}
+            options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
+          />
+          <FilterSelect
+            label="الحالة"
+            value={filterStatus}
+            onChange={setFilterStatus}
+            options={[
+              { value: 'pending', label: 'قيد الانتظار' },
+              { value: 'ordered', label: 'تم الطلب' },
+              { value: 'received', label: 'مستلم' },
+              { value: 'cancelled', label: 'ملغي' },
+            ]}
           />
           {canCreate && <Button variant="primary" onClick={openCreate}>إضافة طلب شراء</Button>}
         </div>

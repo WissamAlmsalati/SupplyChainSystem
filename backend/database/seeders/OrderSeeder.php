@@ -11,7 +11,6 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\Supplier;
 use App\Models\UserType;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
@@ -54,9 +53,8 @@ class OrderSeeder extends Seeder
             Cafe::all()->each(function (Cafe $cafe) use ($cafeType) {
                 AppUser::factory()->count(rand(1, 2))->create([
                     'user_type_id' => $cafeType->id,
-                    'cafe_id' => $cafe->id,
                     'password_hash' => Hash::make('password'),
-                ]);
+                ])->each(fn (AppUser $user) => $user->syncCafeUser(['cafe_id' => $cafe->id]));
             });
         }
         $users = AppUser::where('user_type_id', $cafeType->id)->get();
@@ -66,16 +64,10 @@ class OrderSeeder extends Seeder
             if (Category::count() === 0) {
                 Category::factory()->count(5)->create();
             }
-            if (Supplier::count() === 0) {
-                Supplier::factory()->count(5)->create();
-            }
-
             $categories = Category::all();
-            $suppliers = Supplier::all();
 
             Product::factory()->count(15)->create([
                 'category_id' => fn () => $categories->random()->id,
-                'supplier_id' => fn () => $suppliers->random()->id,
             ])->each(function (Product $product) {
                 ProductVariant::factory()->count(rand(1, 3))->create([
                     'product_id' => $product->id,

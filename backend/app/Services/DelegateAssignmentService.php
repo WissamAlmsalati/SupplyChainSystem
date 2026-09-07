@@ -35,12 +35,14 @@ class DelegateAssignmentService
     public function nearestAvailableDelegate(float $latitude, float $longitude, ?int $excludeDelegateId = null): ?AppUser
     {
         $query = AppUser::query()
+            ->with('cafeUser')
             ->where('user_type_id', $this->delegateTypeId())
             ->where('is_active', true)
-            ->where('is_available', true)
-            ->whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->where('location_updated_at', '>=', Carbon::now()->subMinutes(30));
+            ->whereHas('cafeUser', fn ($q) => $q
+                ->where('is_available', true)
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->where('location_updated_at', '>=', Carbon::now()->subMinutes(30)));
 
         if ($excludeDelegateId) {
             $query->where('id', '!=', $excludeDelegateId);
@@ -48,7 +50,7 @@ class DelegateAssignmentService
 
         return $query
             ->get()
-            ->sortBy(fn (AppUser $d) => $this->distance($latitude, $longitude, $d->latitude, $d->longitude))
+            ->sortBy(fn (AppUser $d) => $this->distance($latitude, $longitude, (float) $d->cafeUser->latitude, (float) $d->cafeUser->longitude))
             ->first();
     }
 

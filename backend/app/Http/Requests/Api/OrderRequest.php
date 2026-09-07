@@ -16,9 +16,9 @@ class OrderRequest extends FormRequest
         $isStore = $this->isMethod('post');
 
         return [
-            'user_id' => [$isStore ? 'required' : 'sometimes', 'integer', 'exists:app_user,id'],
+            'user_id' => [$isStore ? 'required' : 'sometimes', 'integer', 'exists:user,id'],
             'branch_id' => [$isStore ? 'required' : 'sometimes', 'integer', 'exists:cafe_branch,id'],
-            'delegate_id' => ['nullable', 'integer', 'exists:app_user,id'],
+            'delegate_id' => ['nullable', 'integer', 'exists:user,id'],
             'delivery_zone_id' => ['nullable', 'integer', 'exists:delivery_zone,id'],
             'delivery_fee' => ['nullable', 'numeric', 'min:0'],
             'order_date' => ['nullable', 'date'],

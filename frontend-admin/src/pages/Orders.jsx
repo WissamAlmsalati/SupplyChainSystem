@@ -8,12 +8,16 @@ import QuickOrderModal from '../components/QuickOrderModal'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import { statusLabels, StatusBadge } from '../lib/status'
+import { FilterSelect, FilterDate } from '../components/ui/TableFilters'
 import client from '../api/client'
 
 export default function Orders() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const { items, loading, error, pagination, setPage, update, fetch } = useApiResource('/orders', { search })
+  const [filterStatus, setFilterStatus] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const { items, loading, error, pagination, setPage, update, fetch } = useApiResource('/orders', { search, status: filterStatus, date_from: dateFrom, date_to: dateTo })
   const delegates = useApiList('/delegates')
   const [statusOrder, setStatusOrder] = useState(null)
   const [statusModal, setStatusModal] = useState(false)
@@ -107,6 +111,22 @@ export default function Orders() {
             onChange={(e) => setSearch(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
+          <FilterSelect
+            label="الحالة"
+            value={filterStatus}
+            onChange={setFilterStatus}
+            options={[
+              { value: 'pending', label: 'قيد الانتظار' },
+              { value: 'confirmed', label: 'مؤكد' },
+              { value: 'processing', label: 'قيد التجهيز' },
+              { value: 'shipped', label: 'مشحون' },
+              { value: 'delivered', label: 'تم التوصيل' },
+              { value: 'completed', label: 'مكتمل' },
+              { value: 'cancelled', label: 'ملغي' },
+            ]}
+          />
+          <FilterDate label="من تاريخ" value={dateFrom} onChange={setDateFrom} />
+          <FilterDate label="إلى تاريخ" value={dateTo} onChange={setDateTo} />
           {canCreate && (
             <Button variant="primary" onClick={() => setQuickOpen(true)}>
               + طلب جديد

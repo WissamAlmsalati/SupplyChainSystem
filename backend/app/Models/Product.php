@@ -17,7 +17,6 @@ class Product extends Model
 
     protected $fillable = [
         'category_id',
-        'supplier_id',
         'name',
         'brand',
         'description',
@@ -35,17 +34,12 @@ class Product extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? asset('storage/' . $this->image) : null;
+        return $this->image ? '/storage/' . ltrim($this->image, '/') : null;
     }
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
-    }
-
-    public function supplier(): BelongsTo
-    {
-        return $this->belongsTo(Supplier::class);
     }
 
     public function variants(): HasMany

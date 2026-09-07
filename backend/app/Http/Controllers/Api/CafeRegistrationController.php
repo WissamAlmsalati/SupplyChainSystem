@@ -36,7 +36,7 @@ class CafeRegistrationController extends BaseApiController
         $this->ensureAdmin($request);
 
         // Keep the account so the owner can log in and submit the cafe again.
-        $cafe->appUsers()->update(['cafe_id' => null]);
+        $cafe->cafeUsers()->delete();
         $cafe->delete();
 
         return $this->jsonResponse(['message' => 'تم رفض الطلب بنجاح']);

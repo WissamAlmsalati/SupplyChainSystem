@@ -19,7 +19,6 @@ class CafeSeeder extends Seeder
             'name' => 'Default Admin',
             'email' => 'admin@example.com',
             'user_type_id' => $adminType?->id,
-            'cafe_id' => null,
             'password_hash' => Hash::make('password'),
         ]);
 
@@ -31,9 +30,8 @@ class CafeSeeder extends Seeder
             ->each(function (Cafe $cafe) use ($cafeType) {
                 AppUser::factory()->count(2)->create([
                     'user_type_id' => $cafeType?->id,
-                    'cafe_id' => $cafe->id,
                     'password_hash' => Hash::make('password'),
-                ]);
+                ])->each(fn (AppUser $user) => $user->syncCafeUser(['cafe_id' => $cafe->id]));
             });
     }
 }

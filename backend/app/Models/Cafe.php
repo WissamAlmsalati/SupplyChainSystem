@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cafe extends Model
@@ -39,7 +40,7 @@ class Cafe extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? asset('storage/' . $this->image) : null;
+        return $this->image ? '/storage/' . ltrim($this->image, '/') : null;
     }
 
     public function createdByAdmin(): BelongsTo
@@ -47,9 +48,15 @@ class Cafe extends Model
         return $this->belongsTo(AppUser::class, 'created_by_admin_id');
     }
 
-    public function appUsers(): HasMany
+    public function cafeUsers(): HasMany
     {
-        return $this->hasMany(AppUser::class);
+        return $this->hasMany(CafeUser::class);
+    }
+
+    public function appUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(AppUser::class, 'cafe_user', 'cafe_id', 'user_id')
+            ->withPivot(['latitude', 'longitude', 'is_available', 'location_updated_at']);
     }
 
     public function branches(): HasMany

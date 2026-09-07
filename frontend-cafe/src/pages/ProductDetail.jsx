@@ -128,12 +128,30 @@ export default function ProductDetail() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-xl border border-border bg-surface">
-          {displayImage ? (
-            <img src={displayImage} alt={product.name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex aspect-square items-center justify-center text-muted">
-              لا توجد صورة
+        <div>
+          <div className="overflow-hidden rounded-xl border border-border bg-surface">
+            {displayImage ? (
+              <img src={displayImage} alt={product.name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex aspect-square items-center justify-center text-muted">
+                لا توجد صورة
+              </div>
+            )}
+          </div>
+          {variantImages.length > 1 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {variantImages.map((url) => (
+                <button
+                  key={url}
+                  type="button"
+                  onClick={() => setDisplayImage(url)}
+                  className={`overflow-hidden rounded-lg border-2 transition ${
+                    displayImage === url ? 'border-primary' : 'border-transparent hover:border-border'
+                  }`}
+                >
+                  <img src={url} alt="" className="h-16 w-16 object-cover" />
+                </button>
+              ))}
             </div>
           )}
         </div>

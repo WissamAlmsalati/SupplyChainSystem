@@ -7,13 +7,15 @@ import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
+import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = { name: '', contact_info: '', is_active: true }
 
 export default function Cafes() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/cafes', { search })
+  const [filterActive, setFilterActive] = useState('')
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/cafes', { search, is_active: filterActive })
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [imageFile, setImageFile] = useState(null)
@@ -106,6 +108,15 @@ export default function Cafes() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <FilterSelect
+            label="الحالة"
+            value={filterActive}
+            onChange={setFilterActive}
+            options={[
+              { value: '1', label: 'نشط' },
+              { value: '0', label: 'معطل' },
+            ]}
           />
           {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مقهى</Button>}
         </div>

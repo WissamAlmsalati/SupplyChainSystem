@@ -16,16 +16,10 @@ class PurchaseOrder extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'supplier_id',
         'warehouse_id',
         'order_date',
         'status',
     ];
-
-    public function supplier(): BelongsTo
-    {
-        return $this->belongsTo(Supplier::class);
-    }
 
     public function warehouse(): BelongsTo
     {

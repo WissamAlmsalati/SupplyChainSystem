@@ -1,2 +1,17 @@
 include:
   - backend/docker-compose.yml
+
+services:
+  # One container for both frontends: admin at /, cafe at /cafe/
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    container_name: cafe_supply_chain_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - cafe_network
+    depends_on:
+      - nginx

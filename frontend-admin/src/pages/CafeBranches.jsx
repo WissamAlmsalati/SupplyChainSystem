@@ -10,6 +10,7 @@ import MapPicker from '../components/MapPicker'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
+import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = {
   cafe_id: '',
@@ -28,8 +29,10 @@ export default function CafeBranches() {
   const { user } = useAuth()
   const isCafe = user?.user_type?.name === 'cafe'
   const [search, setSearch] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/cafe-branches', { search })
-  const cafes = useApiList('/cafes')
+  const [filterCafe, setFilterCafe] = useState('')
+  const [filterActive, setFilterActive] = useState('')
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/cafe-branches', { search, cafe_id: filterCafe, is_active: filterActive })
+  const cafes = useApiList('/cafes?per_page=10000')
   const zones = useApiList('/delivery-zones?per_page=10000')
   const [modal, setModal] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -133,6 +136,21 @@ export default function CafeBranches() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <FilterSelect
+            label="المقهى"
+            value={filterCafe}
+            onChange={setFilterCafe}
+            options={cafes.map((c) => ({ value: c.id, label: c.name }))}
+          />
+          <FilterSelect
+            label="الحالة"
+            value={filterActive}
+            onChange={setFilterActive}
+            options={[
+              { value: '1', label: 'نشط' },
+              { value: '0', label: 'معطل' },
+            ]}
           />
           {canCreate && <Button variant="primary" onClick={openCreate}>إضافة فرع</Button>}
         </div>

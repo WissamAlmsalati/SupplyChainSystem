@@ -29,7 +29,7 @@ class NotificationController extends BaseApiController
             $query->whereNull('read_at');
         }
 
-        return $this->jsonResponse($query->paginate($request->integer('per_page', 15)));
+        return $this->jsonResponse($query->orderByDesc('id')->paginate($request->integer('per_page', 15)));
     }
 
     /**
@@ -47,6 +47,24 @@ class NotificationController extends BaseApiController
             ->count();
 
         return $this->jsonResponse(['count' => $count]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/notifications/{id}",
+     *     tags={"Notifications"},
+     *     summary="Get a single notification",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Notification details")
+     * )
+     */
+    public function show(Notification $notification): JsonResponse
+    {
+        if ($notification->user_id !== auth()->id()) {
+            return $this->jsonResponse(['message' => 'غير مصرح'], 403);
+        }
+
+        return $this->jsonResponse($notification);
     }
 
     /**

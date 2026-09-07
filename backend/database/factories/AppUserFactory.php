@@ -19,7 +19,6 @@ class AppUserFactory extends Factory
             'mobile_number' => $this->faker->unique()->numerify('0##########'),
             'password_hash' => Hash::make('password'),
             'user_type_id' => UserType::factory(),
-            'cafe_id' => null,
             'is_active' => true,
         ];
     }

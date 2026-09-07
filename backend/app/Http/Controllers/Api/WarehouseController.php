@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\Api\WarehouseRequest;
 use App\Models\DeliveryZone;
+use App\Models\PremiumFeature;
 use App\Models\Warehouse;
 use App\Services\H3Service;
 use Illuminate\Http\JsonResponse;
@@ -78,7 +79,7 @@ class WarehouseController extends BaseApiController
             });
         }
 
-        return $this->jsonResponse($query->paginate(15));
+        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
     }
 
     /**
@@ -93,6 +94,12 @@ class WarehouseController extends BaseApiController
      */
     public function store(WarehouseRequest $request): JsonResponse
     {
+        // ponytail: add_inventory feature now gates warehouse creation (not inventory rows);
+        // frontend hides the button, this guard blocks direct API calls.
+        if (!PremiumFeature::isActive('add_inventory')) {
+            return $this->jsonResponse(['message' => 'إضافة مستودع جديد غير متاحة — الميزة معطلة'], 403);
+        }
+
         $data = $this->resolveHex($request->validated());
         $hexIds = $data['hex_ids'] ?? [];
         unset($data['hex_ids']);

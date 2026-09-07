@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useApiResource, useApiList } from '../hooks/useApiResource'
+import { useApiResource, useApiList, usePremiumFeatureActive } from '../hooks/useApiResource'
 import { useModulePermission } from '../hooks/usePermission'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
@@ -24,6 +24,7 @@ export default function Warehouses() {
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
   const { canCreate, canEdit, canDelete } = useModulePermission('WAREHOUSES')
+  const canAddWarehouse = usePremiumFeatureActive('add_inventory')
 
   const openCreate = () => {
     setForm(initial)
@@ -91,7 +92,7 @@ export default function Warehouses() {
             onChange={(e) => setSearch(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-          {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مستودع</Button>}
+          {canCreate && canAddWarehouse && <Button variant="primary" onClick={openCreate}>إضافة مستودع</Button>}
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}

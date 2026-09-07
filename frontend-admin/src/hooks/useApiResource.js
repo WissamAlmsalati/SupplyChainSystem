@@ -138,3 +138,56 @@ export function useApiList(path) {
 
   return items
 }
+
+const PREMIUM_FEATURES_CACHE_KEY = 'premium-features-cache'
+
+export function usePremiumFeatureActive(code) {
+  // ponytail: localStorage cache kills the first-paint flicker — we render the
+  // last-known state instantly, then revalidate in the background and update.
+  const [features, setFeatures] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem(PREMIUM_FEATURES_CACHE_KEY) || 'null')
+      return Array.isArray(cached) ? cached : null
+    } catch {
+      return null
+    }
+  })
+
+  useEffect(() => {
+    let active = true
+    const apply = (items) => {
+      try {
+        localStorage.setItem(PREMIUM_FEATURES_CACHE_KEY, JSON.stringify(items))
+      } catch {}
+      if (active) setFeatures(items)
+    }
+    const refresh = () => {
+      client.get('/premium-features')
+        .then((res) => {
+          const payload = res.data
+          apply(Array.isArray(payload) ? payload : payload?.data ?? [])
+        })
+        .catch(() => {})
+    }
+    // another tab (e.g. admin toggling a feature) updates the shared cache —
+    // the storage event syncs this tab instantly, no polling needed
+    const onStorage = (e) => {
+      if (e.key !== PREMIUM_FEATURES_CACHE_KEY) return
+      try {
+        const items = JSON.parse(e.newValue || 'null')
+        if (Array.isArray(items) && active) setFeatures(items)
+      } catch {}
+    }
+    refresh()
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('focus', refresh)
+    return () => {
+      active = false
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [])
+
+  if (features === null) return null
+  return features.some((feature) => feature.code === code && feature.is_active)
+}

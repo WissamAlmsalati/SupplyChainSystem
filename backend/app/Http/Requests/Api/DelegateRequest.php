@@ -17,8 +17,8 @@ class DelegateRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'string', 'email', 'max:150', 'unique:app_user,email' . ($delegateId ? ",$delegateId" : '')],
-            'mobile_number' => ['nullable', 'string', 'max:20', 'unique:app_user,mobile_number' . ($delegateId ? ",$delegateId" : '')],
+            'email' => ['required', 'string', 'email', 'max:150', 'unique:user,email' . ($delegateId ? ",$delegateId" : '')],
+            'mobile_number' => ['nullable', 'string', 'max:20', 'unique:user,mobile_number' . ($delegateId ? ",$delegateId" : '')],
             'password' => [$delegateId ? 'nullable' : 'required', 'string', 'min:6'],
             'cafe_id' => ['nullable', 'integer', 'exists:cafe,id'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],

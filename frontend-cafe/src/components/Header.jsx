@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { usePremiumFeatureActive } from '../hooks/usePremiumFeatureActive'
 import { useState } from 'react'
 
 function MenuIcon({ className }) {
@@ -45,6 +46,7 @@ function LogoutIcon({ className }) {
 
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth()
+  const branchesFeature = usePremiumFeatureActive('cafe_branches')
   const { itemCount } = useCart()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
@@ -131,13 +133,15 @@ export default function Header({ onMenuClick }) {
                 >
                   طلباتي
                 </Link>
-                <Link
-                  to="/branches"
-                  onClick={() => setProfileOpen(false)}
-                  className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-background"
-                >
-                  فروعي
-                </Link>
+                {branchesFeature && (
+                  <Link
+                    to="/branches"
+                    onClick={() => setProfileOpen(false)}
+                    className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-background"
+                  >
+                    فروعي
+                  </Link>
+                )}
                 <hr className="my-1 border-border" />
                 <button
                   onClick={() => {

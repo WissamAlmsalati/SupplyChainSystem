@@ -20,7 +20,6 @@ class PermissionSeeder extends Seeder
             'inventory',
             'orders',
             'purchase_orders',
-            'suppliers',
             'warehouses',
             'delivery_zones',
             'users',

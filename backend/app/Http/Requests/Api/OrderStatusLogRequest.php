@@ -16,7 +16,7 @@ class OrderStatusLogRequest extends FormRequest
         return [
             'order_id' => ['required', 'integer', 'exists:order,id'],
             'status' => ['required', 'string', 'max:30'],
-            'changed_by' => ['nullable', 'integer', 'exists:app_user,id'],
+            'changed_by' => ['nullable', 'integer', 'exists:user,id'],
             'changed_at' => ['nullable', 'date'],
         ];
     }

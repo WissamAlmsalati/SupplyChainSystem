@@ -24,7 +24,6 @@ const moduleLabels = {
   inventory: 'المخزون',
   orders: 'الطلبات',
   purchase_orders: 'طلبات الشراء',
-  suppliers: 'الموردون',
   warehouses: 'المستودعات',
   delivery_zones: 'مناطق التوصيل',
   users: 'المستخدمين',

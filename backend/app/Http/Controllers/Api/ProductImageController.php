@@ -14,7 +14,7 @@ class ProductImageController extends BaseApiController
 {
     public function index(): JsonResponse
     {
-        return $this->jsonResponse(ProductImage::with('productVariant')->paginate(15));
+        return $this->jsonResponse(ProductImage::with('productVariant')->orderByDesc('id')->paginate(15));
     }
 
     public function store(ProductImageRequest $request): JsonResponse

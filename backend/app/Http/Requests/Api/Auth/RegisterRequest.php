@@ -15,9 +15,9 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'string', 'email', 'max:150', 'unique:app_user,email'],
+            'email' => ['required', 'string', 'email', 'max:150', 'unique:user,email'],
             'password' => ['required', 'string', 'min:6'],
-            'mobile_number' => ['nullable', 'string', 'max:20', 'unique:app_user,mobile_number'],
+            'mobile_number' => ['nullable', 'string', 'max:20', 'unique:user,mobile_number'],
             'cafe_id' => ['nullable', 'integer', 'exists:cafe,id'],
         ];
     }

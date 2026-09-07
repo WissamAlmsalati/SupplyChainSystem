@@ -4,7 +4,7 @@ namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class SupplierRequest extends FormRequest
+class PromoRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -14,8 +14,10 @@ class SupplierRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:150'],
-            'contact_info' => ['nullable', 'string', 'max:200'],
+            'image' => ['nullable', 'image', 'max:2048'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'link' => ['nullable', 'string', 'max:500'],
+            'show_description' => ['boolean'],
             'is_active' => ['boolean'],
         ];
     }

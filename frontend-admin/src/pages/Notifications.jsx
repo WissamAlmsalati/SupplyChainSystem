@@ -61,8 +61,7 @@ export default function Notifications() {
   }
 
   const handleClick = (n) => {
-    if (!n.read_at) markRead(n.id)
-    if (n.link) navigate(n.link)
+    navigate(`/notifications/${n.id}`)
   }
 
   if (loading) return <PageSkeleton />

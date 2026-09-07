@@ -7,6 +7,7 @@ import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import QuickOrderModal from '../components/QuickOrderModal'
 import { Skeleton, SkeletonCard } from '../components/ui/Skeleton'
+import { usePremiumFeatureActive } from '../hooks/useApiResource'
 import { statusLabels, statusColors, StatusBadge } from '../lib/status'
 
 function formatMoney(value) {
@@ -32,6 +33,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [quickOpen, setQuickOpen] = useState(false)
   const { canCreate: canCreateOrder } = useModulePermission('ORDERS')
+  const branchesFeature = usePremiumFeatureActive('cafe_branches')
 
   const load = async () => {
     setLoading(true)
@@ -98,7 +100,7 @@ export default function Dashboard() {
       <QuickOrderModal open={quickOpen} onClose={() => setQuickOpen(false)} onCreated={load} />
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${branchesFeature ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
         <StatCard label="إجمالي الطلبات" value={stats.orders} />
         <StatCard label="المنتجات" value={stats.products} />
         <StatCard label="إجمالي الإيرادات" value={`${formatMoney(stats.revenue)} د.ل`} />
@@ -107,7 +109,7 @@ export default function Dashboard() {
           value={stats.lowStock}
           tone={stats.lowStock > 0 ? 'danger' : 'default'}
         />
-        <StatCard label="فروع المقاهي" value={stats.branches} />
+        {branchesFeature && <StatCard label="فروع المقاهي" value={stats.branches} />}
       </div>
 
       {/* Charts */}

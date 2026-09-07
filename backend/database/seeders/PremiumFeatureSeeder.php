@@ -13,6 +13,7 @@ class PremiumFeatureSeeder extends Seeder
             ['code' => 'add_inventory', 'name' => 'إضافة مخزون', 'is_active' => false],
             ['code' => 'add_role', 'name' => 'إضافة دور', 'is_active' => false],
             ['code' => 'cafe_auto_approve', 'name' => 'تفعيل تلقائي للمقاهي', 'is_active' => false],
+            ['code' => 'cafe_branches', 'name' => 'فروع المقاهي', 'is_active' => false],
         ];
 
         foreach ($features as $feature) {

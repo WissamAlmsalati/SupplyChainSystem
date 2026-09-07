@@ -88,7 +88,6 @@ export default function ActivityLogs() {
           <option value="Category">تصنيف</option>
           <option value="Product">منتج</option>
           <option value="ProductVariant">متغير منتج</option>
-          <option value="Supplier">مورد</option>
           <option value="Warehouse">مستودع</option>
           <option value="Inventory">مخزون</option>
           <option value="Order">طلب</option>

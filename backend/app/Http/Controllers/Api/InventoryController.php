@@ -32,7 +32,11 @@ class InventoryController extends BaseApiController
             });
         }
 
-        return $this->jsonResponse($query->paginate(15));
+        if ($request->filled('warehouse_id')) {
+            $query->where('warehouse_id', $request->integer('warehouse_id'));
+        }
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
     }
 
     /**

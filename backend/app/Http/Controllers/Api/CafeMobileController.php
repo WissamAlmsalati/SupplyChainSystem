@@ -304,6 +304,10 @@ class CafeMobileController extends BaseApiController
      */
     public function storeBranch(CafeBranchRequest $request): JsonResponse
     {
+        if (!PremiumFeature::isActive('cafe_branches')) {
+            return $this->jsonResponse(['message' => 'إضافة فروع غير متاحة — الميزة معطلة'], 403);
+        }
+
         $data = $request->validated();
         $data['cafe_id'] = $this->cafeId();
         $branch = CafeBranch::create($data);
@@ -420,7 +424,7 @@ class CafeMobileController extends BaseApiController
             'is_active' => $autoApprove,
         ]);
 
-        $user->update(['cafe_id' => $cafe->id]);
+        $user->syncCafeUser(['cafe_id' => $cafe->id]);
 
         if ($autoApprove) {
             Notification::notifyAdmins(
@@ -509,12 +513,14 @@ class CafeMobileController extends BaseApiController
      */
     public function products(Request $request): JsonResponse
     {
-        $query = Product::with(['variants.images']);
+        $query = Product::with(['variants' => fn ($q) => $q->where('is_active', true)->orderBy('id'), 'variants.images']);
 
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->integer('category_id'));
         }
 
+        // ponytail: mobile list cards only need name/price/image — full description
+        // and variants live in show() and /variants (quick-add uses default_variant_id).
         $products = $query->get()->map(function (Product $product) {
             $primaryImage = $product->variants
                 ->flatMap(fn ($v) => $v->images)
@@ -529,13 +535,10 @@ class CafeMobileController extends BaseApiController
             return [
                 'id' => $product->id,
                 'name' => $product->name,
-                'brand' => $product->brand,
-                'tags' => $product->tags,
-                'description' => $product->description,
-                'category_id' => $product->category_id,
                 'image_url' => $product->image_url ?: $primaryImage?->image_url,
                 'min_price' => $product->variants->min(fn ($v) => $v->sell_price ?? $v->price),
-                'variants' => $product->variants,
+                'category_id' => $product->category_id,
+                'default_variant_id' => $product->variants->first()?->id,
             ];
         });
 
@@ -554,8 +557,16 @@ class CafeMobileController extends BaseApiController
      */
     public function showProduct(int $id): JsonResponse
     {
-        $product = Product::with(['category', 'variants.images', 'supplier'])->findOrFail($id);
-        return $this->jsonResponse($product);
+        $product = Product::with(['category', 'variants.images'])->findOrFail($id);
+        $primaryImage = $product->variants->flatMap(fn ($v) => $v->images)->first(fn ($img) => $img->is_primary)
+            ?? $product->variants->flatMap(fn ($v) => $v->images)->first();
+        return $this->jsonResponse([
+            'id' => $product->id,
+            'name' => $product->name,
+            'description' => $product->description,
+            'image_url' => $product->image_url ?: $primaryImage?->image_url,
+            'category' => $product->category,
+        ]);
     }
 
     /**

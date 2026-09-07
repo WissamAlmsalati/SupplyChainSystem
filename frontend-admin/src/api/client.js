@@ -30,7 +30,11 @@ client.interceptors.response.use(
 client.postForm = (path, formData) =>
   client.post(path, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
 
-client.putForm = (path, formData) =>
-  client.put(path, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+// ponytail: PHP only parses multipart bodies on POST — real PUT leaves $_FILES
+// empty, so spoof the method (Laravel honors _method) to keep file uploads working.
+client.putForm = (path, formData) => {
+  formData.append('_method', 'PUT')
+  return client.post(path, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+}
 
 export default client

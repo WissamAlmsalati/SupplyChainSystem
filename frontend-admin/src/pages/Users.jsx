@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
+import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = {
   name: '',
@@ -21,8 +22,10 @@ const initial = {
 export default function Users() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/users', { search })
-  const userTypes = useApiList('/user-types')
+  const [filterUserType, setFilterUserType] = useState('')
+  const [filterActive, setFilterActive] = useState('')
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/users', { search, user_type_id: filterUserType, is_active: filterActive })
+  const userTypes = useApiList('/user-types?per_page=10000')
   const cafes = useApiList('/cafes')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
@@ -94,6 +97,21 @@ export default function Users() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <FilterSelect
+            label="نوع المستخدم"
+            value={filterUserType}
+            onChange={setFilterUserType}
+            options={userTypes.map((t) => ({ value: t.id, label: t.name }))}
+          />
+          <FilterSelect
+            label="الحالة"
+            value={filterActive}
+            onChange={setFilterActive}
+            options={[
+              { value: '1', label: 'نشط' },
+              { value: '0', label: 'معطل' },
+            ]}
           />
           {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مستخدم</Button>}
         </div>

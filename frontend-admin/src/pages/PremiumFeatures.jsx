@@ -13,7 +13,11 @@ export default function PremiumFeatures() {
     setLoading(true)
     try {
       const res = await client.get('/premium-features')
-      setFeatures(res.data?.data ?? res.data ?? [])
+      const items = res.data?.data ?? res.data ?? []
+      setFeatures(items)
+      try {
+        localStorage.setItem('premium-features-cache', JSON.stringify(items))
+      } catch {}
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تحميل الميزات')
     } finally {
@@ -29,9 +33,12 @@ export default function PremiumFeatures() {
     setSaving(feature.id)
     try {
       await client.put(`/premium-features/${feature.id}`, { is_active: !feature.is_active })
-      setFeatures((prev) =>
-        prev.map((f) => (f.id === feature.id ? { ...f, is_active: !f.is_active } : f))
-      )
+      const updated = features.map((f) => (f.id === feature.id ? { ...f, is_active: !f.is_active } : f))
+      setFeatures(updated)
+      // keep the flicker-cache in sync so other pages/tabs render the new state instantly
+      try {
+        localStorage.setItem('premium-features-cache', JSON.stringify(updated))
+      } catch {}
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تحديث الميزة')
     } finally {

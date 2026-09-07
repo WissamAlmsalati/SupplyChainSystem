@@ -13,7 +13,7 @@ class OrderItemController extends BaseApiController
 {
     public function index(): JsonResponse
     {
-        return $this->jsonResponse(OrderItem::with(['order', 'productVariant'])->paginate(15));
+        return $this->jsonResponse(OrderItem::with(['order', 'productVariant'])->orderByDesc('id')->paginate(15));
     }
 
     public function store(OrderItemRequest $request): JsonResponse

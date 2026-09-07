@@ -13,7 +13,7 @@ class OrderStatusLogController extends BaseApiController
 {
     public function index(): JsonResponse
     {
-        return $this->jsonResponse(OrderStatusLog::with(['order', 'changedBy'])->paginate(15));
+        return $this->jsonResponse(OrderStatusLog::with(['order', 'changedBy'])->orderByDesc('id')->paginate(15));
     }
 
     public function store(OrderStatusLogRequest $request): JsonResponse

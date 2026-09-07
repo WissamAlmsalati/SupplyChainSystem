@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
+import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = {
   name: '',
@@ -22,7 +23,9 @@ const initial = {
 export default function Delegates() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/delegates', { search })
+  const [filterActive, setFilterActive] = useState('')
+  const [filterAvailable, setFilterAvailable] = useState('')
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/delegates', { search, is_active: filterActive, is_available: filterAvailable })
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
@@ -104,6 +107,24 @@ export default function Delegates() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <FilterSelect
+            label="الحالة"
+            value={filterActive}
+            onChange={setFilterActive}
+            options={[
+              { value: '1', label: 'نشط' },
+              { value: '0', label: 'معطل' },
+            ]}
+          />
+          <FilterSelect
+            label="التوفر"
+            value={filterAvailable}
+            onChange={setFilterAvailable}
+            options={[
+              { value: '1', label: 'متاح' },
+              { value: '0', label: 'غير متاح' },
+            ]}
           />
           {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مندوب</Button>}
         </div>

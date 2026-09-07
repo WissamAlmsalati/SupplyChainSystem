@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import client from '../api/client'
 import MapPicker from '../components/MapPicker'
+import { usePremiumFeatureActive } from '../hooks/usePremiumFeatureActive'
 
 const initial = {
   name: '',
@@ -23,6 +24,7 @@ export default function Branches() {
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
+  const branchesFeature = usePremiumFeatureActive('cafe_branches')
 
   const load = async () => {
     setLoading(true)
@@ -125,12 +127,14 @@ export default function Branches() {
           <h1 className="text-2xl font-extrabold text-foreground">فروعي</h1>
           <p className="mt-1 text-muted">إدارة فروع مقهاك</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-        >
-          + إضافة فرع
-        </button>
+        {branchesFeature && (
+          <button
+            onClick={openCreate}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            + إضافة فرع
+          </button>
+        )}
       </header>
 
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}

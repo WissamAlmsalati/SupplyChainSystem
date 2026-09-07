@@ -46,20 +46,10 @@ namespace App\OpenApi;
  * )
  *
  * @OA\Schema(
- *     schema="SupplierRequest",
- *     type="object",
- *     required={"name"},
- *     @OA\Property(property="name", type="string", maxLength=150),
- *     @OA\Property(property="contact_info", type="string", nullable=true, maxLength=200),
- *     @OA\Property(property="is_active", type="boolean"),
- * )
- *
- * @OA\Schema(
  *     schema="ProductRequest",
  *     type="object",
  *     required={"category_id", "name"},
  *     @OA\Property(property="category_id", type="integer"),
- *     @OA\Property(property="supplier_id", type="integer", nullable=true),
  *     @OA\Property(property="name", type="string", maxLength=150),
  *     @OA\Property(property="description", type="string", nullable=true),
  * )
@@ -211,8 +201,7 @@ namespace App\OpenApi;
  * @OA\Schema(
  *     schema="PurchaseOrderRequest",
  *     type="object",
- *     required={"supplier_id", "warehouse_id", "status"},
- *     @OA\Property(property="supplier_id", type="integer"),
+ *     required={"warehouse_id", "status"},
  *     @OA\Property(property="warehouse_id", type="integer"),
  *     @OA\Property(property="order_date", type="string", format="date-time"),
  *     @OA\Property(property="status", type="string", maxLength=20),

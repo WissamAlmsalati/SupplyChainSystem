@@ -30,7 +30,13 @@ class CategoryController extends BaseApiController
             $query->where('name', 'like', "%{$search}%");
         }
 
-        return $this->jsonResponse($query->paginate(15));
+        if ($request->input('parent') === 'root') {
+            $query->whereNull('parent_category_id');
+        } elseif ($request->input('parent') === 'sub') {
+            $query->whereNotNull('parent_category_id');
+        }
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
     }
 
     /**

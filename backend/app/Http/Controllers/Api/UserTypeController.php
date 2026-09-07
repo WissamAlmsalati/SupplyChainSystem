@@ -21,7 +21,7 @@ class UserTypeController extends BaseApiController
             $query->where('name', 'like', "%{$search}%");
         }
 
-        return $this->jsonResponse($query->paginate(15));
+        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
     }
 
     public function store(UserTypeRequest $request): JsonResponse

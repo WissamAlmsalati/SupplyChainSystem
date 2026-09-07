@@ -15,8 +15,8 @@ class CafeRegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:100'],
-            'phone_number' => ['required', 'string', 'max:20', 'unique:app_user,mobile_number'],
-            'email' => ['nullable', 'string', 'email', 'max:150', 'unique:app_user,email'],
+            'phone_number' => ['required', 'string', 'max:20', 'unique:user,mobile_number'],
+            'email' => ['nullable', 'string', 'email', 'max:150', 'unique:user,email'],
             'password' => ['required', 'string', 'min:6'],
         ];
     }

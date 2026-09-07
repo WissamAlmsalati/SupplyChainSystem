@@ -18,9 +18,8 @@ export default function ProductDetail() {
   const [imageFiles, setImageFiles] = useState({})
   const [imagePreviews, setImagePreviews] = useState({})
   const [saving, setSaving] = useState({})
-  const [variantEdits, setVariantEdits] = useState({})
-  const [warehouses, setWarehouses] = useState([])
   const [inventoryModal, setInventoryModal] = useState(null)
+  const [warehouses, setWarehouses] = useState([])
   const [inventoryForm, setInventoryForm] = useState({ warehouse_id: '', quantity: '' })
   const { canCreate: canCreateImage, canEdit: canEditImage, canDelete: canDeleteImage } = useModulePermission('PRODUCT_IMAGES')
   const { canEdit: canEditProduct } = useModulePermission('PRODUCTS')
@@ -38,20 +37,6 @@ export default function ProductDetail() {
         const data = res.data?.data ?? res.data
         setProduct(data)
         setWarehouses(whRes.data?.data ?? whRes.data ?? [])
-        const edits = {}
-        data.variants?.forEach((v) => {
-          edits[v.id] = {
-            sku: v.sku ?? '',
-            barcode: v.barcode ?? '',
-            sell_price: v.sell_price ?? '',
-            cost_price: v.cost_price ?? '',
-            stock_quantity: v.stock_quantity ?? '',
-            status: v.status ?? '',
-            manufacturing_year: v.manufacturing_year ?? '',
-            expiry_date: v.expiry_date ?? '',
-          }
-        })
-        setVariantEdits(edits)
       } catch (err) {
         setError(err.response?.data?.message || 'فشل تحميل بيانات المنتج')
       } finally {
@@ -155,38 +140,6 @@ export default function ProductDetail() {
     }
   }
 
-  const updateVariantEdit = (variantId, field, value) => {
-    setVariantEdits((prev) => ({
-      ...prev,
-      [variantId]: { ...prev[variantId], [field]: value },
-    }))
-  }
-
-  const saveVariantInfo = async (variantId) => {
-    const edit = variantEdits[variantId]
-    setSaving((prev) => ({ ...prev, [variantId]: true }))
-    try {
-      await client.put(`/product-variants/${variantId}`, {
-        product_id: Number(id),
-        sku: edit.sku || null,
-        attribute_value: product.variants.find((v) => v.id === variantId)?.attribute_value,
-        price: product.variants.find((v) => v.id === variantId)?.price,
-        sell_price: edit.sell_price ? Number(edit.sell_price) : null,
-        cost_price: edit.cost_price ? Number(edit.cost_price) : null,
-        barcode: edit.barcode || null,
-        stock_quantity: edit.stock_quantity ? Number(edit.stock_quantity) : null,
-        status: edit.status || null,
-        manufacturing_year: edit.manufacturing_year ? Number(edit.manufacturing_year) : null,
-        expiry_date: edit.expiry_date || null,
-      })
-      await refresh()
-    } catch (err) {
-      setError(err.response?.data?.message || 'فشل حفظ بيانات المتغير')
-    } finally {
-      setSaving((prev) => ({ ...prev, [variantId]: false }))
-    }
-  }
-
   const setPrimary = async (imageId, variantId) => {
     try {
       const variant = product.variants.find((v) => v.id === variantId)
@@ -232,10 +185,6 @@ export default function ProductDetail() {
               <span className="text-sm text-muted">التصنيف:</span>
               <div className="font-medium text-foreground">{product.category?.name ?? '-'}</div>
             </div>
-            <div>
-              <span className="text-sm text-muted">المورد:</span>
-              <div className="font-medium text-foreground">{product.supplier?.name ?? '-'}</div>
-            </div>
             <div className="sm:col-span-2">
               <span className="text-sm text-muted">الوصف:</span>
               <div className="text-foreground">{product.description ?? '-'}</div>
@@ -270,118 +219,51 @@ export default function ProductDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-muted">SKU</label>
-                  <input
-                    type="text"
-                    value={variantEdits[variant.id]?.sku ?? ''}
-                    onChange={(e) => updateVariantEdit(variant.id, 'sku', e.target.value)}
-                    disabled={!canEditProduct}
-                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-muted">Barcode</label>
-                  <input
-                    type="text"
-                    value={variantEdits[variant.id]?.barcode ?? ''}
-                    onChange={(e) => updateVariantEdit(variant.id, 'barcode', e.target.value)}
-                    disabled={!canEditProduct}
-                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-muted">سعر البيع</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={variantEdits[variant.id]?.sell_price ?? ''}
-                    onChange={(e) => updateVariantEdit(variant.id, 'sell_price', e.target.value)}
-                    disabled={!canEditProduct}
-                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-muted">سعر التكلفة</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={variantEdits[variant.id]?.cost_price ?? ''}
-                    onChange={(e) => updateVariantEdit(variant.id, 'cost_price', e.target.value)}
-                    disabled={!canEditProduct}
-                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-muted">كمية المخزون</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={variantEdits[variant.id]?.stock_quantity ?? ''}
-                    onChange={(e) => updateVariantEdit(variant.id, 'stock_quantity', e.target.value)}
-                    disabled={!canEditProduct}
-                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-muted">الحالة</label>
-                  <input
-                    type="text"
-                    value={variantEdits[variant.id]?.status ?? ''}
-                    onChange={(e) => updateVariantEdit(variant.id, 'status', e.target.value)}
-                    disabled={!canEditProduct}
-                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-muted">سنة التصنيع</label>
-                  <input
-                    type="number"
-                    min="1900"
-                    max="2100"
-                    value={variantEdits[variant.id]?.manufacturing_year ?? ''}
-                    onChange={(e) => updateVariantEdit(variant.id, 'manufacturing_year', e.target.value)}
-                    disabled={!canEditProduct}
-                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-muted">تاريخ انتهاء الصلاحية</label>
-                  <input
-                    type="date"
-                    value={variantEdits[variant.id]?.expiry_date ?? ''}
-                    onChange={(e) => updateVariantEdit(variant.id, 'expiry_date', e.target.value)}
-                    disabled={!canEditProduct}
-                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-60"
-                  />
-                </div>
+              {(() => {
+                const invs = variant.inventories || []
+                const total = invs.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0)
+                return (
+                  <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+                    <span className="font-medium text-foreground">المخزون:</span>
+                    {invs.length === 0 ? (
+                      <span className="text-muted">لا يوجد مخزون مسجل.</span>
+                    ) : (
+                      <>
+                        <Badge variant={total < 10 ? 'danger' : 'success'}>{total}</Badge>
+                        <span className="text-muted">
+                          ({invs.map((i) => `${i.warehouse?.name ?? 'مستودع'}: ${i.quantity}`).join('، ')})
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
+              <div className="mb-4 grid gap-2 text-sm text-foreground sm:grid-cols-2 lg:grid-cols-4">
+                <div><span className="font-medium">Barcode:</span> {variant.barcode ?? '-'}</div>
+                <div><span className="font-medium">سعر البيع:</span> {variant.sell_price != null ? `${formatMoney(variant.sell_price)} د.ل` : '-'}</div>
+                <div><span className="font-medium">سعر التكلفة:</span> {variant.cost_price != null ? `${formatMoney(variant.cost_price)} د.ل` : '-'}</div>
+                <div><span className="font-medium">الحالة:</span> {variant.status ?? '-'}</div>
+                <div><span className="font-medium">سنة التصنيع:</span> {variant.manufacturing_year ?? '-'}</div>
+                <div><span className="font-medium">تاريخ الانتهاء:</span> {variant.expiry_date ? String(variant.expiry_date).slice(0, 10) : '-'}</div>
               </div>
-              {(canEditProduct || canCreateInventory) && (
-                <div className="mb-4 flex justify-end gap-2">
-                  {canEditProduct && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => saveVariantInfo(variant.id)}
-                      disabled={saving[variant.id]}
-                    >
-                      {saving[variant.id] ? 'جاري الحفظ...' : 'حفظ بيانات المتغير'}
-                    </Button>
-                  )}
-                  {canCreateInventory && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => openInventoryModal(variant.id)}
-                    >
-                      إضافة مخزون
-                    </Button>
-                  )}
-                </div>
-              )}
+              <div className="mb-4 flex justify-end gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate(`/product-variants/${variant.id}`)}
+                >
+                  تعديل المتغير
+                </Button>
+                {canCreateInventory && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => openInventoryModal(variant.id)}
+                  >
+                    إضافة مخزون
+                  </Button>
+                )}
+              </div>
 
               <div className="mb-4 flex flex-wrap gap-3">
                 {variant.images?.length ? (

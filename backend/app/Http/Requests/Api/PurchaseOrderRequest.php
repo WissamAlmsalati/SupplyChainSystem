@@ -14,7 +14,6 @@ class PurchaseOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'supplier_id' => ['required', 'integer', 'exists:supplier,id'],
             'warehouse_id' => ['required', 'integer', 'exists:warehouse,id'],
             'order_date' => ['nullable', 'date'],
             'status' => ['required', 'string', 'max:20'],

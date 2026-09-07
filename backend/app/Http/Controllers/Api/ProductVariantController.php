@@ -21,7 +21,7 @@ class ProductVariantController extends BaseApiController
      */
     public function index(): JsonResponse
     {
-        return $this->jsonResponse(ProductVariant::with('product')->paginate(15));
+        return $this->jsonResponse(ProductVariant::with('product')->orderByDesc('id')->paginate(15));
     }
 
     /**
@@ -34,9 +34,24 @@ class ProductVariantController extends BaseApiController
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
      */
+    // ponytail: SKU is generated English/numeric from product+id — the id-based
+    // fallback also self-heals any client-supplied garbage (e.g. Arabic values).
+    // Zero-padded (PRD-0003-00028 / PRD-0003-250ML) for fixed-length, sortable SKUs.
+    private function ensureSku(ProductVariant $variant): void
+    {
+        if ($variant->sku && preg_match('/^[A-Za-z0-9-_]+$/', $variant->sku)) {
+            return;
+        }
+        $ascii = strtoupper(preg_replace('/[^A-Za-z0-9]+/', '-', trim((string) $variant->attribute_value)));
+        $ascii = trim($ascii, '-');
+        $suffix = $ascii ?: str_pad((string) $variant->id, 5, '0', STR_PAD_LEFT);
+        $variant->update(['sku' => 'PRD-' . str_pad((string) $variant->product_id, 4, '0', STR_PAD_LEFT) . '-' . $suffix]);
+    }
+
     public function store(ProductVariantRequest $request): JsonResponse
     {
         $variant = ProductVariant::create($request->validated());
+        $this->ensureSku($variant);
         return $this->jsonResponse($variant->load('product'), 201);
     }
 
@@ -52,7 +67,7 @@ class ProductVariantController extends BaseApiController
      */
     public function show(ProductVariant $productVariant): JsonResponse
     {
-        return $this->jsonResponse($productVariant->load(['product', 'inventories']));
+        return $this->jsonResponse($productVariant->load(['product', 'inventories.warehouse', 'images']));
     }
 
     /**
@@ -69,6 +84,7 @@ class ProductVariantController extends BaseApiController
     public function update(ProductVariantRequest $request, ProductVariant $productVariant): JsonResponse
     {
         $productVariant->update($request->validated());
+        $this->ensureSku($productVariant);
         return $this->jsonResponse($productVariant->load('product'));
     }
 

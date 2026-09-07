@@ -65,6 +65,8 @@ class DelegateMobileEndpointsTest extends TestCase
             'password_hash' => bcrypt('password'),
             'user_type_id' => $this->delegateType->id,
             'is_active' => true,
+        ]);
+        $this->delegate->syncCafeUser([
             'is_available' => true,
             'latitude' => 27.001,
             'longitude' => 17.001,
@@ -108,8 +110,8 @@ class DelegateMobileEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('app_user', [
-            'id' => $this->delegate->id,
+        $this->assertDatabaseHas('cafe_user', [
+            'user_id' => $this->delegate->id,
             'latitude' => 27.5,
             'longitude' => 17.5,
         ]);
@@ -123,8 +125,8 @@ class DelegateMobileEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('app_user', [
-            'id' => $this->delegate->id,
+        $this->assertDatabaseHas('cafe_user', [
+            'user_id' => $this->delegate->id,
             'is_available' => false,
         ]);
     }
@@ -138,9 +140,9 @@ class DelegateMobileEndpointsTest extends TestCase
             'mobile_number' => '0911111111',
             'password_hash' => bcrypt('password'),
             'user_type_id' => $cafeType->id,
-            'cafe_id' => $this->branch->cafe_id,
             'is_active' => true,
         ]);
+        $cafeUser->syncCafeUser(['cafe_id' => $this->branch->cafe_id]);
 
         $codes = ['ORDERS_CREATE', 'ORDERS_VIEW', 'CAFE_BRANCHES_VIEW'];
         $perms = collect($codes)->map(fn ($code) => Permission::firstOrCreate(['code' => $code]));

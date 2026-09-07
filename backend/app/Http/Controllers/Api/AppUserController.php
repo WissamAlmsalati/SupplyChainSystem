@@ -23,7 +23,7 @@ class AppUserController extends BaseApiController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = AppUser::with(['userType', 'cafe']);
+        $query = AppUser::with(['userType', 'cafe', 'cafeUser']);
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -34,7 +34,15 @@ class AppUserController extends BaseApiController
             });
         }
 
-        return $this->jsonResponse($query->paginate(15));
+        if ($request->filled('user_type_id')) {
+            $query->where('user_type_id', $request->integer('user_type_id'));
+        }
+
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
     }
 
     /**
@@ -53,8 +61,9 @@ class AppUserController extends BaseApiController
         $data['password_hash'] = Hash::make($data['password']);
         unset($data['password']);
 
-        $user = AppUser::create($data);
-        return $this->jsonResponse($user->load(['userType', 'cafe']), 201);
+        $user = AppUser::create(collect($data)->except(['cafe_id', 'latitude', 'longitude', 'is_available'])->all());
+        $user->syncCafeUser($data);
+        return $this->jsonResponse($user->load(['userType', 'cafe', 'cafeUser']), 201);
     }
 
     /**
@@ -69,7 +78,7 @@ class AppUserController extends BaseApiController
      */
     public function show(AppUser $user): JsonResponse
     {
-        return $this->jsonResponse($user->load(['userType', 'cafe', 'orders']));
+        return $this->jsonResponse($user->load(['userType', 'cafe', 'cafeUser', 'orders']));
     }
 
     /**
@@ -91,8 +100,9 @@ class AppUserController extends BaseApiController
         }
         unset($data['password']);
 
-        $user->update($data);
-        return $this->jsonResponse($user->load(['userType', 'cafe']));
+        $user->update(collect($data)->except(['cafe_id', 'latitude', 'longitude', 'is_available'])->all());
+        $user->syncCafeUser($data);
+        return $this->jsonResponse($user->load(['userType', 'cafe', 'cafeUser']));
     }
 
     /**

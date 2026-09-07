@@ -54,11 +54,10 @@ class BrunoDemoSeeder extends Seeder
                 'email' => 'cafe@bruno.test',
                 'password_hash' => Hash::make('password'),
                 'user_type_id' => $cafeType->id,
-                'cafe_id' => $cafe->id,
                 'is_active' => true,
             ]
         );
-        $user->update(['cafe_id' => $cafe->id]);
+        $user->syncCafeUser(['cafe_id' => $cafe->id]);
 
         $zone = DeliveryZone::firstOrCreate(
             ['hex_id' => '842da29ffffffff'],

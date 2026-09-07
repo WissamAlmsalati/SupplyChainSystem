@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\DeliveryZone;
 use App\Models\Inventory;
 use App\Models\Permission;
+use App\Models\PremiumFeature;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\UserType;
@@ -42,6 +43,8 @@ class CafeMobileEndpointsTest extends TestCase
         ])->map(fn ($code) => Permission::create(['code' => $code]));
         $cafeType->permissions()->sync($permissions->pluck('id'));
 
+        PremiumFeature::create(['code' => 'cafe_branches', 'name' => 'فروع المقاهي', 'is_active' => true]);
+
         $this->cafe = Cafe::create([
             'name' => 'مقهى اختبار',
             'contact_info' => '0911111111',
@@ -54,9 +57,9 @@ class CafeMobileEndpointsTest extends TestCase
             'mobile_number' => '0911111111',
             'password_hash' => bcrypt('password'),
             'user_type_id' => $cafeType->id,
-            'cafe_id' => $this->cafe->id,
             'is_active' => true,
         ]);
+        $this->cafeUser->syncCafeUser(['cafe_id' => $this->cafe->id]);
 
         $zone = DeliveryZone::create([
             'hex_id' => '842da29ffffffff',

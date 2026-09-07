@@ -17,7 +17,7 @@ class CafeRequest extends FormRequest
             'name' => ['required', 'string', 'max:150'],
             'contact_info' => ['nullable', 'string', 'max:200'],
             'image' => ['nullable', 'image', 'max:2048'],
-            'created_by_admin_id' => ['nullable', 'integer', 'exists:app_user,id'],
+            'created_by_admin_id' => ['nullable', 'integer', 'exists:user,id'],
             'is_active' => ['boolean'],
         ];
     }

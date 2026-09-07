@@ -21,7 +21,7 @@ class CartController extends BaseApiController
      */
     public function index(): JsonResponse
     {
-        return $this->jsonResponse(Cart::with(['user', 'branch'])->paginate(15));
+        return $this->jsonResponse(Cart::with(['user', 'branch'])->orderByDesc('id')->paginate(15));
     }
 
     /**

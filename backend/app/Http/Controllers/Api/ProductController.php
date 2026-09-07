@@ -25,7 +25,7 @@ class ProductController extends BaseApiController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Product::with(['category', 'supplier']);
+        $query = Product::with(['category']);
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -35,7 +35,11 @@ class ProductController extends BaseApiController
             });
         }
 
-        return $this->jsonResponse($query->paginate(15));
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->integer('category_id'));
+        }
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
     }
 
     /**
@@ -53,7 +57,7 @@ class ProductController extends BaseApiController
         $data = $request->validated();
         $data['image'] = $this->storeImage($request->file('image'));
         $product = Product::create($data);
-        return $this->jsonResponse($product->load(['category', 'supplier']), 201);
+        return $this->jsonResponse($product->load(['category']), 201);
     }
 
     /**
@@ -69,7 +73,7 @@ class ProductController extends BaseApiController
      */
     public function show(Product $product): JsonResponse
     {
-        return $this->jsonResponse($product->load(['category', 'supplier', 'variants.images']));
+        return $this->jsonResponse($product->load(['category', 'variants.images', 'variants.inventories.warehouse']));
     }
 
     /**
@@ -93,7 +97,7 @@ class ProductController extends BaseApiController
             unset($data['image']);
         }
         $product->update($data);
-        return $this->jsonResponse($product->load(['category', 'supplier']));
+        return $this->jsonResponse($product->load(['category']));
     }
 
     /**

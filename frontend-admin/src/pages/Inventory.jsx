@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useApiResource, useApiList } from '../hooks/useApiResource'
+import { useNavigate } from 'react-router-dom'
+import { useApiResource, useApiList, usePremiumFeatureActive } from '../hooks/useApiResource'
 import { useModulePermission } from '../hooks/usePermission'
 import client from '../api/client'
 
@@ -8,9 +9,10 @@ import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import SearchableSelect from '../components/ui/SearchableSelect'
+import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = {
-  warehouse_id: '', product_variant_id: '', quantity: '',
+  warehouse_id: '', product_variant_id: '', product_id: '', variant_name: '', quantity: '',
   cost_price: '', sell_price: '', barcode: '', manufacturing_year: '', expiry_date: '',
 }
 
@@ -21,18 +23,40 @@ function variantLabel(v) {
 }
 
 export default function Inventory() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/inventory', { search })
-  const warehouses = useApiList('/warehouses')
+  const [filterWarehouse, setFilterWarehouse] = useState('')
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/inventory', { search, warehouse_id: filterWarehouse })
+  const warehouses = useApiList('/warehouses?per_page=10000')
   const variants = useApiList('/product-variants?per_page=10000')
+  const products = useApiList('/products?per_page=10000')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
   const [modalError, setModalError] = useState('')
+  const [imageFiles, setImageFiles] = useState([])
+  const [imagePreviews, setImagePreviews] = useState([])
+  // ponytail: useApiList fetches once — track variants we create here so
+  // name-matching keeps working without a refetch mechanism.
+  const [createdVariants, setCreatedVariants] = useState([])
   const { canCreate, canEdit, canDelete } = useModulePermission('INVENTORY')
+  const warehouseFeature = usePremiumFeatureActive('add_inventory')
 
   const variantById = (id) => variants.find((v) => String(v.id) === String(id))
+
+  // ponytail: matching by (product, attribute_value) — the pair is the natural
+  // key here; a real unique index would be the upgrade path.
+  const findVariantByName = (productId, name) =>
+    [...variants, ...createdVariants].find(
+      (v) => String(v.product_id) === String(productId) && (v.attribute_value ?? '') === name.trim()
+    )
+
+  const handleImageFiles = (files) => {
+    const list = Array.from(files || [])
+    setImageFiles(list)
+    setImagePreviews(list.map((f) => URL.createObjectURL(f)))
+  }
 
   const fillVariantFields = (base, variantId) => {
     const v = variantById(variantId)
@@ -54,6 +78,8 @@ export default function Inventory() {
     })
     setEditing(null)
     setModalError('')
+    setImageFiles([])
+    setImagePreviews([])
     setModal(true)
   }
 
@@ -67,6 +93,8 @@ export default function Inventory() {
     setForm(fillVariantFields(base, item.product_variant_id))
     setEditing(item)
     setModalError('')
+    setImageFiles([])
+    setImagePreviews([])
     setModal(true)
   }
 
@@ -75,33 +103,75 @@ export default function Inventory() {
     setForm(initial)
     setEditing(null)
     setModalError('')
+    setImageFiles([])
+    setImagePreviews([])
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
     try {
-      const v = variantById(form.product_variant_id)
-      if (v) {
-        await client.put(`/product-variants/${v.id}`, {
-          product_id: v.product_id,
-          sku: v.sku,
-          attribute_value: v.attribute_value,
-          price: v.price,
-          cost_price: form.cost_price ? Number(form.cost_price) : null,
-          sell_price: form.sell_price ? Number(form.sell_price) : null,
-          barcode: form.barcode || null,
-          manufacturing_year: form.manufacturing_year ? Number(form.manufacturing_year) : null,
-          expiry_date: form.expiry_date || null,
-        })
+      let variantId = form.product_variant_id
+      if (!editing) {
+        const name = form.variant_name.trim()
+        const existing = findVariantByName(form.product_id, name)
+        if (existing) {
+          variantId = String(existing.id)
+          await client.put(`/product-variants/${existing.id}`, {
+            product_id: existing.product_id,
+            sku: existing.sku,
+            attribute_value: existing.attribute_value,
+            price: existing.price,
+            cost_price: form.cost_price ? Number(form.cost_price) : null,
+            sell_price: form.sell_price ? Number(form.sell_price) : null,
+            barcode: form.barcode || null,
+            manufacturing_year: form.manufacturing_year ? Number(form.manufacturing_year) : null,
+            expiry_date: form.expiry_date || null,
+          })
+        } else {
+          const res = await client.post('/product-variants', {
+            product_id: Number(form.product_id),
+            attribute_value: name,
+            price: form.sell_price ? Number(form.sell_price) : 0,
+            cost_price: form.cost_price ? Number(form.cost_price) : null,
+            sell_price: form.sell_price ? Number(form.sell_price) : null,
+            barcode: form.barcode || null,
+            manufacturing_year: form.manufacturing_year ? Number(form.manufacturing_year) : null,
+            expiry_date: form.expiry_date || null,
+            is_active: true,
+          })
+          variantId = String(res.data?.data?.id ?? res.data?.id)
+          setCreatedVariants((prev) => [...prev, res.data?.data ?? res.data])
+        }
+      } else {
+        const v = variantById(variantId)
+        if (v) {
+          await client.put(`/product-variants/${v.id}`, {
+            product_id: v.product_id,
+            sku: v.sku,
+            attribute_value: v.attribute_value,
+            price: v.price,
+            cost_price: form.cost_price ? Number(form.cost_price) : null,
+            sell_price: form.sell_price ? Number(form.sell_price) : null,
+            barcode: form.barcode || null,
+            manufacturing_year: form.manufacturing_year ? Number(form.manufacturing_year) : null,
+            expiry_date: form.expiry_date || null,
+          })
+        }
       }
       const data = {
         warehouse_id: Number(form.warehouse_id),
-        product_variant_id: Number(form.product_variant_id),
+        product_variant_id: Number(variantId),
         quantity: Number(form.quantity),
       }
       if (editing) await update(editing.id, data)
       else await create(data)
+      for (const file of imageFiles) {
+        const fd = new FormData()
+        fd.append('product_variant_id', variantId)
+        fd.append('image', file)
+        await client.postForm('/product-images', fd)
+      }
       close()
     } catch (err) {
       setModalError(err.response?.data?.message || 'فشل الحفظ')
@@ -112,7 +182,11 @@ export default function Inventory() {
 
   const columns = [
     { key: 'warehouse', label: 'المستودع', render: (r) => r.warehouse?.name ?? '-' },
-    { key: 'product_variant', label: 'المنتج / المتغير', render: (r) => (r.product_variant ? variantLabel(r.product_variant) : '-') },
+    { key: 'product_variant', label: 'المنتج / المتغير', render: (r) => (r.product_variant ? (
+      <button onClick={() => navigate(`/product-variants/${r.product_variant.id}`)} className="text-primary hover:underline">
+        {variantLabel(r.product_variant)}
+      </button>
+    ) : '-') },
     { key: 'quantity', label: 'الكمية' },
     { key: 'updated_at', label: 'آخر تحديث', render: (r) => r.updated_at ? new Date(r.updated_at).toLocaleString('en-US') : '-' },
   ]
@@ -129,6 +203,14 @@ export default function Inventory() {
             onChange={(e) => setSearch(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
+          {warehouseFeature && (
+            <FilterSelect
+              label="المستودع"
+              value={filterWarehouse}
+              onChange={setFilterWarehouse}
+              options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
+            />
+          )}
           {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مخزون</Button>}
         </div>
       </header>
@@ -161,16 +243,59 @@ export default function Inventory() {
               required
             />
           )}
-          <SearchableSelect
-            label="المنتج / المتغير"
-            placeholder="اختر المنتج"
-            searchPlaceholder="ابحث باسم المنتج..."
-            options={variants}
-            value={form.product_variant_id}
-            onChange={(v) => setForm(fillVariantFields({ ...form, product_variant_id: v }, v))}
-            getLabel={variantLabel}
-            required
-          />
+          {editing ? (
+            <SearchableSelect
+              label="المنتج / المتغير"
+              placeholder="اختر المنتج"
+              searchPlaceholder="ابحث باسم المنتج..."
+              options={variants}
+              value={form.product_variant_id}
+              onChange={(v) => setForm(fillVariantFields({ ...form, product_variant_id: v }, v))}
+              getLabel={variantLabel}
+              required
+            />
+          ) : (
+            <>
+              <SearchableSelect
+                label="المنتج"
+                placeholder="اختر المنتج"
+                searchPlaceholder="ابحث باسم المنتج..."
+                options={products}
+                value={form.product_id}
+                onChange={(v) => setForm({ ...form, product_id: v, variant_name: '' })}
+                getLabel={(p) => p.name}
+                required
+              />
+              <Input
+                label="اسم المتغير"
+                placeholder="مثال: صغير، كبير، 250ml — اكتب الاسم بنفسك"
+                value={form.variant_name}
+                onChange={(e) => {
+                  const base = { ...form, variant_name: e.target.value }
+                  const existing = findVariantByName(form.product_id, e.target.value)
+                  setForm(existing ? fillVariantFields(base, existing.id) : base)
+                }}
+                required
+              />
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-muted">صور المتغير (اختياري)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleImageFiles(e.target.files)}
+                  className="block w-full text-sm text-foreground file:ml-4 file:rounded file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+                />
+                {imagePreviews.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {imagePreviews.map((url, i) => (
+                      <img key={i} src={url} alt="" className="h-16 w-16 rounded-lg border border-border object-cover" />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
           <Input
             label="الكمية"
             type="number"

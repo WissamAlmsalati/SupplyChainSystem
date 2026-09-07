@@ -70,6 +70,18 @@ class OrderController extends BaseApiController
             });
         }
 
+        if ($request->filled('status') && in_array($request->input('status'), ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'completed', 'cancelled'], true)) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('order_date', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('order_date', '<=', $request->input('date_to'));
+        }
+
         return $this->jsonResponse($query->paginate(15));
     }
 
@@ -208,7 +220,7 @@ class OrderController extends BaseApiController
         }
 
         $data = $request->validate([
-            'delegate_id' => ['required', 'integer', 'exists:app_user,id'],
+            'delegate_id' => ['required', 'integer', 'exists:user,id'],
         ]);
 
         $delegateTypeId = \App\Models\UserType::where('name', 'delegate')->value('id');

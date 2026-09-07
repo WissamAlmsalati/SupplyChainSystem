@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Api\PurchaseOrderRequest;
 use App\Models\PurchaseOrder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * @OA\Tag(name="Admin Inventory", description="Admin platform inventory management")
@@ -19,9 +20,19 @@ class PurchaseOrderController extends BaseApiController
      *     @OA\Response(response=200, description="Paginated list of purchase orders")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return $this->jsonResponse(PurchaseOrder::with(['supplier', 'warehouse'])->paginate(15));
+        $query = PurchaseOrder::with(['warehouse']);
+
+        if ($request->filled('warehouse_id')) {
+            $query->where('warehouse_id', $request->integer('warehouse_id'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
     }
 
     /**
@@ -37,7 +48,7 @@ class PurchaseOrderController extends BaseApiController
     public function store(PurchaseOrderRequest $request): JsonResponse
     {
         $purchaseOrder = PurchaseOrder::create($request->validated());
-        return $this->jsonResponse($purchaseOrder->load(['supplier', 'warehouse']), 201);
+        return $this->jsonResponse($purchaseOrder->load(['warehouse']), 201);
     }
 
     /**
@@ -52,7 +63,7 @@ class PurchaseOrderController extends BaseApiController
      */
     public function show(PurchaseOrder $purchaseOrder): JsonResponse
     {
-        return $this->jsonResponse($purchaseOrder->load(['supplier', 'warehouse', 'items.productVariant']));
+        return $this->jsonResponse($purchaseOrder->load(['warehouse', 'items.productVariant']));
     }
 
     /**
@@ -69,7 +80,7 @@ class PurchaseOrderController extends BaseApiController
     public function update(PurchaseOrderRequest $request, PurchaseOrder $purchaseOrder): JsonResponse
     {
         $purchaseOrder->update($request->validated());
-        return $this->jsonResponse($purchaseOrder->load(['supplier', 'warehouse']));
+        return $this->jsonResponse($purchaseOrder->load(['warehouse']));
     }
 
     /**

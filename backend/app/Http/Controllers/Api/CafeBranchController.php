@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\Api\CafeBranchRequest;
 use App\Models\CafeBranch;
+use App\Models\PremiumFeature;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -38,7 +39,15 @@ class CafeBranchController extends BaseApiController
             });
         }
 
-        return $this->jsonResponse($query->paginate($perPage > 0 ? min($perPage, 10000) : 15));
+        if ($request->filled('cafe_id')) {
+            $query->where('cafe_id', $request->integer('cafe_id'));
+        }
+
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
     }
 
     /**
@@ -53,6 +62,12 @@ class CafeBranchController extends BaseApiController
      */
     public function store(CafeBranchRequest $request): JsonResponse
     {
+        // ponytail: cafe_branches premium feature gates branch creation for everyone;
+        // frontend hides the add button, this guard blocks direct API calls.
+        if (!PremiumFeature::isActive('cafe_branches')) {
+            return $this->jsonResponse(['message' => 'إضافة فروع غير متاحة — الميزة معطلة'], 403);
+        }
+
         $data = $request->validated();
 
         if (auth()->user()?->userType?->name === 'cafe') {

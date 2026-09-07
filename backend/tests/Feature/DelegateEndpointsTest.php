@@ -80,7 +80,7 @@ class DelegateEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertCreated();
-        $this->assertDatabaseHas('app_user', [
+        $this->assertDatabaseHas('user', [
             'email' => 'new.delegate@test.com',
             'user_type_id' => $this->delegateType->id,
         ]);
@@ -104,7 +104,7 @@ class DelegateEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('app_user', [
+        $this->assertDatabaseHas('user', [
             'id' => $delegate->id,
             'name' => 'Delegate Updated',
             'is_active' => false,
@@ -125,7 +125,7 @@ class DelegateEndpointsTest extends TestCase
         $res = $this->deleteJson('/api/v1/delegates/' . $delegate->id, [], ['Authorization' => "Bearer $token"]);
 
         $res->assertNoContent();
-        $this->assertDatabaseMissing('app_user', ['id' => $delegate->id]);
+        $this->assertDatabaseMissing('user', ['id' => $delegate->id]);
     }
 
     public function test_admin_can_toggle_delegate_active_status(): void
@@ -142,7 +142,7 @@ class DelegateEndpointsTest extends TestCase
         $res = $this->postJson('/api/v1/delegates/' . $delegate->id . '/toggle-active', [], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('app_user', [
+        $this->assertDatabaseHas('user', [
             'id' => $delegate->id,
             'is_active' => false,
         ]);

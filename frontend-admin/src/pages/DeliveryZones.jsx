@@ -7,16 +7,18 @@ import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
+import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = { warehouse_id: '', hex_id: '', name: '', delivery_price: '', is_active: true }
 
 export default function DeliveryZones() {
   const navigate = useNavigate()
   const [warehouseFilter, setWarehouseFilter] = useState('')
+  const [filterActive, setFilterActive] = useState('')
   const [search, setSearch] = useState('')
   const warehouses = useApiList('/warehouses?per_page=10000')
   const path = warehouseFilter ? `/delivery-zones?warehouse_id=${warehouseFilter}` : '/delivery-zones'
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource(path, { search })
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource(path, { search, is_active: filterActive })
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
@@ -95,6 +97,15 @@ export default function DeliveryZones() {
               <option key={w.id} value={w.id}>{w.name}</option>
             ))}
           </select>
+          <FilterSelect
+            label="الحالة"
+            value={filterActive}
+            onChange={setFilterActive}
+            options={[
+              { value: '1', label: 'نشط' },
+              { value: '0', label: 'معطل' },
+            ]}
+          />
           {canCreate && <Button variant="primary" onClick={openCreate}>إضافة منطقة</Button>}
         </div>
       </header>

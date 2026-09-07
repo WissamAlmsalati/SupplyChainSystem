@@ -13,7 +13,7 @@ class PaymentController extends BaseApiController
 {
     public function index(): JsonResponse
     {
-        return $this->jsonResponse(Payment::with('order')->paginate(15));
+        return $this->jsonResponse(Payment::with('order')->orderByDesc('id')->paginate(15));
     }
 
     public function store(PaymentRequest $request): JsonResponse

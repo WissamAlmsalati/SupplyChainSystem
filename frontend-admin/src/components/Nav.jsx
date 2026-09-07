@@ -16,11 +16,13 @@ import {
   UserPlus,
   Bell,
   Star,
+  Megaphone,
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { usePremiumFeatureActive } from '../hooks/useApiResource'
 import Button from './ui/Button'
 
 const icons = {
@@ -39,6 +41,7 @@ const icons = {
   UserPlus,
   Bell,
   Star,
+  Megaphone,
 }
 
 const groups = [
@@ -81,6 +84,7 @@ const groups = [
     links: [
       { to: '/activity-logs', label: 'سجل النشاطات', icon: 'ClipboardList', permission: 'ACTIVITY_LOGS_VIEW' },
       { to: '/notifications', label: 'الإشعارات', icon: 'Bell' },
+      { to: '/promos', label: 'البروموهات', icon: 'Megaphone' },
       { to: '/premium-features', label: 'الميزات المميزة', icon: 'Star' },
     ],
   },
@@ -88,6 +92,7 @@ const groups = [
 
 export default function Nav() {
   const { user, logout, hasAnyPermission } = useAuth()
+  const cafeAutoApprove = usePremiumFeatureActive('cafe_auto_approve')
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem('nav-collapsed') === 'true'
@@ -101,6 +106,7 @@ export default function Nav() {
     .map((group) => ({
       ...group,
       links: group.links.filter((link) => {
+        if (cafeAutoApprove && link.to === '/cafe-registrations') return false
         if (link.superAdminOnly) return user?.user_type?.name === 'super_admin'
         if (link.permission) return hasAnyPermission([link.permission])
         return true

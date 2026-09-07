@@ -77,7 +77,7 @@ class AuthController extends BaseApiController
         if ($user->userType?->name !== 'cafe') {
             $response['permissions'] = $codes;
         } else {
-            $response['has_cafe'] = ! is_null($user->cafe_id);
+            $response['has_cafe'] = $user->cafeUser()->exists();
         }
 
         return $this->jsonResponse($response);
@@ -120,9 +120,9 @@ class AuthController extends BaseApiController
             'mobile_number' => $request->validated('mobile_number'),
             'password_hash' => Hash::make($request->validated('password')),
             'user_type_id' => $cafeType->id,
-            'cafe_id' => $cafeId,
             'is_active' => true,
         ]);
+        $user->syncCafeUser(['cafe_id' => $cafeId]);
 
         return $this->jsonResponse([
             'token' => $user->createToken('api')->plainTextToken,
@@ -162,7 +162,6 @@ class AuthController extends BaseApiController
             'mobile_number' => $request->validated('phone_number'),
             'password_hash' => Hash::make($request->validated('password')),
             'user_type_id' => $cafeType->id,
-            'cafe_id' => null,
             'is_active' => true,
         ]);
 

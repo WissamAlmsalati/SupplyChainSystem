@@ -10,6 +10,8 @@ export default function SearchableSelect({
   getLabel = (o) => String(o),
   getValue = (o) => o?.id ?? o,
   required = false,
+  onQueryChange = null,
+  loading = false,
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -62,13 +64,18 @@ export default function SearchableSelect({
               type="text"
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                onQueryChange?.(e.target.value)
+              }}
               placeholder={searchPlaceholder}
               className="w-full rounded-md border border-border-strong bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary"
             />
           </div>
           <ul className="max-h-56 overflow-auto py-1">
-            {filtered.length === 0 ? (
+            {loading ? (
+              <li className="px-3.5 py-2 text-sm text-muted">جاري التحميل...</li>
+            ) : filtered.length === 0 ? (
               <li className="px-3.5 py-2 text-sm text-muted">لا توجد نتائج.</li>
             ) : (
               filtered.map((o) => {

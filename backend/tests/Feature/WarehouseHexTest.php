@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AppUser;
+use App\Models\PremiumFeature;
 use App\Models\Warehouse;
 use App\Services\H3Service;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +26,7 @@ class WarehouseHexTest extends TestCase
     public function test_warehouse_hex_is_computed_from_lat_lng_resolution(): void
     {
         $token = $this->adminToken();
+        PremiumFeature::create(['code' => 'add_inventory', 'name' => 'إضافة مخزون', 'is_active' => true]);
         $res = $this->postJson('/api/v1/warehouses', [
             'name' => 'مستودع طرابلس',
             'city' => 'طرابلس',

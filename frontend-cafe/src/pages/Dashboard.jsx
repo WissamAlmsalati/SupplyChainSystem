@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import { useCart } from '../context/CartContext'
+import PromoBanner from '../components/PromoBanner'
 
 function formatMoney(value) {
   const num = Number(value)
@@ -58,11 +59,10 @@ export default function Dashboard() {
       setError('لا يوجد فرع، أضف فرعًا أولاً.')
       return
     }
-    const variant = product.variants?.find((v) => v.is_active !== false) || product.variants?.[0]
-    if (!variant) return
+    if (!product.default_variant_id) return
     setAdding(product.id)
     try {
-      await addItem(branchId, variant.id, 1)
+      await addItem(branchId, product.default_variant_id, 1)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل الإضافة إلى السلة')
     } finally {
@@ -87,6 +87,8 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      <PromoBanner />
 
       {error && (
         <div className="mb-4 mt-6 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">
@@ -143,8 +145,7 @@ export default function Dashboard() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {featured.map((p) => {
-              const variant = p.variants?.find((v) => v.is_active !== false) || p.variants?.[0]
-              const price = variant?.price ?? 0
+              const price = p.min_price ?? 0
               return (
                 <div
                   key={p.id}

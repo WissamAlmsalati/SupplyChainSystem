@@ -14,7 +14,7 @@ class CartRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_id' => ['required', 'integer', 'exists:app_user,id'],
+            'user_id' => ['required', 'integer', 'exists:user,id'],
             'branch_id' => ['required', 'integer', 'exists:cafe_branch,id'],
             'status' => ['nullable', 'string', 'max:20'],
         ];

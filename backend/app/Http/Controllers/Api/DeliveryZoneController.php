@@ -52,7 +52,11 @@ class DeliveryZoneController extends BaseApiController
             });
         }
 
-        return $this->jsonResponse($query->paginate($perPage > 0 ? min($perPage, 10000) : 15));
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
     }
 
     /**

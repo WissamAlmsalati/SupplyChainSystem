@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { usePremiumFeatureActive } from '../hooks/usePremiumFeatureActive'
 import client from '../api/client'
 
 const delegateLinks = [
@@ -14,6 +15,7 @@ export default function Nav({ mobileOpen, onMobileClose, showDesktop = true }) {
   const { user, logout } = useAuth()
   const { itemCount } = useCart()
   const isDelegate = user?.user_type?.name === 'delegate'
+  const branchesFeature = usePremiumFeatureActive('cafe_branches')
   const [categories, setCategories] = useState([])
 
   useEffect(() => {
@@ -30,7 +32,7 @@ export default function Nav({ mobileOpen, onMobileClose, showDesktop = true }) {
         { to: '/products', label: 'كل المنتجات' },
         { to: '/cart', label: 'السلة', badge: itemCount },
         { to: '/orders', label: 'طلباتي' },
-        { to: '/branches', label: 'فروعي' },
+        ...(branchesFeature ? [{ to: '/branches', label: 'فروعي' }] : []),
         { to: '/profile', label: 'الملف الشخصي' },
       ]
 

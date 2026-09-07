@@ -13,7 +13,7 @@ class CartItemController extends BaseApiController
 {
     public function index(): JsonResponse
     {
-        return $this->jsonResponse(CartItem::with(['cart', 'productVariant'])->paginate(15));
+        return $this->jsonResponse(CartItem::with(['cart', 'productVariant'])->orderByDesc('id')->paginate(15));
     }
 
     public function store(CartItemRequest $request): JsonResponse

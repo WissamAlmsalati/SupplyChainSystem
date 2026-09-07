@@ -129,28 +129,28 @@ textarea {
   background: var(--color-muted);
 }
 
-/* Keep page headers pinned while content scrolls */
+/* Keep page headers pinned while content scrolls; flush to the top edge, full width */
 main > header {
   position: sticky;
   top: 0;
   z-index: 10;
+  margin-left: -1rem;
+  margin-right: -1rem;
   padding-top: 1.5rem;
   padding-bottom: 0.75rem;
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-  margin-left: -1.5rem;
-  margin-right: -1.5rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  border-radius: 0;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
 
 @media (min-width: 1024px) {
   main > header {
-    padding-top: 2rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
-    margin-left: -2rem;
-    margin-right: -2rem;
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 }
 

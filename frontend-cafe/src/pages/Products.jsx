@@ -64,14 +64,13 @@ export default function Products() {
       setError('لا يوجد فرع، أضف فرعًا أولاً.')
       return
     }
-    const variant = product.variants?.find((v) => v.is_active !== false) || product.variants?.[0]
-    if (!variant) {
+    if (!product.default_variant_id) {
       setError('المنتج لا يحتوي على variant متاح.')
       return
     }
     setAdding(product.id)
     try {
-      await addItem(branchId, variant.id, 1)
+      await addItem(branchId, product.default_variant_id, 1)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل الإضافة إلى السلة')
     } finally {
@@ -138,8 +137,7 @@ export default function Products() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredProducts.map((p) => {
-            const variant = p.variants?.find((v) => v.is_active !== false) || p.variants?.[0]
-            const price = variant?.sell_price ?? variant?.price ?? p.min_price ?? 0
+            const price = p.min_price ?? 0
             return (
               <div
                 key={p.id}
@@ -168,12 +166,8 @@ export default function Products() {
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-foreground">{p.name}</h3>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted">{p.description || 'لا يوجد وصف.'}</p>
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-lg font-bold text-primary">{formatMoney(price)} د.ل</span>
-                    {p.variants?.length > 1 && (
-                      <span className="text-xs text-muted">{p.variants.length} خيارات</span>
-                    )}
                   </div>
                 </div>
               </div>

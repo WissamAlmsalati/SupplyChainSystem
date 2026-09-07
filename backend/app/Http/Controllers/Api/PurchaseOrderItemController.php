@@ -13,7 +13,7 @@ class PurchaseOrderItemController extends BaseApiController
 {
     public function index(): JsonResponse
     {
-        return $this->jsonResponse(PurchaseOrderItem::with(['purchaseOrder', 'productVariant'])->paginate(15));
+        return $this->jsonResponse(PurchaseOrderItem::with(['purchaseOrder', 'productVariant'])->orderByDesc('id')->paginate(15));
     }
 
     public function store(PurchaseOrderItemRequest $request): JsonResponse

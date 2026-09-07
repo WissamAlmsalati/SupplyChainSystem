@@ -30,7 +30,7 @@ use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\PurchaseOrderItemController;
-use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\PromoController;
 use App\Http\Controllers\Api\UserTypeController;
 use App\Http\Controllers\Api\WarehouseController;
 use Illuminate\Support\Facades\Route;
@@ -70,6 +70,8 @@ Route::prefix('v1')->group(function () {
             Route::get('profile', [CafeMobileController::class, 'profile'])->name('profile');
             Route::post('profile', [CafeMobileController::class, 'storeCafe'])->name('profile.store');
             Route::put('profile', [CafeMobileController::class, 'updateProfile'])->name('profile.update');
+            // Read-only feature flags for the cafe app UI (branches toggle, etc.)
+            Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');
         });
 
         Route::prefix('cafe')->name('cafe.')->middleware('cafe.ready')->group(function () {
@@ -98,6 +100,7 @@ Route::prefix('v1')->group(function () {
             Route::post('cart/checkout', [CafeMobileController::class, 'checkout'])->name('cart.checkout');
 
             Route::get('orders/{id}/delegate', [CafeMobileController::class, 'orderDelegate'])->name('orders.delegate');
+            Route::get('promos', [PromoController::class, 'active'])->name('promos.index');
         });
 
         Route::prefix('delegate')->name('delegate.')->group(function () {
@@ -110,7 +113,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
         Route::put('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
-        Route::apiResource('notifications', NotificationController::class)->only(['index', 'destroy']);
+        Route::apiResource('notifications', NotificationController::class)->only(['index', 'show', 'destroy']);
         Route::put('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
         Route::apiResources([
@@ -121,7 +124,6 @@ Route::prefix('v1')->group(function () {
             'cafes' => CafeController::class,
             'cafe-branches' => CafeBranchController::class,
             'delivery-zones' => DeliveryZoneController::class,
-            'suppliers' => SupplierController::class,
             'product-variants' => ProductVariantController::class,
             'product-images' => ProductImageController::class,
             'warehouses' => WarehouseController::class,
@@ -135,6 +137,7 @@ Route::prefix('v1')->group(function () {
             'payments' => PaymentController::class,
             'purchase-orders' => PurchaseOrderController::class,
             'purchase-order-items' => PurchaseOrderItemController::class,
+            'promos' => PromoController::class,
         ]);
 
         Route::post('warehouses/{warehouse}/expand-hex', [WarehouseController::class, 'expandHex'])->name('warehouses.expand-hex');

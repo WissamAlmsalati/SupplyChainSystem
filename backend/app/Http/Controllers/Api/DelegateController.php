@@ -30,7 +30,7 @@ class DelegateController extends BaseApiController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = AppUser::with(['userType', 'cafe'])
+        $query = AppUser::with(['userType', 'cafe', 'cafeUser'])
             ->where('user_type_id', $this->delegateTypeId());
 
         if ($request->filled('search')) {
@@ -42,7 +42,15 @@ class DelegateController extends BaseApiController
             });
         }
 
-        return $this->jsonResponse($query->paginate(15));
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        if ($request->filled('is_available')) {
+            $query->whereHas('cafeUser', fn ($q) => $q->where('is_available', $request->boolean('is_available')));
+        }
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
     }
 
     /**
@@ -62,7 +70,8 @@ class DelegateController extends BaseApiController
         $data['password_hash'] = Hash::make($data['password']);
         unset($data['password']);
 
-        $delegate = AppUser::create($data);
+        $delegate = AppUser::create(collect($data)->except(['cafe_id', 'latitude', 'longitude', 'is_available'])->all());
+        $delegate->syncCafeUser($data);
 
         return $this->jsonResponse([
             'id' => $delegate->id,
@@ -83,7 +92,7 @@ class DelegateController extends BaseApiController
      */
     public function show(int $id): JsonResponse
     {
-        $delegate = AppUser::with(['userType', 'cafe', 'delegatedOrders'])
+        $delegate = AppUser::with(['userType', 'cafe', 'cafeUser', 'delegatedOrders'])
             ->where('user_type_id', $this->delegateTypeId())
             ->findOrFail($id);
 
@@ -111,9 +120,10 @@ class DelegateController extends BaseApiController
         }
         unset($data['password']);
 
-        $delegate->update($data);
+        $delegate->update(collect($data)->except(['cafe_id', 'latitude', 'longitude', 'is_available'])->all());
+        $delegate->syncCafeUser($data);
 
-        return $this->jsonResponse($delegate->load(['userType', 'cafe']));
+        return $this->jsonResponse($delegate->load(['userType', 'cafe', 'cafeUser']));
     }
 
     /**
@@ -147,7 +157,7 @@ class DelegateController extends BaseApiController
         $delegate = AppUser::where('user_type_id', $this->delegateTypeId())->findOrFail($id);
         $delegate->update(['is_active' => ! $delegate->is_active]);
 
-        return $this->jsonResponse($delegate->load(['userType', 'cafe']));
+        return $this->jsonResponse($delegate->load(['userType', 'cafe', 'cafeUser']));
     }
 
     /**
@@ -174,9 +184,8 @@ class DelegateController extends BaseApiController
             'is_available' => ['boolean'],
         ]);
 
-        $data['location_updated_at'] = now();
-        $delegate->update($data);
+        $delegate->syncCafeUser($data + ['location_updated_at' => now()]);
 
-        return $this->jsonResponse($delegate->load(['userType', 'cafe']));
+        return $this->jsonResponse($delegate->load(['userType', 'cafe', 'cafeUser']));
     }
 }

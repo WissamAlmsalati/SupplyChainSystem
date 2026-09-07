@@ -23,7 +23,6 @@ namespace App\OpenApi;
  * @OA\Tag(name="Admin Inventory", description="Admin platform inventory management"),
  * @OA\Tag(name="Admin Products", description="Admin platform product management"),
  * @OA\Tag(name="Admin Categories", description="Admin platform category management"),
- * @OA\Tag(name="Admin Suppliers", description="Admin platform supplier management"),
  * @OA\Tag(name="Admin Warehouses", description="Admin platform warehouse management"),
  * @OA\Tag(name="Admin Delivery Zones", description="Admin platform delivery zone management"),
  * @OA\Tag(name="Admin Roles", description="Admin platform roles and permissions"),

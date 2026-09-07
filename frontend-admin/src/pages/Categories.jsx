@@ -5,12 +5,14 @@ import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
+import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = { name: '', parent_category_id: '' }
 
 export default function Categories() {
   const [search, setSearch] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/categories', { search })
+  const [filterParent, setFilterParent] = useState('')
+  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/categories', { search, parent: filterParent })
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
@@ -66,6 +68,15 @@ export default function Categories() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <FilterSelect
+            label="التصنيف"
+            value={filterParent}
+            onChange={setFilterParent}
+            options={[
+              { value: 'root', label: 'رئيسية' },
+              { value: 'sub', label: 'فرعية' },
+            ]}
           />
           {canCreate && <Button variant="primary" onClick={openCreate}>إضافة تصنيف</Button>}
         </div>

@@ -39,11 +39,8 @@ class DelegateMobileController extends BaseApiController
         ]);
 
         $user = auth()->user();
-        $user->update([
-            'latitude' => $data['latitude'],
-            'longitude' => $data['longitude'],
-            'location_updated_at' => now(),
-        ]);
+        $user->syncCafeUser($data + ['location_updated_at' => now()]);
+        $user->load('cafeUser');
 
         broadcast(new DelegateLocationUpdated($user))->toOthers();
 
@@ -75,7 +72,8 @@ class DelegateMobileController extends BaseApiController
         ]);
 
         $user = auth()->user();
-        $user->update(['is_available' => $data['is_available']]);
+        $user->syncCafeUser($data);
+        $user->load('cafeUser');
 
         return $this->jsonResponse([
             'is_available' => $user->is_available,
