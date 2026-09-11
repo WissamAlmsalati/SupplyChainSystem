@@ -17,6 +17,64 @@ use Illuminate\Support\Facades\DB;
  */
 class DashboardController extends BaseApiController
 {
+    public function monthlyStats(string $year, string $month): JsonResponse
+    {
+        $year = (int) $year;
+        $month = (int) $month;
+        if ($year < 2000 || $year > 2100 || $month < 1 || $month > 12) {
+            return $this->jsonResponse(['message' => 'شهر غير صالح'], 422);
+        }
+
+        $start = Carbon::create($year, $month, 1)->startOfMonth();
+        $end = $start->copy()->endOfMonth();
+
+        $orders = Order::whereBetween('order_date', [$start, $end])->get();
+        $revenue = round($orders->sum(fn ($o) => (float) $o->total_amount), 2);
+
+        $ordersByStatus = $orders->groupBy('status')
+            ->map(fn ($group) => $group->count())
+            ->sortDesc();
+
+        $topProducts = OrderItem::whereHas('order', fn ($q) => $q->whereBetween('order_date', [$start, $end]))
+            ->select('product_variant_id', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(quantity * unit_price) as total_revenue'))
+            ->with('productVariant.product')
+            ->groupBy('product_variant_id')
+            ->orderByDesc('total_qty')
+            ->limit(10)
+            ->get()
+            ->map(function ($item) {
+                $variant = $item->productVariant;
+                $name = $variant?->product?->name ?? 'منتج';
+                $label = $variant?->attribute_value ? "{$name} - {$variant->attribute_value}" : $name;
+
+                return [
+                    'id' => $variant?->id,
+                    'product_id' => $variant?->product?->id,
+                    'name' => $label,
+                    'quantity' => (int) $item->total_qty,
+                    'revenue' => round((float) $item->total_revenue, 2),
+                ];
+            });
+
+        $recentOrders = Order::with('user')
+            ->whereBetween('order_date', [$start, $end])
+            ->orderByDesc('order_date')
+            ->limit(10)
+            ->get();
+
+        return $this->jsonResponse([
+            'month' => $start->format('Y-m'),
+            'stats' => [
+                'orders' => $orders->count(),
+                'revenue' => $revenue,
+                'avgOrder' => $orders->count() > 0 ? round($revenue / $orders->count(), 2) : 0.0,
+            ],
+            'ordersByStatus' => $ordersByStatus,
+            'topProducts' => $topProducts,
+            'recentOrders' => $recentOrders,
+        ]);
+    }
+
     /**
      * @OA\Get(
      *     path="/dashboard",

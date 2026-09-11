@@ -2,9 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import Button from '../components/ui/Button'
+import Badge from '../components/ui/Badge'
+import Modal from '../components/Modal'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { statusLabels, StatusBadge } from '../lib/status'
 import { PageSkeleton } from '../components/ui/Skeleton'
+import { useModulePermission } from '../hooks/usePermission'
+import { useApiList } from '../hooks/useApiResource'
 
 function formatMoney(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -17,22 +21,71 @@ export default function OrderDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const invoiceRef = useRef(null)
+  const { canEdit } = useModulePermission('ORDERS')
+  const delegates = useApiList('/delegates')
+  const [statusModal, setStatusModal] = useState(false)
+  const [newStatus, setNewStatus] = useState('')
+  const [delegateModal, setDelegateModal] = useState(false)
+  const [selectedDelegate, setSelectedDelegate] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const load = async () => {
+    setError('')
+    try {
+      const res = await client.get(`/orders/${id}`)
+      setOrder(res.data?.data ?? res.data)
+    } catch (err) {
+      setError(err.response?.data?.message || 'فشل تحميل بيانات الطلب')
+    }
+  }
 
   useEffect(() => {
-    async function load() {
+    async function initial() {
       setLoading(true)
-      setError('')
-      try {
-        const res = await client.get(`/orders/${id}`)
-        setOrder(res.data?.data ?? res.data)
-      } catch (err) {
-        setError(err.response?.data?.message || 'فشل تحميل بيانات الطلب')
-      } finally {
-        setLoading(false)
-      }
+      await load()
+      setLoading(false)
     }
-    load()
+    initial()
   }, [id])
+
+  const openStatus = () => {
+    setNewStatus(order.status || '')
+    setStatusModal(true)
+  }
+
+  const saveStatus = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await client.put(`/orders/${id}`, { status: newStatus })
+      setStatusModal(false)
+      await load()
+    } catch (err) {
+      setError(err.response?.data?.message || 'فشل تحديث الحالة')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openDelegate = () => {
+    setSelectedDelegate(order.delegate?.id ? String(order.delegate.id) : '')
+    setDelegateModal(true)
+  }
+
+  const saveDelegate = async (e) => {
+    e.preventDefault()
+    if (!selectedDelegate) return
+    setSaving(true)
+    try {
+      await client.post(`/orders/${id}/assign-delegate`, { delegate_id: Number(selectedDelegate) })
+      setDelegateModal(false)
+      await load()
+    } catch (err) {
+      setError(err.response?.data?.message || 'فشل تعيين المندوب')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const handlePrint = () => {
     const originalTitle = document.title
@@ -106,6 +159,11 @@ export default function OrderDetail() {
               <span className="text-muted">الإجمالي</span>
               <span className="font-semibold text-foreground">{formatMoney(total)} د.ل</span>
             </div>
+            {canEdit && (
+              <div className="pt-2">
+                <Button variant="secondary" size="sm" onClick={openStatus}>تغيير الحالة</Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -139,6 +197,13 @@ export default function OrderDetail() {
           <CardContent className="space-y-2 text-sm">
             <div><span className="text-muted">الاسم:</span> <span className="text-foreground">{order.delegate?.name ?? <span className="text-muted">غير معيّن</span>}</span></div>
             {order.delegate && <div><span className="text-muted">الجوال:</span> <span className="text-foreground">{order.delegate?.mobile_number ?? '-'}</span></div>}
+            {canEdit && (
+              <div className="pt-2">
+                <Button variant="secondary" size="sm" onClick={openDelegate}>
+                  {order.delegate ? 'تغيير المندوب' : 'تعيين مندوب'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -327,6 +392,52 @@ export default function OrderDetail() {
         </div>
         </div>
       </div>
+
+      <Modal title="تحديث الحالة" open={statusModal} onClose={() => setStatusModal(false)}>
+        <form onSubmit={saveStatus} className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-muted">الحالة</label>
+            <select
+              className="w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value)}
+              required
+            >
+              <option value="">اختر الحالة</option>
+              {Object.entries(statusLabels).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-6">
+            <Button type="button" variant="secondary" onClick={() => setStatusModal(false)}>إلغاء</Button>
+            <Button type="submit" variant="primary" disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal title="تعيين مندوب" open={delegateModal} onClose={() => setDelegateModal(false)}>
+        <form onSubmit={saveDelegate} className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-muted">المندوب</label>
+            <select
+              className="w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
+              value={selectedDelegate}
+              onChange={(e) => setSelectedDelegate(e.target.value)}
+              required
+            >
+              <option value="">اختر مندوب</option>
+              {delegates.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-6">
+            <Button type="button" variant="secondary" onClick={() => setDelegateModal(false)}>إلغاء</Button>
+            <Button type="submit" variant="primary" disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>
+          </div>
+        </form>
+      </Modal>
     </>
   )
 }

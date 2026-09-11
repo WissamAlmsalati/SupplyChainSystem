@@ -5,6 +5,7 @@ import DataTable from '../components/DataTable'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/Modal'
+import ConfirmDialog from '../components/ConfirmDialog'
 import client from '../api/client'
 
 export default function CafeRegistrations() {
@@ -13,28 +14,20 @@ export default function CafeRegistrations() {
   const { items, loading, error, pagination, setPage, fetch } = useApiResource('/cafe-registrations/pending', { search })
   const [processing, setProcessing] = useState(null)
   const [detail, setDetail] = useState(null)
+  const [confirm, setConfirm] = useState(null) // { type: 'approve' | 'reject', cafe }
 
-  const handleApprove = async (cafe) => {
-    if (!window.confirm(`هل تريد الموافقة على طلب تسجيل "${cafe.name}"؟`)) return
+  const runAction = async (type, cafe) => {
     setProcessing(cafe.id)
     try {
-      await client.post(`/cafe-registrations/${cafe.id}/approve`)
+      await client.post(`/cafe-registrations/${cafe.id}/${type}`)
       await fetch()
     } finally {
       setProcessing(null)
     }
   }
 
-  const handleReject = async (cafe) => {
-    if (!window.confirm(`هل تريد رفض طلب تسجيل "${cafe.name}"؟ سيتم حذف المقهى والمستخدم المرتبط.`)) return
-    setProcessing(cafe.id)
-    try {
-      await client.post(`/cafe-registrations/${cafe.id}/reject`)
-      await fetch()
-    } finally {
-      setProcessing(null)
-    }
-  }
+  const handleApprove = (cafe) => setConfirm({ type: 'approve', cafe })
+  const handleReject = (cafe) => setConfirm({ type: 'reject', cafe })
 
   const columns = [
     {
@@ -175,6 +168,24 @@ export default function CafeRegistrations() {
           </div>
         )}
       </Modal>
+
+      <ConfirmDialog
+        open={confirm !== null}
+        title={confirm?.type === 'reject' ? 'تأكيد الرفض' : 'تأكيد الموافقة'}
+        message={
+          confirm?.type === 'reject'
+            ? `هل تريد رفض طلب تسجيل "${confirm?.cafe?.name}"؟ سيتم حذف المقهى والمستخدم المرتبط.`
+            : `هل تريد الموافقة على طلب تسجيل "${confirm?.cafe?.name}"؟`
+        }
+        confirmLabel={confirm?.type === 'reject' ? 'رفض' : 'موافقة'}
+        loading={processing !== null}
+        onCancel={() => setConfirm(null)}
+        onConfirm={async () => {
+          const { type, cafe } = confirm
+          setConfirm(null)
+          await runAction(type, cafe)
+        }}
+      />
     </>
   )
 }

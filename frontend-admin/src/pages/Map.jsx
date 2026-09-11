@@ -6,6 +6,7 @@ import client from '../api/client'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import Modal from '../components/Modal'
+import ConfirmDialog from '../components/ConfirmDialog'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { latLngToCell, cellToBoundary, cellToLatLng, polygonToCells } from 'h3-js'
@@ -289,6 +290,8 @@ export default function Map() {
     }
   }
 
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
   const handleDelete = async () => {
     if (!editingZone) return
     setSaving(true)
@@ -301,6 +304,7 @@ export default function Map() {
       setError(err.response?.data?.message || 'فشل حذف المنطقة')
     } finally {
       setSaving(false)
+      setConfirmDelete(false)
     }
   }
 
@@ -390,13 +394,21 @@ export default function Map() {
           </div>
           <div className="flex items-center justify-end gap-2 mt-6">
             {editingZone && (
-              <Button type="button" variant="danger" onClick={handleDelete} disabled={saving}>حذف</Button>
+              <Button type="button" variant="danger" onClick={() => setConfirmDelete(true)} disabled={saving}>حذف</Button>
             )}
             <Button type="button" variant="secondary" onClick={closeModal}>إلغاء</Button>
             <Button type="submit" variant="primary" disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ المنطقة'}</Button>
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        message={`هل تريد حذف منطقة "${editingZone?.name}"؟ لا يمكن التراجع عن هذا الإجراء.`}
+        loading={saving}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={handleDelete}
+      />
     </>
   )
 }

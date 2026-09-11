@@ -1,0 +1,27 @@
+meta {
+  name: Cart Flow - Check Stock
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/cafe/cart/check-stock
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("stock report present", function() {
+    const body = res.getBody();
+    expect(body.data).to.be.an("array");
+    expect(body).to.have.property("all_available");
+  });
+}

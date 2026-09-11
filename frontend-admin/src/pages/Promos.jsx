@@ -33,7 +33,7 @@ const buildLink = (form) =>
   form.linkType === 'product' ? (form.productId ? `/products/${form.productId}` : '') : (LINK_BY_TYPE[form.linkType] ?? '')
 
 export default function Promos() {
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/promos')
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/promos')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [imageFile, setImageFile] = useState(null)
@@ -172,6 +172,7 @@ export default function Promos() {
 
       {error && <div className="rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
 
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}

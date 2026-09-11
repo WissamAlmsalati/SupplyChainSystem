@@ -5,6 +5,7 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { PageSkeleton } from '../components/ui/Skeleton'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function NotificationDetail() {
   const { id } = useParams()
@@ -12,6 +13,7 @@ export default function NotificationDetail() {
   const [notification, setNotification] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -83,11 +85,18 @@ export default function NotificationDetail() {
                   فتح الصفحة المرتبطة
                 </Button>
               )}
-              <Button variant="danger" size="sm" onClick={remove}>حذف الإشعار</Button>
+              <Button variant="danger" size="sm" onClick={() => setConfirmOpen(true)}>حذف الإشعار</Button>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        message="هل تريد حذف هذا الإشعار؟ لا يمكن التراجع عن هذا الإجراء."
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={remove}
+      />
     </>
   )
 }

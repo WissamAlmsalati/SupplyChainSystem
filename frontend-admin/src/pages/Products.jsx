@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApiResource, useApiList } from '../hooks/useApiResource'
 import { useModulePermission } from '../hooks/usePermission'
+import { useAuth } from '../context/AuthContext'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
 import Button from '../components/ui/Button'
@@ -14,7 +15,7 @@ export default function Products() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/products', { search, category_id: filterCategory })
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/products', { search, category_id: filterCategory })
   const categories = useApiList('/categories?per_page=10000')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
@@ -23,6 +24,13 @@ export default function Products() {
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
   const { canCreate, canEdit, canDelete } = useModulePermission('PRODUCTS')
+  const { user } = useAuth()
+  // ponytail: product editing is admin-only on this page — variant editing
+  // lives on the variant page, so nothing variant-related renders here.
+  const isAdmin = user?.user_type?.name === 'admin' || user?.user_type?.name === 'super_admin'
+  const canCreateProduct = canCreate && isAdmin
+  const canEditProduct = canEdit && isAdmin
+  const canDeleteProduct = canDelete && isAdmin
 
   const openCreate = () => {
     setForm(initial)
@@ -124,10 +132,11 @@ export default function Products() {
             onChange={setFilterCategory}
             options={categories.map((c) => ({ value: c.id, label: c.name }))}
           />
-          {canCreate && <Button variant="primary" onClick={openCreate}>إضافة منتج</Button>}
+          {canCreateProduct && <Button variant="primary" onClick={openCreate}>إضافة منتج</Button>}
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}
@@ -138,8 +147,8 @@ export default function Products() {
         onRowClick={(row) => navigate(`/products/${row.id}`)}
         actions={(row) => (
           <>
-            {canEdit && <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>تعديل</Button>}
-            {canDelete && <Button variant="danger" size="sm" onClick={() => remove(row.id)}>حذف</Button>}
+            {canEditProduct && <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>تعديل</Button>}
+            {canDeleteProduct && <Button variant="danger" size="sm" onClick={() => remove(row.id)}>حذف</Button>}
           </>
         )}
       />

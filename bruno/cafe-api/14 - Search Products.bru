@@ -1,0 +1,46 @@
+meta {
+  name: Search Products
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/cafe/products?search={{searchTerm}}&category_id=
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("returns product-shaped results", function() {
+    const json = res.getBody();
+    expect(json.data).to.be.an('array');
+    if (json.data.length > 0) {
+      const item = json.data[0];
+      expect(item.id).to.be.a('number');
+      expect(item.name).to.be.a('string');
+      expect(item).to.have.property('min_price');
+      expect(item).to.have.property('default_variant_id');
+    }
+  });
+}
+
+docs {
+  Search on the SAME endpoint as Products List — no new endpoint.
+  Matches: product name OR tags (JSON array) OR variant attribute_value.
+
+  Variant matches return variant-level entries in product shape:
+    name  = "Product — variant", min_price = variant price,
+    default_variant_id = matched variant, plus variant_id.
+  Name/tag matches return plain product entries.
+
+  Combine with category_id to filter by category.
+  Set {{searchTerm}} in the environment (e.g. "كوب" or "قهوة").
+}

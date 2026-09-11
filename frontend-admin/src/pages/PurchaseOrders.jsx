@@ -14,7 +14,7 @@ export default function PurchaseOrders() {
   const [search, setSearch] = useState('')
   const [filterWarehouse, setFilterWarehouse] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/purchase-orders', { search, warehouse_id: filterWarehouse, status: filterStatus })
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/purchase-orders', { search, warehouse_id: filterWarehouse, status: filterStatus })
   const warehouses = useApiList('/warehouses?per_page=10000')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
@@ -101,6 +101,7 @@ export default function PurchaseOrders() {
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}

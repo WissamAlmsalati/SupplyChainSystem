@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import client from '../api/client'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export function useApiResource(path, extraParams = {}, options = {}) {
   const { persistPage = true } = options
@@ -116,12 +117,35 @@ export function useApiResource(path, extraParams = {}, options = {}) {
     return res.data
   }
 
-  const remove = async (id) => {
+  const [confirmId, setConfirmId] = useState(null)
+
+  const doRemove = async (id) => {
     await client.delete(`${basePath}/${id}`)
     await fetch()
   }
 
-  return { items, loading, error, pagination, setPage, fetch, create, update, remove }
+  // First click asks, second click (from the dialog) deletes.
+  const remove = async (id) => {
+    setConfirmId(id)
+  }
+
+  const confirmDialog = (
+    <ConfirmDialog
+      open={confirmId !== null}
+      onCancel={() => setConfirmId(null)}
+      onConfirm={async () => {
+        const id = confirmId
+        setConfirmId(null)
+        try {
+          await doRemove(id)
+        } catch (err) {
+          setError(err.response?.data?.message || 'فشل الحذف')
+        }
+      }}
+    />
+  )
+
+  return { items, loading, error, pagination, setPage, fetch, create, update, remove, confirmDialog }
 }
 
 export function useApiList(path) {

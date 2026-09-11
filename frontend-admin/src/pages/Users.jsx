@@ -24,7 +24,7 @@ export default function Users() {
   const [search, setSearch] = useState('')
   const [filterUserType, setFilterUserType] = useState('')
   const [filterActive, setFilterActive] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/users', { search, user_type_id: filterUserType, is_active: filterActive })
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/users', { search, user_type_id: filterUserType, is_active: filterActive })
   const userTypes = useApiList('/user-types?per_page=10000')
   const cafes = useApiList('/cafes')
   const [modal, setModal] = useState(false)
@@ -117,6 +117,7 @@ export default function Users() {
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}

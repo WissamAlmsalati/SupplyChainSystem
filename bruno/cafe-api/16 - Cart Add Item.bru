@@ -1,0 +1,29 @@
+meta {
+  name: Cart Flow - Add Item
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/cafe/cart/items
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "branch_id": {{branchId}},
+    "product_variant_id": {{variantId}},
+    "quantity": 2
+  }
+}
+
+tests {
+  test("status is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

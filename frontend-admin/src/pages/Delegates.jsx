@@ -25,7 +25,7 @@ export default function Delegates() {
   const [search, setSearch] = useState('')
   const [filterActive, setFilterActive] = useState('')
   const [filterAvailable, setFilterAvailable] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/delegates', { search, is_active: filterActive, is_available: filterAvailable })
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/delegates', { search, is_active: filterActive, is_available: filterAvailable })
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
@@ -130,6 +130,7 @@ export default function Delegates() {
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}

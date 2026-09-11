@@ -60,7 +60,7 @@ function opName(op) {
 export default function UserTypes() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const { items, loading, error, create, update, remove } = useApiResource('/user-types', { search })
+  const { items, loading, error, create, update, remove, confirmDialog } = useApiResource('/user-types', { search })
   const permissions = useApiList('/permissions')
   const { canCreate, canEdit, canDelete } = useModulePermission('USER_TYPES')
   const { hasFeature } = useAuth()
@@ -167,6 +167,7 @@ export default function UserTypes() {
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}

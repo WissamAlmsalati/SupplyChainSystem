@@ -125,7 +125,12 @@ export default function Dashboard() {
                 const revenue = Number(typeof m.revenue === 'number' ? m.revenue : String(m.revenue).replace(/,/g, ''))
                 const height = `${Number.isFinite(revenue) && maxRevenue > 0 ? (revenue / maxRevenue) * 100 : 0}%`
                 return (
-                  <div key={m.month} className="flex h-full flex-1 flex-col items-center gap-2">
+                  <div
+                    key={m.month}
+                    onClick={() => navigate(`/statistics/${m.month}`)}
+                    className="flex h-full flex-1 cursor-pointer flex-col items-center gap-2 rounded-md transition-colors hover:bg-background/50"
+                    title={`${formatMonthLabel(m.month)}: ${formatMoney(revenue)} د.ل — اضغط للتفاصيل`}
+                  >
                     <div className="text-xs text-muted">{formatMoney(revenue)}</div>
                     <div className="flex flex-1 w-full items-end justify-center">
                       <div

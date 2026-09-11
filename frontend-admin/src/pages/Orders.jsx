@@ -1,15 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModulePermission } from '../hooks/usePermission'
-import { useApiResource, useApiList } from '../hooks/useApiResource'
+import { useApiResource } from '../hooks/useApiResource'
 import DataTable from '../components/DataTable'
-import Modal from '../components/Modal'
 import QuickOrderModal from '../components/QuickOrderModal'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
-import { statusLabels, StatusBadge } from '../lib/status'
+import { StatusBadge } from '../lib/status'
 import { FilterSelect, FilterDate } from '../components/ui/TableFilters'
-import client from '../api/client'
 
 export default function Orders() {
   const navigate = useNavigate()
@@ -17,67 +15,9 @@ export default function Orders() {
   const [filterStatus, setFilterStatus] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const { items, loading, error, pagination, setPage, update, fetch } = useApiResource('/orders', { search, status: filterStatus, date_from: dateFrom, date_to: dateTo })
-  const delegates = useApiList('/delegates')
-  const [statusOrder, setStatusOrder] = useState(null)
-  const [statusModal, setStatusModal] = useState(false)
-  const [newStatus, setNewStatus] = useState('')
-  const [delegateOrder, setDelegateOrder] = useState(null)
-  const [delegateModal, setDelegateModal] = useState(false)
-  const [selectedDelegate, setSelectedDelegate] = useState('')
-  const [saving, setSaving] = useState(false)
+  const { items, loading, error, pagination, setPage, fetch } = useApiResource('/orders', { search, status: filterStatus, date_from: dateFrom, date_to: dateTo })
   const [quickOpen, setQuickOpen] = useState(false)
-  const { canCreate, canEdit } = useModulePermission('ORDERS')
-
-  const openStatus = (order) => {
-    setStatusOrder(order)
-    setNewStatus(order.status || '')
-    setStatusModal(true)
-  }
-
-  const closeStatus = () => {
-    setStatusModal(false)
-    setStatusOrder(null)
-  }
-
-  const saveStatus = async (e) => {
-    e.preventDefault()
-    if (!statusOrder) return
-    setSaving(true)
-    try {
-      await update(statusOrder.id, { status: newStatus })
-      closeStatus()
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const openDelegate = (order) => {
-    setDelegateOrder(order)
-    setSelectedDelegate(order.delegate?.id ? String(order.delegate.id) : '')
-    setDelegateModal(true)
-  }
-
-  const closeDelegate = () => {
-    setDelegateModal(false)
-    setDelegateOrder(null)
-    setSelectedDelegate('')
-  }
-
-  const saveDelegate = async (e) => {
-    e.preventDefault()
-    if (!delegateOrder || !selectedDelegate) return
-    setSaving(true)
-    try {
-      await client.post(`/orders/${delegateOrder.id}/assign-delegate`, { delegate_id: Number(selectedDelegate) })
-      fetch()
-      closeDelegate()
-    } catch (err) {
-      alert(err.response?.data?.message || 'فشل تعيين المندوب')
-    } finally {
-      setSaving(false)
-    }
-  }
+  const { canCreate } = useModulePermission('ORDERS')
 
   const columns = [
     { key: 'order_number', label: 'رقم الطلب', render: (r) => r.order_number ?? `#${r.id}` },
@@ -87,9 +27,9 @@ export default function Orders() {
       label: 'المصدر',
       render: (r) =>
         r.source === 'add order from dashboard' ? (
-          <Badge variant="primary">Dashboard</Badge>
+          <Badge variant="primary">لوحة التحكم</Badge>
         ) : (
-          '-'
+          <Badge variant="default">مستخدم التطبيق</Badge>
         ),
     },
     { key: 'total_amount', label: 'الإجمالي' },
@@ -145,59 +85,8 @@ export default function Orders() {
         onPageChange={setPage}
         emptyText="لا توجد طلبات."
         onRowClick={(row) => navigate(`/orders/${row.id}`)}
-        actions={(row) => (
-          <>
-            {canEdit && <Button variant="primary" size="sm" onClick={() => openStatus(row)}>الحالة</Button>}
-            {canEdit && <Button variant="default" size="sm" onClick={() => openDelegate(row)}>مندوب</Button>}
-          </>
-        )}
       />
 
-      <Modal title="تحديث الحالة" open={statusModal} onClose={closeStatus}>
-        <form onSubmit={saveStatus} className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted">الحالة</label>
-            <select
-              className="w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
-              value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value)}
-              required
-            >
-              <option value="">اختر الحالة</option>
-              {Object.entries(statusLabels).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center justify-end gap-2 mt-6">
-            <Button type="button" variant="secondary" onClick={closeStatus}>إلغاء</Button>
-            <Button type="submit" variant="primary" disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>
-          </div>
-        </form>
-      </Modal>
-
-      <Modal title="تعيين مندوب" open={delegateModal} onClose={closeDelegate}>
-        <form onSubmit={saveDelegate} className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted">المندوب</label>
-            <select
-              className="w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
-              value={selectedDelegate}
-              onChange={(e) => setSelectedDelegate(e.target.value)}
-              required
-            >
-              <option value="">اختر مندوب</option>
-              {delegates.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center justify-end gap-2 mt-6">
-            <Button type="button" variant="secondary" onClick={closeDelegate}>إلغاء</Button>
-            <Button type="submit" variant="primary" disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>
-          </div>
-        </form>
-      </Modal>
     </>
   )
 }

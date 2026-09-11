@@ -32,6 +32,7 @@ import NotificationDetail from './pages/NotificationDetail'
 import Promos from './pages/Promos'
 import PremiumFeatures from './pages/PremiumFeatures'
 import Map from './pages/Map'
+import MonthlyStats from './pages/MonthlyStats'
 import NotFound from './pages/NotFound'
 import { usePremiumFeatureActive } from './hooks/useApiResource'
 
@@ -59,6 +60,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<Layout />}>
         <Route path="/" element={<HomeRedirect />} />
+        <Route path="/statistics/:yearMonth" element={<RequirePermission permission="DASHBOARD_VIEW"><MonthlyStats /></RequirePermission>} />
         <Route path="/cafes" element={<RequirePermission permission="CAFES_VIEW"><Cafes /></RequirePermission>} />
         <Route path="/cafes/:id" element={<RequirePermission permission="CAFES_VIEW"><CafeDetail /></RequirePermission>} />
         <Route path="/cafe-registrations" element={<CafeRegistrationsRoute />} />

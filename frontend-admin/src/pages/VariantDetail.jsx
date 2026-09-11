@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import DataTable from '../components/DataTable'
 import Badge from '../components/ui/Badge'
 import { PageSkeleton } from '../components/ui/Skeleton'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { useModulePermission } from '../hooks/usePermission'
 
 function formatMoney(value) {
@@ -33,6 +34,7 @@ export default function VariantDetail() {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [imageSaving, setImageSaving] = useState(false)
+  const [confirmImageId, setConfirmImageId] = useState(null)
   const { canCreate: canCreateImage, canEdit: canEditImage, canDelete: canDeleteImage } =
     useModulePermission('PRODUCT_IMAGES')
 
@@ -284,7 +286,7 @@ export default function VariantDetail() {
                             </button>
                           )}
                           {canDeleteImage && (
-                            <button onClick={() => deleteImage(img.id)}
+                            <button onClick={() => setConfirmImageId(img.id)}
                               className="rounded bg-danger px-2 py-1 text-xs text-white">
                               حذف
                             </button>
@@ -356,6 +358,17 @@ export default function VariantDetail() {
           />
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmImageId !== null}
+        message="هل تريد حذف هذه الصورة؟ لا يمكن التراجع عن هذا الإجراء."
+        onCancel={() => setConfirmImageId(null)}
+        onConfirm={async () => {
+          const imageId = confirmImageId
+          setConfirmImageId(null)
+          await deleteImage(imageId)
+        }}
+      />
     </>
   )
 }

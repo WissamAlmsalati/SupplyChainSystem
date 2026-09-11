@@ -61,6 +61,7 @@ Route::prefix('v1')->group(function () {
         Route::get('me', [AuthController::class, 'me']);
         Route::post('register', [AuthController::class, 'register']);
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('dashboard/monthly/{year}/{month}', [DashboardController::class, 'monthlyStats'])->name('dashboard.monthly');
         Route::get('cafe/dashboard', [CafeDashboardController::class, 'index'])->middleware('cafe.ready')->name('cafe.dashboard');
         Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');
         Route::put('premium-features/{premiumFeature}', [PremiumFeatureController::class, 'update'])->name('premium-features.update');
@@ -93,6 +94,8 @@ Route::prefix('v1')->group(function () {
             Route::get('products/{id}/variants', [CafeMobileController::class, 'productVariants'])->name('products.variants');
 
             Route::get('cart', [CafeMobileController::class, 'cart'])->name('cart');
+            Route::put('cart/branch', [CafeMobileController::class, 'selectBranch'])->name('cart.branch');
+            Route::get('cart/check-stock', [CafeMobileController::class, 'checkStock'])->name('cart.check-stock');
             Route::post('cart/items', [CafeMobileController::class, 'addCartItem'])->name('cart.items.store');
             Route::put('cart/items/{id}', [CafeMobileController::class, 'updateCartItem'])->name('cart.items.update');
             Route::delete('cart/items/{id}', [CafeMobileController::class, 'removeCartItem'])->name('cart.items.destroy');

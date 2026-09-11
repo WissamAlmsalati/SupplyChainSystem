@@ -1,0 +1,22 @@
+meta {
+  name: Cart Flow - Checkout
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/cafe/cart/checkout
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("status is 201 and order created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().data).to.have.property("id");
+  });
+}

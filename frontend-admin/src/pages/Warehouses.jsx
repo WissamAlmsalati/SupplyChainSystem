@@ -15,7 +15,7 @@ const initial = { name: '', city: '', latitude: '', longitude: '', resolution: 5
 export default function Warehouses() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/warehouses', { search })
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/warehouses', { search })
   const zones = useApiList('/delivery-zones?per_page=10000')
   const [modal, setModal] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -96,6 +96,7 @@ export default function Warehouses() {
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}

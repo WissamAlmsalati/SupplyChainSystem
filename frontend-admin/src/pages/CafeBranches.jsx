@@ -31,7 +31,7 @@ export default function CafeBranches() {
   const [search, setSearch] = useState('')
   const [filterCafe, setFilterCafe] = useState('')
   const [filterActive, setFilterActive] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/cafe-branches', { search, cafe_id: filterCafe, is_active: filterActive })
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/cafe-branches', { search, cafe_id: filterCafe, is_active: filterActive })
   const cafes = useApiList('/cafes?per_page=10000')
   const zones = useApiList('/delivery-zones?per_page=10000')
   const [modal, setModal] = useState(false)
@@ -156,6 +156,7 @@ export default function CafeBranches() {
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}

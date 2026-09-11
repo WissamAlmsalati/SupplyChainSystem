@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bell, Check, Trash2 } from 'lucide-react'
 import client from '../api/client'
+import ConfirmDialog from './ConfirmDialog'
 
 export default function NotificationBell() {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [confirmId, setConfirmId] = useState(null)
   const dropdownRef = useRef(null)
 
   const fetchNotifications = async () => {
@@ -152,7 +154,7 @@ export default function NotificationBell() {
                       </button>
                     )}
                     <button
-                      onClick={() => remove(n.id)}
+                      onClick={() => setConfirmId(n.id)}
                       className="rounded p-1 text-muted hover:bg-background hover:text-danger"
                       title="حذف"
                     >
@@ -165,6 +167,17 @@ export default function NotificationBell() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmId !== null}
+        message="هل تريد حذف هذا الإشعار؟ لا يمكن التراجع عن هذا الإجراء."
+        onCancel={() => setConfirmId(null)}
+        onConfirm={async () => {
+          const id = confirmId
+          setConfirmId(null)
+          await remove(id)
+        }}
+      />
     </div>
   )
 }

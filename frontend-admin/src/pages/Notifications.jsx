@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import Button from '../components/ui/Button'
+import ConfirmDialog from '../components/ConfirmDialog'
 import Badge from '../components/ui/Badge'
 import { PageSkeleton } from '../components/ui/Skeleton'
 
@@ -11,6 +12,7 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('all')
+  const [confirmId, setConfirmId] = useState(null)
 
   const fetchNotifications = async () => {
     setLoading(true)
@@ -50,14 +52,18 @@ export default function Notifications() {
     }
   }
 
-  const remove = async (id, e) => {
-    e?.stopPropagation()
+  const remove = async (id) => {
     try {
       await client.delete(`/notifications/${id}`)
       setNotifications((prev) => prev.filter((n) => n.id !== id))
     } catch (err) {
       setError(err.response?.data?.message || 'فشل الحذف')
     }
+  }
+
+  const askRemove = (id, e) => {
+    e?.stopPropagation()
+    setConfirmId(id)
   }
 
   const handleClick = (n) => {
@@ -118,13 +124,24 @@ export default function Notifications() {
                       مقروء
                     </Button>
                   )}
-                  <Button variant="danger" size="sm" onClick={(e) => remove(n.id, e)}>حذف</Button>
+                  <Button variant="danger" size="sm" onClick={(e) => askRemove(n.id, e)}>حذف</Button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmId !== null}
+        message="هل تريد حذف هذا الإشعار؟ لا يمكن التراجع عن هذا الإجراء."
+        onCancel={() => setConfirmId(null)}
+        onConfirm={async () => {
+          const id = confirmId
+          setConfirmId(null)
+          await remove(id)
+        }}
+      />
     </>
   )
 }

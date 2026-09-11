@@ -12,7 +12,7 @@ const initial = { name: '', parent_category_id: '' }
 export default function Categories() {
   const [search, setSearch] = useState('')
   const [filterParent, setFilterParent] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/categories', { search, parent: filterParent })
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/categories', { search, parent: filterParent })
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
@@ -82,6 +82,7 @@ export default function Categories() {
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}

@@ -15,7 +15,7 @@ export default function Cafes() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filterActive, setFilterActive] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/cafes', { search, is_active: filterActive })
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/cafes', { search, is_active: filterActive })
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(initial)
   const [imageFile, setImageFile] = useState(null)
@@ -122,6 +122,7 @@ export default function Cafes() {
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}

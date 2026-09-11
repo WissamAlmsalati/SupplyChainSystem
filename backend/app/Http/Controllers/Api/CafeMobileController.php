@@ -9,12 +9,15 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\DeliveryZone;
+use App\Models\Inventory;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\PremiumFeature;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\DelegateAssignmentService;
+use App\Services\H3Service;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -238,6 +241,7 @@ class CafeMobileController extends BaseApiController
         ];
 
         $order = DB::transaction(function () use ($orderData, $items) {
+            $this->drainStock(collect($items)->pluck('quantity', 'product_variant_id')->all());
             $orderData['order_number'] = Order::generateOrderNumber();
             $order = Order::create($orderData);
             $order->items()->createMany($items);
@@ -272,8 +276,32 @@ class CafeMobileController extends BaseApiController
      */
     public function branches(Request $request): JsonResponse
     {
-        $branches = $this->branchScope()->get();
-        return $this->jsonResponse(['data' => $branches]);
+        $branches = $this->branchScope()->with('deliveryZone:id,name,delivery_price')->get();
+
+        return $this->jsonResponse(['data' => [
+            'branches' => $branches,
+            'delivery_price' => $this->cafeZonePrice(),
+        ]]);
+    }
+
+    // Delivery price for the cafe's own location — used when the cafe has no
+    // branches and orders ship to the cafe's registered lat/lng.
+    // ponytail: delivery zones are drawn on the res-4 map grid, so one cell
+    // lookup covers all of them; other resolutions would need one call per res.
+    private function cafeZonePrice(): ?float
+    {
+        $cafe = Cafe::find($this->cafeId());
+        if (! $cafe || $cafe->latitude === null || $cafe->longitude === null) {
+            return null;
+        }
+
+        $cell = H3Service::latLngToCell((float) $cafe->latitude, (float) $cafe->longitude, 4);
+
+        $zone = DeliveryZone::where('is_active', true)
+            ->where('hex_id', $cell)
+            ->first(['delivery_price']);
+
+        return $zone ? (float) $zone->delivery_price : null;
     }
 
     /**
@@ -648,6 +676,77 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
+     * @OA\Put(
+     *     path="/cafe/cart/branch",
+     *     tags={"Cafe Mobile Cart"},
+     *     summary="Select the delivery branch for the cart",
+     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="branch_id", type="integer"))),
+     *     @OA\Response(response=200, description="Branch selected; items are reset when the branch changes")
+     * )
+     */
+    public function selectBranch(Request $request): JsonResponse
+    {
+        $data = $request->validate(['branch_id' => ['required', 'integer', 'exists:cafe_branch,id']]);
+        $branch = $this->branchScope()->findOrFail($data['branch_id']);
+
+        $cart = $this->currentCart($branch->id);
+
+        // one branch per cart; switching branch resets the items
+        $switched = $cart->branch_id && $cart->branch_id !== $branch->id;
+        if ($switched) {
+            $cart->items()->delete();
+        }
+        $cart->update(['branch_id' => $branch->id]);
+
+        return $this->jsonResponse([
+            'data' => $cart->load(['branch', 'branch.deliveryZone', 'items.productVariant.product']),
+            'branch_switched' => $switched,
+            'message' => $switched ? 'تم تغيير الفرع وإعادة تعيين السلة' : 'تم اختيار الفرع',
+        ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/cafe/cart/check-stock",
+     *     tags={"Cafe Mobile Cart"},
+     *     summary="Check stock availability for every cart item (no reservation)",
+     *     @OA\Response(response=200, description="Per-item availability report")
+     * )
+     */
+    public function checkStock(): JsonResponse
+    {
+        $cart = $this->currentCart();
+        if (! $cart || $cart->items->isEmpty()) {
+            return $this->jsonResponse(['message' => 'السلة فارغة'], 400);
+        }
+
+        $cart->loadMissing('items.productVariant.product');
+        $levels = $this->stockLevels($cart->items->pluck('product_variant_id')->all());
+
+        $items = $cart->items->map(function (CartItem $item) use ($levels) {
+            $variant = $item->productVariant;
+            $name = $variant?->product?->name ?? 'منتج';
+            $label = $variant?->attribute_value ? "{$name} - {$variant->attribute_value}" : $name;
+            $stock = $levels[$item->product_variant_id] ?? ['total' => 0, 'warehouses' => []];
+
+            return [
+                'cart_item_id' => $item->id,
+                'product_variant_id' => $item->product_variant_id,
+                'name' => $label,
+                'requested' => (int) $item->quantity,
+                'in_stock' => $stock['total'],
+                'available' => $stock['total'] >= $item->quantity,
+                'warehouses' => $stock['warehouses'],
+            ];
+        });
+
+        return $this->jsonResponse([
+            'data' => $items,
+            'all_available' => $items->every(fn ($i) => $i['available']),
+        ]);
+    }
+
+    /**
      * @OA\Post(
      *     path="/cafe/cart/items",
      *     tags={"Cafe Mobile Cart"},
@@ -800,6 +899,7 @@ class CafeMobileController extends BaseApiController
         ];
 
         $order = DB::transaction(function () use ($orderData, $items, $cart) {
+            $this->drainStock($cart->items->pluck('quantity', 'product_variant_id')->all());
             $orderData['order_number'] = Order::generateOrderNumber();
             $order = Order::create($orderData);
             $order->items()->createMany($items);
@@ -879,5 +979,65 @@ class CafeMobileController extends BaseApiController
         }
 
         return $cart;
+    }
+
+    // Available stock per variant: total + per-warehouse breakdown.
+    private function stockLevels(array $variantIds): array
+    {
+        return Inventory::whereIn('product_variant_id', $variantIds)
+            ->with('warehouse:id,name')
+            ->get()
+            ->groupBy('product_variant_id')
+            ->map(fn ($rows) => [
+                'total' => (int) $rows->sum('quantity'),
+                'warehouses' => $rows->map(fn ($r) => [
+                    'warehouse_id' => $r->warehouse_id,
+                    'warehouse_name' => $r->warehouse?->name,
+                    'quantity' => (int) $r->quantity,
+                ])->values(),
+            ])
+            ->all();
+    }
+
+    // ponytail: no reservation — stock is locked and drained at payment time only.
+    // Must run inside a DB::transaction; throws a 409 with a shortage report when
+    // any variant is short, so the order is never created and nothing is deducted.
+    private function drainStock(array $quantitiesByVariant): void
+    {
+        $rows = Inventory::whereIn('product_variant_id', array_keys($quantitiesByVariant))
+            ->lockForUpdate()
+            ->orderBy('id')
+            ->get()
+            ->groupBy('product_variant_id');
+
+        $shortages = [];
+        foreach ($quantitiesByVariant as $variantId => $qty) {
+            $available = (int) ($rows->get($variantId)?->sum('quantity') ?? 0);
+            if ($available < $qty) {
+                $shortages[] = [
+                    'product_variant_id' => $variantId,
+                    'requested' => $qty,
+                    'available' => $available,
+                ];
+            }
+        }
+
+        if ($shortages) {
+            throw new HttpResponseException($this->jsonResponse([
+                'message' => 'الكمية المطلوبة غير متوفرة لبعض المنتجات',
+                'shortages' => $shortages,
+            ], 409));
+        }
+
+        foreach ($quantitiesByVariant as $variantId => $qty) {
+            foreach ($rows->get($variantId) ?? [] as $inventory) {
+                if ($qty <= 0) {
+                    break;
+                }
+                $take = min((int) $inventory->quantity, $qty);
+                $inventory->decrement('quantity', $take);
+                $qty -= $take;
+            }
+        }
     }
 }

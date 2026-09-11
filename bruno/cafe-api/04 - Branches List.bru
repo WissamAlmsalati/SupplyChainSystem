@@ -16,8 +16,8 @@ auth:bearer {
 
 script:post-response {
   const json = res.getBody();
-  if (Array.isArray(json.data) && json.data.length > 0) {
-    bru.setVar("branchId", json.data[0].id);
+  if (Array.isArray(json.data.branches) && json.data.branches.length > 0) {
+    bru.setVar("branchId", json.data.branches[0].id);
   }
 }
 
@@ -26,11 +26,12 @@ tests {
     expect(res.getStatus()).to.equal(200);
   });
 
-  test("returns array of branches", function() {
+  test("returns array of branches with delivery price", function() {
     const json = res.getBody();
-    expect(json.data).to.be.an('array');
-    if (json.data.length > 0) {
-      expect(json.data[0].id).to.be.a('number');
+    expect(json.data.branches).to.be.an('array');
+    expect(json.data).to.have.property('delivery_price');
+    if (json.data.branches.length > 0) {
+      expect(json.data.branches[0].id).to.be.a('number');
     }
   });
 }

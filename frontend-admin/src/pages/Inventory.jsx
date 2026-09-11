@@ -26,7 +26,7 @@ export default function Inventory() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filterWarehouse, setFilterWarehouse] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove } = useApiResource('/inventory', { search, warehouse_id: filterWarehouse })
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/inventory', { search, warehouse_id: filterWarehouse })
   const warehouses = useApiList('/warehouses?per_page=10000')
   const variants = useApiList('/product-variants?per_page=10000')
   const products = useApiList('/products?per_page=10000')
@@ -215,6 +215,7 @@ export default function Inventory() {
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {confirmDialog}
       <DataTable
         columns={columns}
         rows={items}
