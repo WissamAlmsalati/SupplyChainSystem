@@ -7,10 +7,14 @@ use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Http\Requests\Api\Auth\RegisterRequest;
 use App\Models\AppUser;
 use App\Models\Cafe;
+use App\Models\Notification;
+use App\Models\PasswordResetOtp;
+use App\Models\PremiumFeature;
 use App\Models\UserType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 /**
  * @OA\Tag(name="Auth", description="Shared authentication endpoints")
@@ -144,8 +148,8 @@ class AuthController extends BaseApiController
      * @OA\Post(
      *     path="/cafe/register",
      *     tags={"Auth"},
-     *     summary="Register a cafe account (user only, cafe is added after login)",
-     *     description="Creates an active cafe-type user with no cafe attached. After logging in, call GET /cafe/profile to check has_cafe, then POST /cafe/profile to add the cafe.",
+     *     summary="Register a cafe account (OTP verification required before login)",
+     *     description="Creates an inactive cafe user and sends a 6-digit OTP. Verify it via POST /cafe/verify-otp: when cafe_auto_approve is active a bearer token is returned immediately, otherwise the account waits for admin approval and only a message is returned.",
      *     security={},
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CafeRegisterRequest")),
      *     @OA\Response(response=201, description="Account created"),
@@ -156,22 +160,142 @@ class AuthController extends BaseApiController
     {
         $cafeType = UserType::where('name', 'cafe')->firstOrFail();
 
+        // inactive until the OTP is verified; the cafe_auto_approve feature
+        // then decides between an instant token and a pending-approval message
         $user = AppUser::create([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'mobile_number' => $request->validated('phone_number'),
             'password_hash' => Hash::make($request->validated('password')),
             'user_type_id' => $cafeType->id,
-            'is_active' => true,
+            'is_active' => false,
         ]);
 
+        $otp = $this->issueOtp($user->mobile_number);
+
         return $this->jsonResponse([
-            'message' => 'تم إنشاء الحساب بنجاح، يمكنك تسجيل الدخول الآن',
+            'message' => 'تم إرسال رمز التحقق إلى رقم هاتفك',
+            'status' => 'otp_sent',
+            'token' => $otp['token'],
+            'otp' => $otp['otp'], // ponytail: exposed for demo/testing only; remove in production SMS flow
             'user' => [
                 'name' => $user->name,
                 'phone_number' => $user->mobile_number,
             ],
         ], 201);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/cafe/verify-otp",
+     *     tags={"Auth"},
+     *     summary="Verify registration OTP",
+     *     description="When cafe_auto_approve is active the user is activated and a bearer token is returned immediately. Otherwise the account stays inactive until an admin approves it, and only a message is returned.",
+     *     security={},
+     *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *         @OA\Property(property="token", type="string"),
+     *         @OA\Property(property="otp", type="string")
+     *     )),
+     *     @OA\Response(response=200, description="Verified: token (auto-approve) or pending-approval message")
+     * )
+     */
+    public function verifyRegistrationOtp(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string'],
+            'otp' => ['required', 'string'],
+        ]);
+
+        $record = PasswordResetOtp::where('token', hash('sha256', $data['token']))
+            ->where('otp', $data['otp'])
+            ->first();
+
+        if (! $record || $record->isExpired()) {
+            return $this->jsonResponse(['message' => 'رمز التحقق غير صالح أو منتهي الصلاحية'], 422);
+        }
+
+        $user = AppUser::where('mobile_number', $record->mobile_number)
+            ->whereHas('userType', fn ($q) => $q->where('name', 'cafe'))
+            ->firstOrFail();
+
+        $record->delete();
+
+        if (PremiumFeature::isActive('cafe_auto_approve')) {
+            $user->update(['is_active' => true]);
+
+            return $this->jsonResponse([
+                'message' => 'تم تفعيل حسابك بنجاح',
+                'status' => 'active',
+                'token' => $user->createToken('api')->plainTextToken,
+                'user' => $user->only(['id', 'name', 'email', 'mobile_number']),
+            ]);
+        }
+
+        Notification::notifyAdmins(
+            'تسجيل مقهى جديد',
+            "مستخدم جديد ({$user->name}) بانتظار الموافقة على تفعيل حسابه",
+            '/users',
+            'cafe_registration'
+        );
+
+        return $this->jsonResponse([
+            'message' => 'تم التحقق من رقمك، حسابك قيد مراجعة الإدارة وسيتم تفعيله قريباً',
+            'status' => 'pending_approval',
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/cafe/resend-otp",
+     *     tags={"Auth"},
+     *     summary="Resend the registration OTP",
+     *     security={},
+     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="mobile_number", type="string"))),
+     *     @OA\Response(response=200, description="OTP resent")
+     * )
+     */
+    public function resendRegistrationOtp(Request $request): JsonResponse
+    {
+        $data = $request->validate(['mobile_number' => ['required', 'string', 'max:20']]);
+
+        $user = AppUser::where('mobile_number', $data['mobile_number'])
+            ->whereHas('userType', fn ($q) => $q->where('name', 'cafe'))
+            ->first();
+
+        if (! $user) {
+            return $this->jsonResponse(['message' => 'رقم الهاتف غير مسجل'], 404);
+        }
+
+        if ($user->is_active) {
+            return $this->jsonResponse(['message' => 'الحساب مفعل بالفعل'], 409);
+        }
+
+        $otp = $this->issueOtp($user->mobile_number);
+
+        return $this->jsonResponse([
+            'message' => 'تم إرسال رمز التحقق',
+            'status' => 'otp_sent',
+            'token' => $otp['token'],
+            'otp' => $otp['otp'], // ponytail: demo only
+        ]);
+    }
+
+    // Replaces any previous OTP for the number; 6 digits, 15 minutes to verify.
+    private function issueOtp(string $mobileNumber): array
+    {
+        PasswordResetOtp::where('mobile_number', $mobileNumber)->delete();
+
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $token = Str::random(32);
+
+        PasswordResetOtp::create([
+            'mobile_number' => $mobileNumber,
+            'token' => hash('sha256', $token),
+            'otp' => $otp,
+            'expires_at' => now()->addMinutes(15),
+        ]);
+
+        return ['token' => $token, 'otp' => $otp];
     }
 
     public function logout(Request $request): JsonResponse

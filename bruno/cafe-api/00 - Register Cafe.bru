@@ -1,0 +1,39 @@
+meta {
+  name: Register Cafe (OTP)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/cafe/register
+  body: json
+  auth: none
+}
+
+script:pre-request {
+  // random phone per run so the test is repeatable
+  const phone = "09" + String(Math.floor(10000000 + Math.random() * 89999999));
+  bru.setVar("regPhone", phone);
+  req.setBody(JSON.stringify({
+    name: "مقهى اختبار OTP",
+    phone_number: phone,
+    password: "password"
+  }));
+}
+
+script:post-response {
+  const json = res.getBody();
+  const d = json.data || json;
+  bru.setVar("regOtpToken", d.token);
+  bru.setVar("regOtp", d.otp);
+}
+
+tests {
+  test("status is 201 and OTP sent", function() {
+    expect(res.getStatus()).to.equal(201);
+    const d = res.getBody().data || res.getBody();
+    expect(d.status).to.equal("otp_sent");
+    expect(d.token).to.be.a("string");
+    expect(d.otp).to.match(/^\d{6}$/);
+  });
+}

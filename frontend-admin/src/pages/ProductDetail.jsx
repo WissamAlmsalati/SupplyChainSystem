@@ -97,43 +97,23 @@ export default function ProductDetail() {
   }
 
   const openInventoryModal = (variantId) => {
-    const v = product?.variants?.find((x) => x.id === variantId)
     setInventoryModal(variantId)
     setInventoryForm({
       warehouse_id: warehouses.length === 1 ? String(warehouses[0].id) : '',
       quantity: '',
-      cost_price: v?.cost_price ?? '',
-      sell_price: v?.sell_price ?? '',
-      barcode: v?.barcode ?? '',
-      manufacturing_year: v?.manufacturing_year ?? '',
-      expiry_date: v?.expiry_date ?? '',
     })
   }
 
   const closeInventoryModal = () => {
     setInventoryModal(null)
-    setInventoryForm({
-      warehouse_id: '', quantity: '', cost_price: '', sell_price: '', barcode: '', manufacturing_year: '', expiry_date: '',
-    })
+    setInventoryForm({ warehouse_id: '', quantity: '' })
   }
 
   const saveInventory = async () => {
     if (!inventoryForm.warehouse_id || !inventoryForm.quantity) return
     setSaving((prev) => ({ ...prev, inventory: true }))
     try {
-      if (canEditProduct) {
-        await client.put(`/product-variants/${inventoryModal}`, {
-          product_id: Number(id),
-          sku: product.variants.find((v) => v.id === inventoryModal)?.sku,
-          attribute_value: product.variants.find((v) => v.id === inventoryModal)?.attribute_value,
-          price: product.variants.find((v) => v.id === inventoryModal)?.price,
-          cost_price: inventoryForm.cost_price ? Number(inventoryForm.cost_price) : null,
-          sell_price: inventoryForm.sell_price ? Number(inventoryForm.sell_price) : null,
-          barcode: inventoryForm.barcode || null,
-          manufacturing_year: inventoryForm.manufacturing_year ? Number(inventoryForm.manufacturing_year) : null,
-          expiry_date: inventoryForm.expiry_date || null,
-        })
-      }
+      // add stock only — variant prices/barcodes stay exactly as they are
       await client.post('/inventory', {
         warehouse_id: Number(inventoryForm.warehouse_id),
         product_variant_id: inventoryModal,
@@ -441,6 +421,18 @@ export default function ProductDetail() {
                 <option key={w.id} value={w.id}>{w.name}</option>
               ))}
             </select>
+            {inventoryForm.warehouse_id && (
+              <p className="mt-1.5 text-xs text-muted">
+                المخزون الحالي في هذا المستودع:{' '}
+                <span className="font-semibold text-foreground">
+                  {product.variants
+                    .find((v) => v.id === inventoryModal)
+                    ?.inventories?.find((i) => String(i.warehouse_id) === inventoryForm.warehouse_id)
+                    ?.quantity ?? 0}
+                </span>
+                {' '}— الكمية المضافة سيتم جمعها معه
+              </p>
+            )}
           </div>
           <Input
             label="الكمية"
@@ -449,48 +441,7 @@ export default function ProductDetail() {
             value={inventoryForm.quantity}
             onChange={(e) => setInventoryForm({ ...inventoryForm, quantity: e.target.value })}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="سعر التكلفة"
-              type="number"
-              min="0"
-              step="0.01"
-              value={inventoryForm.cost_price}
-              onChange={(e) => setInventoryForm({ ...inventoryForm, cost_price: e.target.value })}
-            />
-            <Input
-              label="سعر البيع"
-              type="number"
-              min="0"
-              step="0.01"
-              value={inventoryForm.sell_price}
-              onChange={(e) => setInventoryForm({ ...inventoryForm, sell_price: e.target.value })}
-            />
-          </div>
-          <Input
-            label="Barcode"
-            value={inventoryForm.barcode}
-            onChange={(e) => setInventoryForm({ ...inventoryForm, barcode: e.target.value })}
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="سنة التصنيع"
-              type="number"
-              min="1900"
-              max="2100"
-              value={inventoryForm.manufacturing_year}
-              onChange={(e) => setInventoryForm({ ...inventoryForm, manufacturing_year: e.target.value })}
-            />
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted">تاريخ انتهاء الصلاحية</label>
-              <input
-                type="date"
-                value={inventoryForm.expiry_date}
-                onChange={(e) => setInventoryForm({ ...inventoryForm, expiry_date: e.target.value })}
-                className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-              />
-            </div>
-          </div>
+          <p className="text-xs text-muted">الأسعار والبيانات تبقى نفسها من بيانات المتغير — هذا النموذج لإضافة مخزون فقط.</p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={closeInventoryModal}>إلغاء</Button>
             <Button

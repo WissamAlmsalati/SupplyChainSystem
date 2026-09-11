@@ -48,6 +48,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('cafe/register', [AuthController::class, 'registerCafe'])->name('cafe.register');
+    Route::post('cafe/verify-otp', [AuthController::class, 'verifyRegistrationOtp'])->name('cafe.verify-otp');
+    Route::post('cafe/resend-otp', [AuthController::class, 'resendRegistrationOtp'])->name('cafe.resend-otp');
     Route::post('cafe/forgot-password', [PasswordResetController::class, 'sendOtp'])->name('cafe.forgot-password');
     Route::post('cafe/reset-password', [PasswordResetController::class, 'resetPassword'])->name('cafe.reset-password');
 

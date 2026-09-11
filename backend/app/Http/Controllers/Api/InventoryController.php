@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\Api\InventoryRequest;
 use App\Models\Inventory;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @OA\Tag(name="Admin Inventory", description="Admin platform inventory management")
@@ -52,13 +54,37 @@ class InventoryController extends BaseApiController
     public function store(InventoryRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $inventory = Inventory::updateOrCreate(
-            [
-                'warehouse_id' => $validated['warehouse_id'],
-                'product_variant_id' => $validated['product_variant_id'],
-            ],
-            ['quantity' => $validated['quantity']]
-        );
+        $qty = (int) $validated['quantity'];
+
+        $inventory = DB::transaction(function () use ($validated, $qty) {
+            $existing = Inventory::where('warehouse_id', $validated['warehouse_id'])
+                ->where('product_variant_id', $validated['product_variant_id'])
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                // "add stock" always sums with the existing stock, never replaces it
+                $existing->increment('quantity', $qty);
+                return $existing->refresh();
+            }
+
+            try {
+                return Inventory::create([
+                    'warehouse_id' => $validated['warehouse_id'],
+                    'product_variant_id' => $validated['product_variant_id'],
+                    'quantity' => $qty,
+                ]);
+            } catch (QueryException) {
+                // unique (warehouse_id, product_variant_id) — a concurrent first-add
+                // created the row between our SELECT and INSERT; sum instead.
+                $existing = Inventory::where('warehouse_id', $validated['warehouse_id'])
+                    ->where('product_variant_id', $validated['product_variant_id'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $existing->increment('quantity', $qty);
+                return $existing->refresh();
+            }
+        });
 
         return $this->jsonResponse($inventory->load(['warehouse', 'productVariant.product']), 201);
     }
