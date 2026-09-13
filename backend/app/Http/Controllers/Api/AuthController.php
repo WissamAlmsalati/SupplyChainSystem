@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * @OA\Tag(name="Auth", description="Shared authentication endpoints")
  * @OA\Tag(name="Admin Users", description="Admin platform user management")
  */
 class AuthController extends BaseApiController

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import client from '../api/client'
+import FavoriteButton from '../components/FavoriteButton'
 import { useCart } from '../context/CartContext'
 
 function formatMoney(value) {
@@ -137,6 +138,7 @@ export default function Products() {
                 className="group cursor-pointer overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition hover:border-primary hover:shadow-md"
               >
                 <div className="relative aspect-square bg-background">
+                    <FavoriteButton productId={p.id} className="absolute end-3 top-3 z-10" />
                   {p.image_url ? (
                     <img
                       src={p.image_url}

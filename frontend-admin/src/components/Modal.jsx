@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card'
 
-export default function Modal({ title, open, onClose, children }) {
+export default function Modal({ title, open, onClose, children, size = 'md' }) {
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') onClose()
@@ -18,7 +18,7 @@ export default function Modal({ title, open, onClose, children }) {
       className="fixed inset-0 z-[9999] grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
     >
       <Card
-        className="w-full max-w-md max-h-[90vh] overflow-auto border-border shadow-lg"
+        className={`w-full ${size === 'lg' ? 'max-w-2xl' : 'max-w-md'} max-h-[90vh] overflow-auto border-border shadow-lg`}
       >
         <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
           <CardTitle>{title}</CardTitle>

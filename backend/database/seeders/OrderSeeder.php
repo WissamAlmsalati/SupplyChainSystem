@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentMethod;
+use App\Exceptions\InsufficientWalletBalanceException;
 use App\Enums\UserRole;
 use App\Exceptions\InsufficientStockException;
 use App\Models\AppUser;
@@ -52,7 +54,11 @@ class OrderSeeder extends Seeder
                     ->map(fn ($v) => ['product_variant_id' => $v->id, 'quantity' => rand(1, 5)])
                     ->all();
 
+                // About a third of the orders are paid from the wallet when the balance allows.
+                $method = rand(1, 3) === 1 ? PaymentMethod::Wallet : PaymentMethod::Cash;
                 try {
+                    $order = $placement->place($customer, $customer->addresses->random(), $items, fake()->randomElement(OrderSource::cases()), null, null, $method);
+                } catch (InsufficientWalletBalanceException) {
                     $order = $placement->place($customer, $customer->addresses->random(), $items, fake()->randomElement(OrderSource::cases()));
                 } catch (InsufficientStockException) {
                     continue;
@@ -69,6 +75,13 @@ class OrderSeeder extends Seeder
                     $order->update(['status' => $status]);
                 }
             }
+        }
+
+        // One settlement per delegate for part of the collected cash, so custody screens have history.
+        $custody = app(\App\Services\CustodyService::class);
+        $admin = AppUser::whereHas('userType', fn ($q) => $q->where('name', UserRole::Admin->value))->first();
+        foreach (\App\Models\DelegateProfile::where('custody_balance', '>', 0)->with('user')->get() as $profile) {
+            $custody->settle($profile->user, round((float) $profile->custody_balance * 0.6, 2), $admin, 'تسليم نقدية للمكتب');
         }
 
         // Placement notifies admins per order; keep the seeded inbox clean.

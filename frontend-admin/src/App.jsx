@@ -18,7 +18,12 @@ import Products from './pages/Products'
 import ProductDetail from './pages/ProductDetail'
 import VariantDetail from './pages/VariantDetail'
 import Inventory from './pages/Inventory'
-import PurchaseOrders from './pages/PurchaseOrders'
+import Wallets from './pages/Wallets'
+import WalletDetail from './pages/WalletDetail'
+import WalletTopups from './pages/WalletTopups'
+import Custody from './pages/Custody'
+import FeaturedSections from './pages/FeaturedSections'
+import CustodyDetail from './pages/CustodyDetail'
 import Orders from './pages/Orders'
 import OrderDetail from './pages/OrderDetail'
 import DeliveryZones from './pages/DeliveryZones'
@@ -63,7 +68,13 @@ function App() {
         <Route path="/products/:id" element={<RequirePermission permission="PRODUCTS_VIEW"><ProductDetail /></RequirePermission>} />
         <Route path="/product-variants/:id" element={<RequirePermission permission="PRODUCTS_VIEW"><VariantDetail /></RequirePermission>} />
         <Route path="/inventory" element={<RequirePermission permission="INVENTORY_VIEW"><Inventory /></RequirePermission>} />
-        <Route path="/purchase-orders" element={<RequirePermission permission="PURCHASE_ORDERS_VIEW"><PurchaseOrders /></RequirePermission>} />
+        <Route path="/wallets" element={<RequirePermission permission="WALLETS_VIEW"><Wallets /></RequirePermission>} />
+        <Route path="/wallets/:id" element={<RequirePermission permission="WALLETS_VIEW"><WalletDetail /></RequirePermission>} />
+        <Route path="/wallet-topups" element={<RequirePermission permission="WALLET_TOPUPS_VIEW"><WalletTopups /></RequirePermission>} />
+        <Route path="/wallet-topups/:id" element={<RequirePermission permission="WALLET_TOPUPS_VIEW"><WalletTopups /></RequirePermission>} />
+        <Route path="/featured-sections" element={<RequirePermission permission="FEATURED_SECTIONS_VIEW"><FeaturedSections /></RequirePermission>} />
+        <Route path="/custody" element={<RequirePermission permission="CUSTODY_VIEW"><Custody /></RequirePermission>} />
+        <Route path="/custody/:id" element={<RequirePermission permission="CUSTODY_VIEW"><CustodyDetail /></RequirePermission>} />
         <Route path="/orders" element={<RequirePermission permission="ORDERS_VIEW"><Orders /></RequirePermission>} />
         <Route path="/orders/:id" element={<RequirePermission permission="ORDERS_VIEW"><OrderDetail /></RequirePermission>} />
         <Route path="/delivery-zones" element={<RequirePermission permission="DELIVERY_ZONES_VIEW"><DeliveryZones /></RequirePermission>} />

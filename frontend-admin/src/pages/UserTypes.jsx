@@ -38,7 +38,6 @@ const moduleLabels = {
   products: 'المنتجات',
   inventory: 'المخزون',
   orders: 'الطلبات',
-  purchase_orders: 'طلبات الشراء',
   warehouses: 'المستودعات',
   delivery_zones: 'مناطق التوصيل',
   users: 'المستخدمين',

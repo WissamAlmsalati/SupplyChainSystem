@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { HeartIcon } from './FavoriteButton'
 import { usePremiumFeatureActive } from '../hooks/usePremiumFeatureActive'
 import { useState } from 'react'
 
@@ -94,6 +95,11 @@ export default function Header({ onMenuClick }) {
         </form>
 
         <div className="ms-auto flex items-center gap-2 sm:gap-4">
+          {user?.user_type?.name !== 'delegate' && (
+            <Link to="/favorites" className="rounded-lg p-2 text-muted hover:bg-background hover:text-red-500" aria-label="المفضلة" title="المفضلة">
+              <HeartIcon className="h-5 w-5" />
+            </Link>
+          )}
           <Link
             to="/cart"
             className="relative rounded-lg p-2 text-muted hover:bg-background hover:text-foreground"

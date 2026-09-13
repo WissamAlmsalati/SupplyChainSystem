@@ -11,6 +11,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(\App\Services\Payments\PaymentGateway::class, fn () => match (config('wallet.gateway.driver')) {
+            'sandbox' => new \App\Services\Payments\SandboxGateway(),
+            default => throw new \RuntimeException('Unknown wallet gateway driver: ' . config('wallet.gateway.driver')),
+        });
         //
     }
 

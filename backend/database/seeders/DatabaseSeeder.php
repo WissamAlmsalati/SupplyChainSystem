@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             PremiumFeatureSeeder::class,
             LibyanDataSeeder::class,
+            WalletSeeder::class,
             OrderSeeder::class,
         ]);
     }

@@ -14,6 +14,7 @@ export default function RecurringCarts() {
   const [carts, setCarts] = useState([])
   const [addresses, setAddresses] = useState([])
   const [addressByCart, setAddressByCart] = useState({})
+  const [payWithWallet, setPayWithWallet] = useState({})
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState('')
@@ -51,7 +52,10 @@ export default function RecurringCarts() {
     setError('')
     setSuccess('')
     try {
-      const res = await client.post(`/cafe/recurring-carts/${cart.id}/order`, { address_id: Number(addressId) })
+      const res = await client.post(`/cafe/recurring-carts/${cart.id}/order`, {
+        address_id: Number(addressId),
+        payment_method: payWithWallet[cart.id] ? 'wallet' : 'cash',
+      })
       setSuccess(`تم إنشاء الطلب رقم ${res.data?.data?.order_number ?? ''}`)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل إنشاء الطلب')
@@ -114,6 +118,10 @@ export default function RecurringCarts() {
                   </li>
                 ))}
               </ul>
+              <label className="mb-2 flex items-center gap-2 text-sm text-muted">
+                <input type="checkbox" checked={!!payWithWallet[cart.id]} onChange={(e) => setPayWithWallet((prev) => ({ ...prev, [cart.id]: e.target.checked }))} />
+                الدفع من المحفظة (كامل المبلغ + التوصيل)
+              </label>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <select
                   value={addressByCart[cart.id] ?? defaultAddressId()}

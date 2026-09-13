@@ -70,7 +70,7 @@ class PremiumFeatureTest extends TestCase
             'warehouse_id' => $warehouse->id,
             'product_variant_id' => $variant->id,
             'quantity_change' => 10,
-            'type' => 'adjustment',
+            'type' => 'purchase',
         ]);
     }
 

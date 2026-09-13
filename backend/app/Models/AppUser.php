@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -74,6 +75,11 @@ class AppUser extends Authenticatable
             $this->{$relation}()->create();
             $this->unsetRelation($relation);
         }
+
+        if ($relation === 'customerProfile' && ! $this->wallet()->exists()) {
+            $this->wallet()->create();
+            $this->unsetRelation('wallet');
+        }
     }
 
     public function userType(): BelongsTo
@@ -94,6 +100,20 @@ class AppUser extends Authenticatable
     public function delegateProfile(): HasOne
     {
         return $this->hasOne(DelegateProfile::class, 'user_id');
+    }
+
+    public function wallet(): HasOne
+    {
+        return $this->hasOne(Wallet::class, 'user_id');
+    }
+
+    // Newest favorite first.
+    public function favoriteProducts(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'favorites', 'user_id', 'product_id')
+            ->withPivot('created_at')
+            ->orderByPivot('created_at', 'desc')
+            ->orderByPivot('id', 'desc');
     }
 
     public function addresses(): HasMany

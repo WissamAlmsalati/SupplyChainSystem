@@ -79,11 +79,14 @@ namespace App\OpenApi;
  *     schema="InventoryRequest",
  *     type="object",
  *     required={"warehouse_id", "product_variant_id", "quantity"},
- *     description="POST adds quantity to stock; PUT sets the counted on-hand quantity. Both write a stock movement.",
+ *     description="POST receives goods (adds to stock, purchase movement); PUT sets the counted on-hand quantity (adjustment movement).",
  *     @OA\Property(property="warehouse_id", type="integer", description="POST only"),
  *     @OA\Property(property="product_variant_id", type="integer", description="POST only"),
  *     @OA\Property(property="quantity", type="integer"),
  *     @OA\Property(property="note", type="string", nullable=true, maxLength=255),
+ *     @OA\Property(property="unit_cost", type="number", nullable=true, description="POST only"),
+ *     @OA\Property(property="manufacturing_year", type="integer", nullable=true, description="POST only"),
+ *     @OA\Property(property="expiry_date", type="string", format="date", nullable=true, description="POST only"),
  * )
  *
  * @OA\Schema(
@@ -196,29 +199,6 @@ namespace App\OpenApi;
  *         type="array",
  *         description="On update, replaces all items",
  *         @OA\Items(ref="#/components/schemas/OrderItemRequest")
- *     ),
- * )
- *
- * @OA\Schema(
- *     schema="PurchaseOrderRequest",
- *     type="object",
- *     required={"warehouse_id"},
- *     description="Created as draft. POST /purchase-orders/{id}/receive adds the items to stock.",
- *     @OA\Property(property="warehouse_id", type="integer"),
- *     @OA\Property(property="note", type="string", nullable=true, maxLength=255),
- *     @OA\Property(
- *         property="items",
- *         type="array",
- *         description="On update, replaces all items",
- *         @OA\Items(
- *             type="object",
- *             required={"product_variant_id", "quantity", "unit_cost"},
- *             @OA\Property(property="product_variant_id", type="integer"),
- *             @OA\Property(property="quantity", type="integer"),
- *             @OA\Property(property="unit_cost", type="number", format="float"),
- *             @OA\Property(property="manufacturing_year", type="integer", nullable=true),
- *             @OA\Property(property="expiry_date", type="string", format="date", nullable=true)
- *         )
  *     ),
  * )
  *

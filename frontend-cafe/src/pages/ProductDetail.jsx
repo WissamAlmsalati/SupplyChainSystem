@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import { useCart } from '../context/CartContext'
+import FavoriteButton from '../components/FavoriteButton'
 
 function formatMoney(value) {
   const num = Number(value)
@@ -154,7 +155,10 @@ export default function ProductDetail() {
 
         <div className="space-y-5">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">{product.name}</h2>
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-2xl font-bold text-foreground">{product.name}</h2>
+              <FavoriteButton productId={product.id} size="lg" className="shrink-0 border border-border" />
+            </div>
             <p className="mt-2 text-sm text-muted">{product.description || 'لا يوجد وصف.'}</p>
             <div className="mt-2 text-sm text-muted">التصنيف: {product.category?.name ?? '-'}</div>
           </div>

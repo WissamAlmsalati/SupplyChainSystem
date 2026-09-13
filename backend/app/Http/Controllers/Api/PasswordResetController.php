@@ -9,9 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-/**
- * @OA\Tag(name="Auth", description="Shared authentication endpoints")
- */
 class PasswordResetController extends BaseApiController
 {
     /**

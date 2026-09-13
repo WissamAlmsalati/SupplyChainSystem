@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\CartType;
 use App\Enums\OrderSource;
+use App\Enums\PaymentMethod;
 use App\Http\Requests\Api\RecurringCartRequest;
 use App\Models\Address;
 use App\Models\Cart;
@@ -11,11 +12,10 @@ use App\Services\OrderPlacementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 /**
  * Named carts the customer builds once and re-orders from ("the order that always repeats").
- *
- * @OA\Tag(name="Cafe Recurring Carts", description="Reusable carts for repeated orders")
  */
 class RecurringCartController extends BaseApiController
 {
@@ -116,13 +116,16 @@ class RecurringCartController extends BaseApiController
      * @OA\Post(path="/cafe/recurring-carts/{id}/order", tags={"Cafe Recurring Carts"}, summary="Place an order from a recurring cart",
      *     description="The cart is kept as-is so it can be ordered again; prices are the current ones.",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="address_id", type="integer"))),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(required={"address_id"}, @OA\Property(property="address_id", type="integer"), @OA\Property(property="payment_method", type="string", enum={"cash","wallet"}, default="cash"))),
      *     @OA\Response(response=201, description="Order created"),
      *     @OA\Response(response=409, description="Insufficient stock"))
      */
     public function order(Request $request, int $id, OrderPlacementService $placement): JsonResponse
     {
-        $data = $request->validate(['address_id' => ['required', 'integer']]);
+        $data = $request->validate([
+            'address_id' => ['required', 'integer'],
+            'payment_method' => ['nullable', Rule::in([PaymentMethod::Cash->value, PaymentMethod::Wallet->value])],
+        ]);
 
         $cart = $this->scope()->with('items')->findOrFail($id);
         if ($cart->items->isEmpty()) {
@@ -131,7 +134,7 @@ class RecurringCartController extends BaseApiController
 
         $address = Address::where('user_id', auth()->id())->findOrFail($data['address_id']);
 
-        $order = $placement->place(auth()->user(), $address, $cart->items->toArray(), OrderSource::App, $cart);
+        $order = $placement->place(auth()->user(), $address, $cart->items->toArray(), OrderSource::App, $cart, null, PaymentMethod::from($data['payment_method'] ?? 'cash'));
 
         return $this->jsonResponse([
             'id' => $order->id,

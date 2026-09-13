@@ -10,7 +10,9 @@ namespace App\OpenApi;
  * @OA\Tag(name="Users", description="User accounts (profiles are created per user type)")
  * @OA\Tag(name="Dashboard", description="Statistics")
  * @OA\Tag(name="Catalog", description="Products, sizes (variants) and images")
- * @OA\Tag(name="Stock", description="Inventory balances, stock ledger and purchase orders")
+ * @OA\Tag(name="Stock", description="Inventory balances (goods-in) and the stock ledger")
+ * @OA\Tag(name="Wallets", description="Customer wallets and top-up review")
+ * @OA\Tag(name="Custody", description="Delegate cash custody and settlements")
  * @OA\Tag(name="Payments", description="Payments recorded against orders")
  * @OA\Tag(name="Access Control", description="Roles, permissions and activity log")
  * @OA\Tag(name="Promos", description="App banners")
@@ -46,7 +48,7 @@ namespace App\OpenApi;
  * @OA\Get(path="/dashboard/monthly/{year}/{month}", tags={"Dashboard"}, summary="Stats for one month", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="year", in="path", required=true, @OA\Schema(type="integer")),
  *     @OA\Parameter(name="month", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Stats"))
- * @OA\Get(path="/cafe/dashboard", tags={"Cafe Mobile"}, summary="Customer dashboard stats", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Stats"))
+ * @OA\Get(path="/cafe/dashboard", tags={"Cafe Profile"}, summary="Customer dashboard stats", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Stats"))
  *
  * ---------------- Catalog ----------------
  * @OA\Get(path="/products", tags={"Catalog"}, summary="List products (public)",
@@ -94,12 +96,31 @@ namespace App\OpenApi;
  * @OA\Delete(path="/product-images/{id}", tags={"Catalog"}, summary="Delete an image", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=204, description="Deleted"))
  *
+ * ---------------- Featured sections ----------------
+ * @OA\Get(path="/featured-sections", tags={"Catalog"}, summary="Curated product sections (admin)", security={{"bearerAuth":{}}},
+ *     @OA\Response(response=200, description="Sections with products_count, in display order"))
+ * @OA\Post(path="/featured-sections", tags={"Catalog"}, summary="Create a section", security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(required=true, @OA\JsonContent(required={"title","product_ids"},
+ *         @OA\Property(property="title", type="string", example="الأكثر طلباً"), @OA\Property(property="is_active", type="boolean"),
+ *         @OA\Property(property="sort_order", type="integer"),
+ *         @OA\Property(property="product_ids", type="array", description="Ordered; first is shown first", @OA\Items(type="integer")))),
+ *     @OA\Response(response=201, description="Section with products"))
+ * @OA\Get(path="/featured-sections/{id}", tags={"Catalog"}, summary="Section with its products", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Section"))
+ * @OA\Put(path="/featured-sections/{id}", tags={"Catalog"}, summary="Update title/status/order and replace products", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Section"))
+ * @OA\Delete(path="/featured-sections/{id}", tags={"Catalog"}, summary="Delete a section", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=204, description="Deleted"))
+ * @OA\Post(path="/featured-sections/reorder", tags={"Catalog"}, summary="Save section display order", security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(required=true, @OA\JsonContent(required={"ids"}, @OA\Property(property="ids", type="array", @OA\Items(type="integer")))),
+ *     @OA\Response(response=200, description="Sections in the new order"))
+ *
  * ---------------- Stock ----------------
  * @OA\Get(path="/inventory", tags={"Stock"}, summary="Stock balances per warehouse and size", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
  *     @OA\Parameter(name="warehouse_id", in="query", @OA\Schema(type="integer")),
  *     @OA\Parameter(name="product_variant_id", in="query", @OA\Schema(type="integer")), @OA\Response(response=200, description="Paginated balances"))
- * @OA\Post(path="/inventory", tags={"Stock"}, summary="Add stock (sums with the balance; writes an adjustment movement)", security={{"bearerAuth":{}}},
+ * @OA\Post(path="/inventory", tags={"Stock"}, summary="Receive goods into a warehouse (sums with the balance; writes a purchase movement with cost/expiry)", security={{"bearerAuth":{}}},
  *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/InventoryRequest")), @OA\Response(response=201, description="Balance"))
  * @OA\Get(path="/inventory/{id}", tags={"Stock"}, summary="Balance row", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Balance"))
@@ -114,48 +135,13 @@ namespace App\OpenApi;
  * @OA\Get(path="/stock-movements", tags={"Stock"}, summary="Stock ledger (read-only)", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="warehouse_id", in="query", @OA\Schema(type="integer")),
  *     @OA\Parameter(name="product_variant_id", in="query", @OA\Schema(type="integer")),
- *     @OA\Parameter(name="type", in="query", @OA\Schema(type="string", enum={"purchase","sale","return","adjustment"})),
+ *     @OA\Parameter(name="type", in="query", description="purchase = goods received", @OA\Schema(type="string", enum={"purchase","sale","return","adjustment"})),
  *     @OA\Parameter(name="reference_type", in="query", description="e.g. App\Models\Order (use with reference_id)", @OA\Schema(type="string")),
  *     @OA\Parameter(name="reference_id", in="query", @OA\Schema(type="integer")),
  *     @OA\Response(response=200, description="Paginated movements"))
  * @OA\Get(path="/stock-movements/{id}", tags={"Stock"}, summary="One movement with its reference", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Movement"))
  *
- * @OA\Get(path="/purchase-orders", tags={"Stock"}, summary="List purchase orders", security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="warehouse_id", in="query", @OA\Schema(type="integer")),
- *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"draft","received","cancelled"})),
- *     @OA\Response(response=200, description="Paginated purchase orders with items_count"))
- * @OA\Post(path="/purchase-orders", tags={"Stock"}, summary="Create a draft purchase order", security={{"bearerAuth":{}}},
- *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/PurchaseOrderRequest")), @OA\Response(response=201, description="Draft created"))
- * @OA\Get(path="/purchase-orders/{id}", tags={"Stock"}, summary="Purchase order with items", security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Purchase order"))
- * @OA\Put(path="/purchase-orders/{id}", tags={"Stock"}, summary="Edit a draft (items are replaced when sent)", security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
- *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/PurchaseOrderRequest")),
- *     @OA\Response(response=200, description="Updated"), @OA\Response(response=422, description="Not a draft"))
- * @OA\Delete(path="/purchase-orders/{id}", tags={"Stock"}, summary="Delete a draft or cancelled purchase order", security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
- *     @OA\Response(response=204, description="Deleted"), @OA\Response(response=422, description="Already received"))
- * @OA\Post(path="/purchase-orders/{id}/receive", tags={"Stock"}, summary="Receive: add all items to warehouse stock (purchase movements)", security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
- *     @OA\Response(response=200, description="Received"), @OA\Response(response=422, description="Not a draft or has no items"))
- * @OA\Post(path="/purchase-orders/{id}/cancel", tags={"Stock"}, summary="Cancel a draft", security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
- *     @OA\Response(response=200, description="Cancelled"), @OA\Response(response=422, description="Not a draft"))
- * @OA\Get(path="/purchase-order-items", tags={"Stock"}, summary="List purchase order items", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Paginated items"))
- * @OA\Post(path="/purchase-order-items", tags={"Stock"}, summary="Add an item to a draft", security={{"bearerAuth":{}}},
- *     @OA\RequestBody(required=true, @OA\JsonContent(
- *         required={"purchase_order_id","product_variant_id","quantity","unit_cost"},
- *         @OA\Property(property="purchase_order_id", type="integer"), @OA\Property(property="product_variant_id", type="integer"),
- *         @OA\Property(property="quantity", type="integer"), @OA\Property(property="unit_cost", type="number"),
- *         @OA\Property(property="manufacturing_year", type="integer"), @OA\Property(property="expiry_date", type="string", format="date"))),
- *     @OA\Response(response=201, description="Item added"), @OA\Response(response=422, description="Purchase order is not a draft"))
- * @OA\Get(path="/purchase-order-items/{id}", tags={"Stock"}, summary="Purchase order item", security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Item"))
- * @OA\Put(path="/purchase-order-items/{id}", tags={"Stock"}, summary="Update an item of a draft", security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Item updated"))
- * @OA\Delete(path="/purchase-order-items/{id}", tags={"Stock"}, summary="Remove an item from a draft", security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=204, description="Deleted"))
  *
  * @OA\Post(path="/warehouses/{id}/expand-hex", tags={"Warehouses"}, summary="Create child delivery zones inside the warehouse hex", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
@@ -167,7 +153,7 @@ namespace App\OpenApi;
  * @OA\Post(path="/payments", tags={"Payments"}, summary="Create payments", security={{"bearerAuth":{}}},
  *     @OA\RequestBody(required=true, @OA\JsonContent(required={"order_id","amount","method","status"},
  *         @OA\Property(property="order_id", type="integer"), @OA\Property(property="amount", type="number"),
- *         @OA\Property(property="method", type="string", enum={"cash","card","bank_transfer"}),
+ *         @OA\Property(property="method", type="string", enum={"cash","card","bank_transfer","wallet"}),
  *         @OA\Property(property="status", type="string", enum={"pending","paid","failed","refunded"}),
  *         @OA\Property(property="paid_at", type="string", format="date-time", nullable=true))),
  *     @OA\Response(response=201, description="Created"), @OA\Response(response=422, description="Validation error"))
@@ -218,8 +204,60 @@ namespace App\OpenApi;
  *     @OA\Parameter(name="user_id", in="query", @OA\Schema(type="integer")), @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
  *     @OA\Response(response=200, description="Paginated log"))
  * @OA\Post(path="/logout", tags={"Auth"}, summary="Revoke the current token", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Logged out"))
- * @OA\Get(path="/cafe/premium-features", tags={"Cafe Mobile"}, summary="Feature flags for the app UI", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Features"))
- * @OA\Get(path="/cafe/promos", tags={"Cafe Mobile"}, summary="Active promo banners", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Promos"))
+ * @OA\Get(path="/cafe/premium-features", tags={"Cafe Profile"}, summary="Feature flags for the app UI", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Features"))
+ * @OA\Get(path="/cafe/promos", tags={"Cafe Promos"}, summary="Active promo banners", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Promos"))
+ *
+ * ---------------- Wallets (admin) ----------------
+ * @OA\Get(path="/wallets", tags={"Wallets"}, summary="Customer wallets with balances", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")), @OA\Parameter(name="has_balance", in="query", @OA\Schema(type="boolean")),
+ *     @OA\Response(response=200, description="Paginated wallets + summary.total_balance"))
+ * @OA\Get(path="/wallets/summary", tags={"Wallets"}, summary="Liquidity overview: customer wallet balances, delegate custody, pending top-ups and period flows", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="period", in="query", @OA\Schema(type="string", enum={"today","week","month","all"}, default="month")),
+ *     @OA\Response(response=200, description="liquidity, wallets, pending_topups, flows, top_wallets, delegates"))
+ * @OA\Get(path="/wallets/{id}", tags={"Wallets"}, summary="Wallet with owner and latest top-ups", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Wallet"))
+ * @OA\Get(path="/wallets/{id}/transactions", tags={"Wallets"}, summary="Wallet ledger", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="type", in="query", @OA\Schema(type="string", enum={"topup","payment","refund","adjustment"})), @OA\Response(response=200, description="Paginated transactions"))
+ * @OA\Post(path="/wallets/{id}/adjust", tags={"Wallets"}, summary="Manual credit (+) or debit (-); never below zero", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(required=true, @OA\JsonContent(required={"amount","note"}, @OA\Property(property="amount", type="number", example=-25), @OA\Property(property="note", type="string"))),
+ *     @OA\Response(response=200, description="wallet + transaction"), @OA\Response(response=422, description="Insufficient balance / validation"))
+ * @OA\Post(path="/wallets/{id}/toggle-active", tags={"Wallets"}, summary="Suspend or reactivate a wallet (suspended wallets cannot pay)", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Wallet"))
+ * @OA\Get(path="/wallet-topups", tags={"Wallets"}, summary="Top-up requests", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"pending","approved","rejected","cancelled","failed"})),
+ *     @OA\Parameter(name="method", in="query", @OA\Schema(type="string", enum={"bank_transfer","delegate_cash","gateway"})),
+ *     @OA\Parameter(name="user_id", in="query", @OA\Schema(type="integer")), @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
+ *     @OA\Response(response=200, description="Paginated top-ups"))
+ * @OA\Get(path="/wallet-topups/{id}", tags={"Wallets"}, summary="Top-up with receipt_url", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Top-up"))
+ * @OA\Post(path="/wallet-topups/{id}/approve", tags={"Wallets"}, summary="Approve a pending request and credit the wallet", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Approved"), @OA\Response(response=422, description="Already processed"))
+ * @OA\Post(path="/wallet-topups/{id}/reject", tags={"Wallets"}, summary="Reject a pending request (reason is sent to the customer)", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(required=true, @OA\JsonContent(required={"reason"}, @OA\Property(property="reason", type="string"))),
+ *     @OA\Response(response=200, description="Rejected"))
+ *
+ * ---------------- Delegate cash custody (admin) ----------------
+ * @OA\Get(path="/custody", tags={"Custody"}, summary="Cash each delegate holds for the office", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")), @OA\Parameter(name="with_balance", in="query", @OA\Schema(type="boolean")),
+ *     @OA\Response(response=200, description="Paginated delegates with custody_balance, last_settlement_at + summary.total_custody"))
+ * @OA\Get(path="/custody/{delegateId}", tags={"Custody"}, summary="Delegate custody summary and settlements", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="delegateId", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="balance, since_last_settlement, last_settlement, settlements"))
+ * @OA\Get(path="/custody/{delegateId}/entries", tags={"Custody"}, summary="Custody ledger", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="delegateId", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="type", in="query", @OA\Schema(type="string", enum={"order_collection","wallet_collection","settlement","adjustment"})),
+ *     @OA\Response(response=200, description="Paginated entries"))
+ * @OA\Post(path="/custody/{delegateId}/settle", tags={"Custody"}, summary="Record cash handed over by the delegate (تسكير); cannot exceed custody", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="delegateId", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(required=true, @OA\JsonContent(required={"amount"}, @OA\Property(property="amount", type="number"), @OA\Property(property="note", type="string"))),
+ *     @OA\Response(response=201, description="Settlement with custody_before/after"), @OA\Response(response=422, description="More than custody"))
+ * @OA\Post(path="/custody/{delegateId}/adjust", tags={"Custody"}, summary="Correct custody (+/-) with a required note", security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="delegateId", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(required=true, @OA\JsonContent(required={"amount","note"}, @OA\Property(property="amount", type="number"), @OA\Property(property="note", type="string"))),
+ *     @OA\Response(response=200, description="Custody entry"))
  * ---------------- Read-only workflow tables ----------------
  * @OA\Get(path="/carts", tags={"Carts & Order Lines"}, summary="Customer carts", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="type", in="query", @OA\Schema(type="string", enum={"shopping","recurring"})),

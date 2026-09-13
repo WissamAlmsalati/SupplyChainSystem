@@ -6,9 +6,6 @@ use App\Models\Notification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/**
- * @OA\Tag(name="Notifications", description="User notifications")
- */
 class NotificationController extends BaseApiController
 {
     /**

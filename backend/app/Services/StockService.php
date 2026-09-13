@@ -21,8 +21,9 @@ class StockService
         StockMovementType $type,
         ?Model $reference = null,
         ?string $note = null,
+        array $details = [],
     ): Inventory {
-        return DB::transaction(function () use ($warehouseId, $variantId, $change, $type, $reference, $note) {
+        return DB::transaction(function () use ($warehouseId, $variantId, $change, $type, $reference, $note, $details) {
             $inventory = Inventory::where('warehouse_id', $warehouseId)
                 ->where('product_variant_id', $variantId)
                 ->lockForUpdate()
@@ -43,11 +44,25 @@ class StockService
 
             if ($change !== 0) {
                 $inventory->update(['quantity' => $inventory->quantity + $change]);
-                $this->record($warehouseId, $variantId, $change, $type, $reference, $note);
+                $this->record($warehouseId, $variantId, $change, $type, $reference, $note, $details);
             }
 
             return $inventory;
         });
+    }
+
+    /**
+     * Goods received into a warehouse (the only way stock enters the system).
+     *
+     * @param  array{unit_cost?:float|null, manufacturing_year?:int|null, expiry_date?:string|null}  $details
+     */
+    public function receive(int $warehouseId, int $variantId, int $quantity, array $details = [], ?string $note = null): Inventory
+    {
+        if ($quantity <= 0) {
+            throw new InvalidArgumentException('Received quantity must be positive.');
+        }
+
+        return $this->adjust($warehouseId, $variantId, $quantity, StockMovementType::Purchase, null, $note, $details);
     }
 
     // Sets an absolute quantity (manual stock count) as an adjustment movement.
@@ -155,9 +170,9 @@ class StockService
             ->all();
     }
 
-    private function record(int $warehouseId, int $variantId, int $change, StockMovementType $type, ?Model $reference, ?string $note = null): void
+    private function record(int $warehouseId, int $variantId, int $change, StockMovementType $type, ?Model $reference, ?string $note = null, array $details = []): void
     {
-        StockMovement::create([
+        StockMovement::create(array_intersect_key($details, array_flip(['unit_cost', 'manufacturing_year', 'expiry_date'])) + [
             'warehouse_id' => $warehouseId,
             'product_variant_id' => $variantId,
             'quantity_change' => $change,

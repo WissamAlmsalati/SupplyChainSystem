@@ -75,14 +75,17 @@ class DatabaseDesignTest extends TestCase
         return (int) Inventory::where('product_variant_id', $this->variant->id)->sum('quantity');
     }
 
+    // Goods received from the inventory screen.
     private function receiveStock(int $quantity): void
     {
-        $po = $this->postJson('/api/v1/purchase-orders', [
+        $this->postJson('/api/v1/inventory', [
             'warehouse_id' => $this->warehouse->id,
-            'items' => [['product_variant_id' => $this->variant->id, 'quantity' => $quantity, 'unit_cost' => 12, 'expiry_date' => '2027-01-01']],
-        ], $this->asAdmin())->assertCreated()->json();
-
-        $this->postJson("/api/v1/purchase-orders/{$po['id']}/receive", [], $this->asAdmin())->assertOk();
+            'product_variant_id' => $this->variant->id,
+            'quantity' => $quantity,
+            'unit_cost' => 12,
+            'manufacturing_year' => 2026,
+            'expiry_date' => '2027-01-01',
+        ], $this->asAdmin())->assertCreated();
     }
 
     public function test_each_user_type_gets_its_own_profile(): void
@@ -105,18 +108,23 @@ class DatabaseDesignTest extends TestCase
         Cart::create(['user_id' => $this->customer->id, 'type' => CartType::Shopping]);
     }
 
-    public function test_purchase_order_receive_adds_stock_once_and_locks_it(): void
+    public function test_receiving_goods_from_inventory_records_cost_and_expiry(): void
     {
-        $this->receiveStock(50);
+        $this->receiveStock(30);
+        $this->receiveStock(20);
 
         $this->assertSame(50, $this->stockOnHand());
-        $this->assertDatabaseHas('stock_movements', ['type' => 'purchase', 'quantity_change' => 50, 'created_by' => $this->admin->id]);
-        $this->assertDatabaseHas('purchase_orders', ['status' => 'received']);
+        $this->assertDatabaseCount('inventories', 1);
+        $this->assertDatabaseHas('stock_movements', [
+            'type' => 'purchase', 'quantity_change' => 30, 'unit_cost' => 12, 'manufacturing_year' => 2026,
+            'expiry_date' => '2027-01-01', 'created_by' => $this->admin->id,
+        ]);
+        $this->getJson('/api/v1/stock-movements?type=purchase', $this->asAdmin())
+            ->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('data.0.expiry_date', '2027-01-01');
 
-        $poId = \App\Models\PurchaseOrder::value('id');
-        $this->postJson("/api/v1/purchase-orders/{$poId}/receive", [], $this->asAdmin())->assertUnprocessable();
-        $this->putJson("/api/v1/purchase-orders/{$poId}", ['warehouse_id' => $this->warehouse->id], $this->asAdmin())->assertUnprocessable();
-        $this->assertSame(50, $this->stockOnHand());
+        // Counting stock is an adjustment and cannot carry goods-in details.
+        $inventory = \App\Models\Inventory::first();
+        $this->putJson("/api/v1/inventory/{$inventory->id}", ['quantity' => 45, 'expiry_date' => '2028-01-01'], $this->asAdmin())->assertUnprocessable();
     }
 
     public function test_recurring_cart_can_be_ordered_repeatedly_and_is_kept(): void

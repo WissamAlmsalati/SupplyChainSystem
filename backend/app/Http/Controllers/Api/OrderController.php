@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentMethod;
 use App\Enums\UserRole;
 use App\Http\Requests\Api\OrderRequest;
 use App\Models\Address;
@@ -115,7 +116,7 @@ class OrderController extends BaseApiController
         }
 
         $source = $this->isCustomer() ? OrderSource::App : OrderSource::Dashboard;
-        $order = $placement->place($customer, $address, $data['items'], $source, null, $delegateId);
+        $order = $placement->place($customer, $address, $data['items'], $source, null, $delegateId, PaymentMethod::from($data['payment_method'] ?? 'cash'));
 
         return $this->jsonResponse($order->load(['user', 'address', 'deliveryZone', 'delegate', 'items.productVariant']), 201);
     }
@@ -132,8 +133,8 @@ class OrderController extends BaseApiController
         }
 
         return $this->jsonResponse($order->load([
-            'user.customerProfile', 'address', 'deliveryZone', 'delegate', 'cart',
-            'items.productVariant.product', 'payments', 'statusLogs.changedBy',
+            'user.customerProfile', 'user.wallet', 'address', 'deliveryZone', 'delegate', 'cart',
+            'items.productVariant.product', 'payments.collector:id,name', 'statusLogs.changedBy',
         ]));
     }
 

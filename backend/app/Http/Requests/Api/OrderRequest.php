@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentMethod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,6 +26,7 @@ class OrderRequest extends FormRequest
                 'items' => ['required', 'array', 'min:1'],
                 'items.*.product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
                 'items.*.quantity' => ['required', 'integer', 'min:1'],
+                'payment_method' => ['nullable', Rule::in([PaymentMethod::Cash->value, PaymentMethod::Wallet->value])],
             ];
         }
 

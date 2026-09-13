@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\StockMovementType;
 use App\Http\Requests\Api\InventoryRequest;
 use App\Models\Inventory;
 use App\Services\StockService;
@@ -40,18 +39,18 @@ class InventoryController extends BaseApiController
         return $this->jsonResponse($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
     }
 
-    // Adds stock to a warehouse (sums with any existing balance).
+    // Goods received into a warehouse: sums with the balance and records a purchase
+    // movement carrying the cost, manufacturing year and expiry date.
     public function store(InventoryRequest $request): JsonResponse
     {
         $data = $request->validated();
 
-        $inventory = $this->stock->adjust(
+        $inventory = $this->stock->receive(
             $data['warehouse_id'],
             $data['product_variant_id'],
             (int) $data['quantity'],
-            StockMovementType::Adjustment,
-            null,
-            $data['note'] ?? 'إضافة مخزون يدوية',
+            collect($data)->only(['unit_cost', 'manufacturing_year', 'expiry_date'])->all(),
+            $data['note'] ?? 'إدخال بضاعة',
         );
 
         return $this->jsonResponse($inventory->load(['warehouse', 'productVariant.product']), 201);

@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum StockMovementType: string
 {
+    // Goods received into a warehouse from the inventory screen.
     case Purchase = 'purchase';
     case Sale = 'sale';
     case Return = 'return';

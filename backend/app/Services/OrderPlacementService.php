@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\OrderSource;
+use App\Enums\PaymentMethod;
 use App\Models\Address;
 use App\Models\AppUser;
 use App\Models\Cart;
@@ -19,6 +20,7 @@ class OrderPlacementService
     public function __construct(
         private StockService $stock,
         private DelegateAssignmentService $delegates,
+        private WalletService $wallets,
     ) {}
 
     /**
@@ -31,7 +33,12 @@ class OrderPlacementService
         OrderSource $source,
         ?Cart $cart = null,
         ?int $delegateId = null,
+        PaymentMethod $paymentMethod = PaymentMethod::Cash,
     ): Order {
+        if (! in_array($paymentMethod, [PaymentMethod::Cash, PaymentMethod::Wallet], true)) {
+            throw ValidationException::withMessages(['payment_method' => 'طريقة الدفع غير مدعومة']);
+        }
+
         $quantities = [];
         foreach ($items as $item) {
             $variantId = (int) $item['product_variant_id'];
@@ -57,7 +64,7 @@ class OrderPlacementService
 
         $address->loadMissing('deliveryZone');
 
-        $order = DB::transaction(function () use ($customer, $address, $quantities, $variants, $source, $cart, $delegateId) {
+        $order = DB::transaction(function () use ($customer, $address, $quantities, $variants, $source, $cart, $delegateId, $paymentMethod) {
             $lines = collect($quantities)->map(fn (int $qty, int $variantId) => [
                 'product_variant_id' => $variantId,
                 'product_name' => $variants[$variantId]->product?->name ?? '',
@@ -82,6 +89,11 @@ class OrderPlacementService
             $order->items()->createMany($lines->all());
 
             $this->stock->drainForOrder($order, $quantities);
+
+            // Wallet orders are paid in full now; a short balance rolls everything back.
+            if ($paymentMethod === PaymentMethod::Wallet) {
+                $this->wallets->payOrder($order, $customer);
+            }
 
             return $order;
         });

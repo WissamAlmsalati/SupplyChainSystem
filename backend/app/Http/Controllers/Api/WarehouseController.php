@@ -124,7 +124,6 @@ class WarehouseController extends BaseApiController
     {
         return $this->jsonResponse($warehouse->load([
             'inventories.productVariant.product',
-            'purchaseOrders',
             'deliveryZones',
         ]));
     }

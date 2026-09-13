@@ -44,9 +44,9 @@ const NEXT_ACTION = {
   out_for_delivery: { to: 'delivered', label: 'تم التوصيل' },
 }
 
-const PAYMENT_METHODS = { cash: 'نقداً', card: 'بطاقة', bank_transfer: 'تحويل بنكي' }
+const PAYMENT_METHODS = { cash: 'نقداً', card: 'بطاقة', bank_transfer: 'تحويل بنكي', wallet: 'المحفظة' }
 const PAYMENT_STATUSES = { pending: 'معلّق', paid: 'مدفوع', failed: 'فاشل', refunded: 'مسترجع' }
-const MOVEMENT_TYPES = { sale: 'خصم للطلب', return: 'إرجاع للمخزون', purchase: 'شراء', adjustment: 'تعديل' }
+const MOVEMENT_TYPES = { sale: 'خصم للطلب', return: 'إرجاع للمخزون', purchase: 'إدخال بضاعة', adjustment: 'تعديل' }
 
 const selectClass = 'w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none'
 
@@ -441,7 +441,10 @@ export default function OrderDetail() {
                 <ul className="divide-y divide-border text-sm">
                   {order.payments.map((p) => (
                     <li key={p.id} className="flex items-center justify-between py-2">
-                      <span className="text-foreground">{PAYMENT_METHODS[p.method] ?? p.method}</span>
+                      <span className="text-foreground">
+                        {PAYMENT_METHODS[p.method] ?? p.method}
+                        {p.collector?.name && <span className="block text-xs text-muted">حصّله {p.collector.name}</span>}
+                      </span>
                       <span className="text-muted">{formatDateTime(p.paid_at ?? p.created_at)}</span>
                       <Badge variant={p.status === 'paid' ? 'success' : p.status === 'pending' ? 'warning' : 'danger'}>{PAYMENT_STATUSES[p.status] ?? p.status}</Badge>
                       <span className="font-semibold text-foreground">{formatMoney(p.amount)} د.ل</span>
@@ -500,6 +503,11 @@ export default function OrderDetail() {
                 {order.user?.mobile_number ? <a href={`tel:${order.user.mobile_number}`} dir="ltr" className="hover:text-primary">{order.user.mobile_number}</a> : '-'}
               </InfoRow>
               <InfoRow label="البريد">{order.user?.email}</InfoRow>
+              {order.user?.wallet && (
+                <InfoRow label="رصيد المحفظة">
+                  <Link to={`/wallets/${order.user.wallet.id}`} className="font-semibold text-primary hover:underline">{formatMoney(order.user.wallet.balance)} د.ل</Link>
+                </InfoRow>
+              )}
             </CardContent>
           </Card>
 

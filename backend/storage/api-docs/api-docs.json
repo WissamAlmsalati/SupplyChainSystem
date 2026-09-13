@@ -371,7 +371,7 @@
         "/cafe/orders": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Orders"
                 ],
                 "summary": "List own orders",
                 "operationId": "df333eb5fb03206b34e826eea2c6b5be",
@@ -415,7 +415,7 @@
             },
             "post": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Orders"
                 ],
                 "summary": "Place an order directly (without the cart)",
                 "operationId": "4c7d655b789460acf5478b0a6871bed7",
@@ -442,7 +442,7 @@
         "/cafe/addresses/{id}/orders": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Addresses"
                 ],
                 "summary": "Orders delivered to one address",
                 "operationId": "3b61e53ce5f991ac0854a881739366dd",
@@ -466,7 +466,7 @@
         "/cafe/orders/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Orders"
                 ],
                 "summary": "Own order details",
                 "operationId": "ddb54b10046cd006c29ffb454b880dfe",
@@ -490,7 +490,7 @@
         "/cafe/orders/{id}/status": {
             "put": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Orders"
                 ],
                 "summary": "Confirm receipt of a delivered order",
                 "operationId": "766c6aac15f0b1777050785478dff042",
@@ -535,7 +535,7 @@
         "/cafe/orders/{id}/cancel-request": {
             "post": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Orders"
                 ],
                 "summary": "Ask the admins to cancel a pending order",
                 "operationId": "ed7b3b9d607a603f8155adcca0cb4c83",
@@ -562,7 +562,7 @@
         "/cafe/addresses": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Addresses"
                 ],
                 "summary": "List own addresses",
                 "operationId": "a07c813cdcc666e312d6fee002a20896",
@@ -574,7 +574,7 @@
             },
             "post": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Addresses"
                 ],
                 "summary": "Create an address",
                 "operationId": "33942d72732902c0a6e52aa3afcaa69f",
@@ -598,7 +598,7 @@
         "/cafe/addresses/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Addresses"
                 ],
                 "summary": "Own address details",
                 "operationId": "9bf8e7685614df8f03734955aa091bac",
@@ -620,7 +620,7 @@
             },
             "put": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Addresses"
                 ],
                 "summary": "Update an address",
                 "operationId": "5f88ea85126e58bf3a13190d1b9e3ed0",
@@ -652,7 +652,7 @@
             },
             "delete": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Addresses"
                 ],
                 "summary": "Delete an address",
                 "description": "Soft delete; past orders keep their own copy of the delivery address.",
@@ -677,7 +677,7 @@
         "/cafe/profile": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Profile"
                 ],
                 "summary": "Customer profile",
                 "operationId": "b61a587e42e4a65a611e9ce586ebe1f0",
@@ -689,7 +689,7 @@
             },
             "put": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Profile"
                 ],
                 "summary": "Update customer profile",
                 "operationId": "6d026f2b75cdcbd36744e80489abf60f",
@@ -732,7 +732,7 @@
         "/cafe/delivery-zones": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Addresses"
                 ],
                 "summary": "Active delivery zones for the map",
                 "operationId": "b15b8a190b3b5da333be486589960f5c",
@@ -746,7 +746,7 @@
         "/cafe/categories": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Products"
                 ],
                 "summary": "List categories",
                 "operationId": "a4cb49242b76128b80cc01f04488b6b9",
@@ -760,7 +760,7 @@
         "/cafe/products": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Products"
                 ],
                 "summary": "List active products (cards)",
                 "operationId": "46d95a00fca533270cd7255284e834f8",
@@ -787,10 +787,83 @@
                 }
             }
         },
+        "/cafe/featured-sections": {
+            "get": {
+                "tags": [
+                    "Cafe Products"
+                ],
+                "summary": "Curated product sections chosen by the business (title + products in one object)",
+                "operationId": "a6f681d9f21a5448e350d119c7ead111",
+                "responses": {
+                    "200": {
+                        "description": "Active sections in display order; each has id, title and products (same card shape as /cafe/products). Sections without available products are omitted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "title": {
+                                                        "type": "string",
+                                                        "example": "الأكثر طلباً"
+                                                    },
+                                                    "products": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "image_url": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                },
+                                                                "min_price": {
+                                                                    "type": "string"
+                                                                },
+                                                                "category_id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "default_variant_id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "is_favorite": {
+                                                                    "type": "boolean"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/cafe/products/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Products"
                 ],
                 "summary": "Product details",
                 "operationId": "7cdda903aaa51527f8fd6dbf56255e3b",
@@ -814,7 +887,7 @@
         "/cafe/products/{id}/variants": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Products"
                 ],
                 "summary": "Active sizes of a product",
                 "operationId": "0386483cda431404339ea7082d639ecc",
@@ -838,7 +911,7 @@
         "/cafe/cart": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Cart"
                 ],
                 "summary": "Current shopping cart (null when none)",
                 "operationId": "6060ee36043911b3bf78c0e8124264cb",
@@ -850,7 +923,7 @@
             },
             "delete": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Cart"
                 ],
                 "summary": "Empty the shopping cart",
                 "operationId": "3d1c3c31061f190c715e27a63812ac78",
@@ -864,7 +937,7 @@
         "/cafe/cart/check-stock": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Cart"
                 ],
                 "summary": "Stock availability for the cart items",
                 "operationId": "5e5d6d84d3c86dc7872e628ccd5881a9",
@@ -881,7 +954,7 @@
         "/cafe/cart/items": {
             "post": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Cart"
                 ],
                 "summary": "Add an item to the shopping cart (sets its quantity)",
                 "operationId": "794d9d7b496382a657bffa19d118ea51",
@@ -913,7 +986,7 @@
         "/cafe/cart/items/{id}": {
             "put": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Cart"
                 ],
                 "summary": "Change a cart item quantity",
                 "operationId": "521658b853f50f47b5ca429cb284d5f9",
@@ -950,7 +1023,7 @@
             },
             "delete": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Cart"
                 ],
                 "summary": "Remove a cart item",
                 "operationId": "6923636b1fd67f8b3030e0bf36169f2a",
@@ -974,7 +1047,7 @@
         "/cafe/cart/checkout": {
             "post": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Cart"
                 ],
                 "summary": "Turn the shopping cart into an order",
                 "operationId": "79b4162afa1df0c7ae1dd0acddcde684",
@@ -983,9 +1056,21 @@
                     "content": {
                         "application/json": {
                             "schema": {
+                                "required": [
+                                    "address_id"
+                                ],
                                 "properties": {
                                     "address_id": {
                                         "type": "integer"
+                                    },
+                                    "payment_method": {
+                                        "description": "wallet = pay the full total from the wallet now",
+                                        "type": "string",
+                                        "default": "cash",
+                                        "enum": [
+                                            "cash",
+                                            "wallet"
+                                        ]
                                     }
                                 },
                                 "type": "object"
@@ -1000,6 +1085,9 @@
                     "400": {
                         "description": "Cart is empty"
                     },
+                    "422": {
+                        "description": "Insufficient wallet balance"
+                    },
                     "409": {
                         "description": "Insufficient stock"
                     }
@@ -1009,7 +1097,7 @@
         "/cafe/orders/{id}/delegate": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Orders"
                 ],
                 "summary": "Live location of the order's delegate",
                 "operationId": "02a3ac627b7c11bde9239ee5916d1a8c",
@@ -1031,6 +1119,224 @@
                         "description": "No delegate assigned"
                     }
                 }
+            }
+        },
+        "/cafe/wallet": {
+            "get": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Wallet balance with latest transactions",
+                "operationId": "a0f33c021d19162852897fe9dd67934f",
+                "responses": {
+                    "200": {
+                        "description": "balance, currency, recent_transactions, pending_topups"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/wallet/transactions": {
+            "get": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Wallet transactions",
+                "operationId": "114681462902ee57527405816c77248c",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "topup",
+                                "payment",
+                                "refund",
+                                "adjustment"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated transactions"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/wallet/topups": {
+            "get": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "My top-up requests",
+                "operationId": "65ca1227bf02dfdc007fa1c0435fce4a",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "approved",
+                                "rejected",
+                                "cancelled",
+                                "failed"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated top-ups"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Request a bank-transfer top-up with its receipt; an admin approves it",
+                "operationId": "ad6d31ce206703b58099758d280c32d4",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "amount",
+                                    "method",
+                                    "reference_number",
+                                    "receipt"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number",
+                                        "example": 100
+                                    },
+                                    "method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "bank_transfer"
+                                        ]
+                                    },
+                                    "reference_number": {
+                                        "description": "Transfer reference",
+                                        "type": "string"
+                                    },
+                                    "receipt": {
+                                        "description": "Transfer receipt: jpg/png/webp/heic or pdf, max 5MB",
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Pending top-up created"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/wallet/topups/{id}/cancel": {
+            "post": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Cancel my pending top-up request",
+                "operationId": "b633bce21c992cfcdf05a00a2604e189",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cancelled"
+                    },
+                    "422": {
+                        "description": "Already processed"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/wallet/topups/gateway": {
+            "post": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Start an online top-up; open checkout_url to pay",
+                "operationId": "1b3a8d33f44cc6bc7e2c01043c0790b1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "amount"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number",
+                                        "example": 150
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "topup + checkout_url; the wallet is credited when the gateway confirms"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/categories": {
@@ -1309,6 +1615,59 @@
                 }
             }
         },
+        "/delegate/custody": {
+            "get": {
+                "tags": [
+                    "Delegate Mobile"
+                ],
+                "summary": "My cash custody balance and ledger",
+                "operationId": "3cd9ab681c31504a1c977ae2bd32e01f",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "order_collection",
+                                "wallet_collection",
+                                "settlement",
+                                "adjustment"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "balance, since_last_settlement, last_settlement, entries (paginated)"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/delegate/custody/settlements": {
+            "get": {
+                "tags": [
+                    "Delegate Mobile"
+                ],
+                "summary": "My cash hand-overs to the office",
+                "operationId": "e35d2441f7401137bed7dee54fb24ba7",
+                "responses": {
+                    "200": {
+                        "description": "Paginated settlements"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/delegate/location": {
             "post": {
                 "tags": [
@@ -1446,6 +1805,77 @@
                 }
             }
         },
+        "/delegate/wallet/collect": {
+            "post": {
+                "tags": [
+                    "Delegate Mobile"
+                ],
+                "summary": "Record cash received from a customer; credited to their wallet immediately",
+                "operationId": "1c2e30057ed795a55ab8071a1ab42443",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "amount"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number",
+                                        "example": 200
+                                    },
+                                    "order_id": {
+                                        "description": "An order assigned to me (identifies the customer)",
+                                        "type": "integer"
+                                    },
+                                    "mobile_number": {
+                                        "description": "Customer phone, when there is no order",
+                                        "type": "string"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Approved top-up"
+                    },
+                    "404": {
+                        "description": "Customer or order not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/delegate/wallet/collections": {
+            "get": {
+                "tags": [
+                    "Delegate Mobile"
+                ],
+                "summary": "Cash I collected",
+                "operationId": "648ebdbcd2a0b573fe265c2800daee6a",
+                "responses": {
+                    "200": {
+                        "description": "Paginated collections with total"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/delivery-zones": {
             "get": {
                 "tags": [
@@ -1581,6 +2011,111 @@
                         "description": "Delivery zone deleted"
                     }
                 }
+            }
+        },
+        "/cafe/favorites": {
+            "get": {
+                "tags": [
+                    "Cafe Favorites"
+                ],
+                "summary": "My favorite products (newest first, product card shape)",
+                "operationId": "cccdcd09cb028b38b63949bedf4c3458",
+                "responses": {
+                    "200": {
+                        "description": "data: products with id, name, image_url, min_price, category_id, default_variant_id, is_favorite, favorited_at"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Cafe Favorites"
+                ],
+                "summary": "Add a product to favorites (idempotent)",
+                "operationId": "e1d2f452e0f5038cdc81042c13e34f2b",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "product_id"
+                                ],
+                                "properties": {
+                                    "product_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "product_id, is_favorite=true, favorites_count"
+                    },
+                    "422": {
+                        "description": "Unknown or inactive product"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/favorites/ids": {
+            "get": {
+                "tags": [
+                    "Cafe Favorites"
+                ],
+                "summary": "Ids of my favorite products (to mark hearts in lists)",
+                "operationId": "644bc8ac850ee6ba899b1d7697b1edeb",
+                "responses": {
+                    "200": {
+                        "description": "data: [product ids]"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/favorites/{productId}": {
+            "delete": {
+                "tags": [
+                    "Cafe Favorites"
+                ],
+                "summary": "Remove a product from favorites (idempotent)",
+                "operationId": "06a0d8923a5cc814088b6d9058056660",
+                "parameters": [
+                    {
+                        "name": "productId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "product_id, is_favorite=false, favorites_count"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/notifications": {
@@ -2174,9 +2709,20 @@
                     "content": {
                         "application/json": {
                             "schema": {
+                                "required": [
+                                    "address_id"
+                                ],
                                 "properties": {
                                     "address_id": {
                                         "type": "integer"
+                                    },
+                                    "payment_method": {
+                                        "type": "string",
+                                        "default": "cash",
+                                        "enum": [
+                                            "cash",
+                                            "wallet"
+                                        ]
                                     }
                                 },
                                 "type": "object"
@@ -2190,6 +2736,51 @@
                     },
                     "409": {
                         "description": "Insufficient stock"
+                    }
+                }
+            }
+        },
+        "/wallet/gateway/callback": {
+            "post": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Payment gateway callback (signed); credits the wallet on success",
+                "operationId": "3a67379bce0bb66ad98d1f565ae63730",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "token": {
+                                        "type": "string"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "paid",
+                                            "failed"
+                                        ]
+                                    },
+                                    "reference": {
+                                        "type": "string"
+                                    },
+                                    "signature": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Processed"
+                    },
+                    "403": {
+                        "description": "Invalid signature"
                     }
                 }
             }
@@ -2636,7 +3227,7 @@
         "/cafe/dashboard": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Profile"
                 ],
                 "summary": "Customer dashboard stats",
                 "operationId": "3d170e11c2b4501249702f4987b969d8",
@@ -3127,6 +3718,198 @@
                 ]
             }
         },
+        "/featured-sections": {
+            "get": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Curated product sections (admin)",
+                "operationId": "abf86ae783947ea25989b29b0cd4f9b3",
+                "responses": {
+                    "200": {
+                        "description": "Sections with products_count, in display order"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Create a section",
+                "operationId": "e8f79c4cf169068eea5fb2fb681cc0ec",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "title",
+                                    "product_ids"
+                                ],
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "example": "الأكثر طلباً"
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    },
+                                    "sort_order": {
+                                        "type": "integer"
+                                    },
+                                    "product_ids": {
+                                        "description": "Ordered; first is shown first",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Section with products"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/featured-sections/{id}": {
+            "get": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Section with its products",
+                "operationId": "85f5126466d89e76f915995238c6ea8d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Section"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Update title/status/order and replace products",
+                "operationId": "cb13d96bf39c413e2a9308e04cb77248",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Section"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Delete a section",
+                "operationId": "2a43060198950197839e243823678c23",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/featured-sections/reorder": {
+            "post": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Save section display order",
+                "operationId": "c4028c9c35d9d60bd4f44588f6d9ee0d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "ids"
+                                ],
+                                "properties": {
+                                    "ids": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sections in the new order"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/inventory": {
             "get": {
                 "tags": [
@@ -3172,7 +3955,7 @@
                 "tags": [
                     "Stock"
                 ],
-                "summary": "Add stock (sums with the balance; writes an adjustment movement)",
+                "summary": "Receive goods into a warehouse (sums with the balance; writes a purchase movement with cost/expiry)",
                 "operationId": "f29802164ec9678b328ce9f64337650f",
                 "requestBody": {
                     "required": true,
@@ -3325,6 +4108,7 @@
                     {
                         "name": "type",
                         "in": "query",
+                        "description": "purchase = goods received",
                         "schema": {
                             "type": "string",
                             "enum": [
@@ -3383,395 +4167,6 @@
                 "responses": {
                     "200": {
                         "description": "Movement"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/purchase-orders": {
-            "get": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "List purchase orders",
-                "operationId": "cd2ae114a3632893b442cd2fc042b1ea",
-                "parameters": [
-                    {
-                        "name": "warehouse_id",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "status",
-                        "in": "query",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "draft",
-                                "received",
-                                "cancelled"
-                            ]
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Paginated purchase orders with items_count"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "Create a draft purchase order",
-                "operationId": "3fea18eb89e743906d0b97dfd5b387c7",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PurchaseOrderRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Draft created"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/purchase-orders/{id}": {
-            "get": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "Purchase order with items",
-                "operationId": "fdef82e342dd018113f6cd1cec1b32c8",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Purchase order"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "put": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "Edit a draft (items are replaced when sent)",
-                "operationId": "d4b8478c48ac37b2cf11e17a6405f6ba",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PurchaseOrderRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Updated"
-                    },
-                    "422": {
-                        "description": "Not a draft"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "delete": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "Delete a draft or cancelled purchase order",
-                "operationId": "7cfc7ac5c012a998187618abf1208a3a",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Deleted"
-                    },
-                    "422": {
-                        "description": "Already received"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/purchase-orders/{id}/receive": {
-            "post": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "Receive: add all items to warehouse stock (purchase movements)",
-                "operationId": "0f16a9781a45747eb8e8a1ac794c0496",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Received"
-                    },
-                    "422": {
-                        "description": "Not a draft or has no items"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/purchase-orders/{id}/cancel": {
-            "post": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "Cancel a draft",
-                "operationId": "86cb2f6a8e1731f14d67994ce953d99e",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Cancelled"
-                    },
-                    "422": {
-                        "description": "Not a draft"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/purchase-order-items": {
-            "get": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "List purchase order items",
-                "operationId": "3ca187f92079571788dced4714dd2fc7",
-                "responses": {
-                    "200": {
-                        "description": "Paginated items"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "Add an item to a draft",
-                "operationId": "6730e336198d96fa2697d793c584b0dd",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "purchase_order_id",
-                                    "product_variant_id",
-                                    "quantity",
-                                    "unit_cost"
-                                ],
-                                "properties": {
-                                    "purchase_order_id": {
-                                        "type": "integer"
-                                    },
-                                    "product_variant_id": {
-                                        "type": "integer"
-                                    },
-                                    "quantity": {
-                                        "type": "integer"
-                                    },
-                                    "unit_cost": {
-                                        "type": "number"
-                                    },
-                                    "manufacturing_year": {
-                                        "type": "integer"
-                                    },
-                                    "expiry_date": {
-                                        "type": "string",
-                                        "format": "date"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Item added"
-                    },
-                    "422": {
-                        "description": "Purchase order is not a draft"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/purchase-order-items/{id}": {
-            "get": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "Purchase order item",
-                "operationId": "d8fd30b59c7ccd6b916cc58a3bca32ea",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Item"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "put": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "Update an item of a draft",
-                "operationId": "b8dc279cc91d47450ee55a480437df55",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Item updated"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "delete": {
-                "tags": [
-                    "Stock"
-                ],
-                "summary": "Remove an item from a draft",
-                "operationId": "6f545fb4790c96adcadc75c0fa5b9fc6",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Deleted"
                     }
                 },
                 "security": [
@@ -3875,7 +4270,8 @@
                                         "enum": [
                                             "cash",
                                             "card",
-                                            "bank_transfer"
+                                            "bank_transfer",
+                                            "wallet"
                                         ]
                                     },
                                     "status": {
@@ -4497,7 +4893,7 @@
         "/cafe/premium-features": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Profile"
                 ],
                 "summary": "Feature flags for the app UI",
                 "operationId": "c9261beb1459a025abb1d769b50fbcff",
@@ -4516,13 +4912,617 @@
         "/cafe/promos": {
             "get": {
                 "tags": [
-                    "Cafe Mobile"
+                    "Cafe Promos"
                 ],
                 "summary": "Active promo banners",
                 "operationId": "faea1a5dd4eee5922c1342eac2b3a2c5",
                 "responses": {
                     "200": {
                         "description": "Promos"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/wallets": {
+            "get": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Customer wallets with balances",
+                "operationId": "815fc55a9f369ab7feaf24d2c57b4be0",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "has_balance",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated wallets + summary.total_balance"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/wallets/summary": {
+            "get": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Liquidity overview: customer wallet balances, delegate custody, pending top-ups and period flows",
+                "operationId": "8c504bad2ed97fd19d85f7b86b0199fe",
+                "parameters": [
+                    {
+                        "name": "period",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "month",
+                            "enum": [
+                                "today",
+                                "week",
+                                "month",
+                                "all"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "liquidity, wallets, pending_topups, flows, top_wallets, delegates"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/wallets/{id}": {
+            "get": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Wallet with owner and latest top-ups",
+                "operationId": "91ab83625f71ff2b3a5ddd4f67228388",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Wallet"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/wallets/{id}/transactions": {
+            "get": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Wallet ledger",
+                "operationId": "09a0706afa80f9e5e9550bce2d992a8d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "topup",
+                                "payment",
+                                "refund",
+                                "adjustment"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated transactions"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/wallets/{id}/adjust": {
+            "post": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Manual credit (+) or debit (-); never below zero",
+                "operationId": "ee4a8376bfb6791730c26c8993dd91ae",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "amount",
+                                    "note"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number",
+                                        "example": -25
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "wallet + transaction"
+                    },
+                    "422": {
+                        "description": "Insufficient balance / validation"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/wallets/{id}/toggle-active": {
+            "post": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Suspend or reactivate a wallet (suspended wallets cannot pay)",
+                "operationId": "9c0fb88b6368f0a54d6acbd800cd249e",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Wallet"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/wallet-topups": {
+            "get": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Top-up requests",
+                "operationId": "77a269cdff1b9adc6cb98b756e927a78",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "approved",
+                                "rejected",
+                                "cancelled",
+                                "failed"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "method",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "bank_transfer",
+                                "delegate_cash",
+                                "gateway"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated top-ups"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/wallet-topups/{id}": {
+            "get": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Top-up with receipt_url",
+                "operationId": "b264c3f4c79aed9bc703bdcaeb6086ed",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Top-up"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/wallet-topups/{id}/approve": {
+            "post": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Approve a pending request and credit the wallet",
+                "operationId": "b89109e00ffe32fae6c75c747e4e730e",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Approved"
+                    },
+                    "422": {
+                        "description": "Already processed"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/wallet-topups/{id}/reject": {
+            "post": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Reject a pending request (reason is sent to the customer)",
+                "operationId": "5c3119af69f9f4d17041071e2f132f71",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "reason"
+                                ],
+                                "properties": {
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Rejected"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/custody": {
+            "get": {
+                "tags": [
+                    "Custody"
+                ],
+                "summary": "Cash each delegate holds for the office",
+                "operationId": "f167c25747504f17ac3daf1dc319a3ab",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "with_balance",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated delegates with custody_balance, last_settlement_at + summary.total_custody"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/custody/{delegateId}": {
+            "get": {
+                "tags": [
+                    "Custody"
+                ],
+                "summary": "Delegate custody summary and settlements",
+                "operationId": "b2a297dc07027f06bfa816f77042a480",
+                "parameters": [
+                    {
+                        "name": "delegateId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "balance, since_last_settlement, last_settlement, settlements"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/custody/{delegateId}/entries": {
+            "get": {
+                "tags": [
+                    "Custody"
+                ],
+                "summary": "Custody ledger",
+                "operationId": "88b6ae6d648f4015a4e9e92f55de184f",
+                "parameters": [
+                    {
+                        "name": "delegateId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "order_collection",
+                                "wallet_collection",
+                                "settlement",
+                                "adjustment"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated entries"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/custody/{delegateId}/settle": {
+            "post": {
+                "tags": [
+                    "Custody"
+                ],
+                "summary": "Record cash handed over by the delegate (تسكير); cannot exceed custody",
+                "operationId": "630ee5b4a19700f77531a58f849fcd3d",
+                "parameters": [
+                    {
+                        "name": "delegateId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "amount"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Settlement with custody_before/after"
+                    },
+                    "422": {
+                        "description": "More than custody"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/custody/{delegateId}/adjust": {
+            "post": {
+                "tags": [
+                    "Custody"
+                ],
+                "summary": "Correct custody (+/-) with a required note",
+                "operationId": "9f169632d38ba3062c9b013b758e5bad",
+                "parameters": [
+                    {
+                        "name": "delegateId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "amount",
+                                    "note"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Custody entry"
                     }
                 },
                 "security": [
@@ -4966,7 +5966,7 @@
                 "type": "object"
             },
             "InventoryRequest": {
-                "description": "POST adds quantity to stock; PUT sets the counted on-hand quantity. Both write a stock movement.",
+                "description": "POST receives goods (adds to stock, purchase movement); PUT sets the counted on-hand quantity (adjustment movement).",
                 "required": [
                     "warehouse_id",
                     "product_variant_id",
@@ -4987,6 +5987,22 @@
                     "note": {
                         "type": "string",
                         "maxLength": 255,
+                        "nullable": true
+                    },
+                    "unit_cost": {
+                        "description": "POST only",
+                        "type": "number",
+                        "nullable": true
+                    },
+                    "manufacturing_year": {
+                        "description": "POST only",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "expiry_date": {
+                        "description": "POST only",
+                        "type": "string",
+                        "format": "date",
                         "nullable": true
                     }
                 },
@@ -5258,56 +6274,6 @@
                 },
                 "type": "object"
             },
-            "PurchaseOrderRequest": {
-                "description": "Created as draft. POST /purchase-orders/{id}/receive adds the items to stock.",
-                "required": [
-                    "warehouse_id"
-                ],
-                "properties": {
-                    "warehouse_id": {
-                        "type": "integer"
-                    },
-                    "note": {
-                        "type": "string",
-                        "maxLength": 255,
-                        "nullable": true
-                    },
-                    "items": {
-                        "description": "On update, replaces all items",
-                        "type": "array",
-                        "items": {
-                            "required": [
-                                "product_variant_id",
-                                "quantity",
-                                "unit_cost"
-                            ],
-                            "properties": {
-                                "product_variant_id": {
-                                    "type": "integer"
-                                },
-                                "quantity": {
-                                    "type": "integer"
-                                },
-                                "unit_cost": {
-                                    "type": "number",
-                                    "format": "float"
-                                },
-                                "manufacturing_year": {
-                                    "type": "integer",
-                                    "nullable": true
-                                },
-                                "expiry_date": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "nullable": true
-                                }
-                            },
-                            "type": "object"
-                        }
-                    }
-                },
-                "type": "object"
-            },
             "DelegateLocationRequest": {
                 "required": [
                     "latitude",
@@ -5372,16 +6338,8 @@
             "description": "Admin platform address management"
         },
         {
-            "name": "Auth",
-            "description": "Shared authentication endpoints"
-        },
-        {
             "name": "Admin Users",
             "description": "Admin platform user management"
-        },
-        {
-            "name": "Cafe Mobile",
-            "description": "Endpoints for the customer (cafe) mobile app"
         },
         {
             "name": "Admin Categories",
@@ -5400,10 +6358,6 @@
             "description": "Admin platform delivery zone management"
         },
         {
-            "name": "Notifications",
-            "description": "User notifications"
-        },
-        {
             "name": "Orders",
             "description": "Dashboard order management"
         },
@@ -5414,10 +6368,6 @@
         {
             "name": "Promos",
             "description": "App banners"
-        },
-        {
-            "name": "Cafe Recurring Carts",
-            "description": "Reusable carts for repeated orders"
         },
         {
             "name": "Admin Warehouses",
@@ -5437,7 +6387,15 @@
         },
         {
             "name": "Stock",
-            "description": "Inventory balances, stock ledger and purchase orders"
+            "description": "Inventory balances (goods-in) and the stock ledger"
+        },
+        {
+            "name": "Wallets",
+            "description": "Customer wallets and top-up review"
+        },
+        {
+            "name": "Custody",
+            "description": "Delegate cash custody and settlements"
         },
         {
             "name": "Payments",
@@ -5450,6 +6408,50 @@
         {
             "name": "Carts & Order Lines",
             "description": "Read-only views written by the ordering workflows"
+        },
+        {
+            "name": "Auth",
+            "description": "الدخول، التسجيل برقم الهاتف والتحقق (OTP)، استعادة كلمة المرور، `me` والخروج."
+        },
+        {
+            "name": "Cafe Profile",
+            "description": "الملف الشخصي للمقهى، لوحة الإحصائيات، والميزات المفعّلة في التطبيق."
+        },
+        {
+            "name": "Cafe Promos",
+            "description": "بانرات العروض النشطة للصفحة الرئيسية."
+        },
+        {
+            "name": "Cafe Products",
+            "description": "التصنيفات، المنتجات والبحث، تفاصيل المنتج وأحجامه، والأقسام المميزة المختارة من الإدارة."
+        },
+        {
+            "name": "Cafe Favorites",
+            "description": "إضافة المنتجات للمفضلة وعرضها. كل كارت منتج يحمل `is_favorite`."
+        },
+        {
+            "name": "Cafe Cart",
+            "description": "سلة المشتريات: الإضافة والتعديل، فحص المخزون، وإتمام الطلب (نقداً عند الاستلام أو من المحفظة)."
+        },
+        {
+            "name": "Cafe Recurring Carts",
+            "description": "الطلبيات المتكررة: سلال بأسماء يعاد طلبها بضغطة واحدة."
+        },
+        {
+            "name": "Cafe Orders",
+            "description": "الطلبات: الإنشاء المباشر، القائمة والتفاصيل، تأكيد الاستلام، طلب الإلغاء وموقع المندوب."
+        },
+        {
+            "name": "Cafe Addresses",
+            "description": "عناوين التوصيل ومناطق التوصيل على الخريطة."
+        },
+        {
+            "name": "Cafe Wallet",
+            "description": "المحفظة: الرصيد والحركات، الشحن بتحويل بنكي (مع الإيصال) أو إلكترونياً عبر البوابة."
+        },
+        {
+            "name": "Notifications",
+            "description": "إشعارات المستخدم: القائمة، غير المقروءة، وتحديدها كمقروءة."
         },
         {
             "name": "Warehouses",

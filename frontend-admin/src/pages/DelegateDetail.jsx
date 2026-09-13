@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import client from '../api/client'
 import echo from '../echo'
 import L from 'leaflet'
@@ -171,6 +171,12 @@ export default function DelegateDetail() {
               <div>
                 <span className="font-medium">متاح:</span>{' '}
                 <Badge variant={delegate.is_available ? 'success' : 'default'}>{delegate.is_available ? 'نعم' : 'لا'}</Badge>
+              </div>
+              <div>
+                <span className="font-medium">العهدة النقدية:</span>{' '}
+                <Link to={`/custody/${delegate.id}`} className="font-bold text-warning hover:underline">
+                  {Number(delegate.delegate_profile?.custody_balance ?? 0).toFixed(2)} د.ل
+                </Link>
               </div>
               <div>
                 <span className="font-medium">آخر تحديث للموقع:</span>{' '}

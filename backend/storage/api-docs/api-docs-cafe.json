@@ -187,38 +187,56 @@
                 ]
             }
         },
-        "/cafe/dashboard": {
-            "get": {
-                "tags": [
-                    "Cafe Mobile Dashboard"
-                ],
-                "summary": "Get cafe dashboard analytics",
-                "operationId": "5cd571b6ab0f33cb7d5e6a2f2433a2a9",
-                "responses": {
-                    "200": {
-                        "description": "Dashboard data"
-                    }
-                }
-            }
-        },
         "/cafe/orders": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Orders"
+                    "Cafe Orders"
                 ],
-                "summary": "List cafe orders",
+                "summary": "List own orders",
                 "operationId": "df333eb5fb03206b34e826eea2c6b5be",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "address_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Paginated list of cafe orders"
+                        "description": "Paginated orders"
                     }
                 }
             },
             "post": {
                 "tags": [
-                    "Cafe Mobile Orders"
+                    "Cafe Orders"
                 ],
-                "summary": "Create an order for the cafe",
+                "summary": "Place an order directly (without the cart)",
                 "operationId": "4c7d655b789460acf5478b0a6871bed7",
                 "requestBody": {
                     "required": true,
@@ -234,8 +252,8 @@
                     "201": {
                         "description": "Order created"
                     },
-                    "422": {
-                        "description": "Validation error"
+                    "409": {
+                        "description": "Insufficient stock"
                     }
                 }
             }
@@ -243,9 +261,9 @@
         "/cafe/addresses/{id}/orders": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Addresses"
+                    "Cafe Addresses"
                 ],
-                "summary": "List orders for a specific address",
+                "summary": "Orders delivered to one address",
                 "operationId": "3b61e53ce5f991ac0854a881739366dd",
                 "parameters": [
                     {
@@ -259,10 +277,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "List of address orders"
-                    },
-                    "404": {
-                        "description": "Address not found"
+                        "description": "Paginated orders"
                     }
                 }
             }
@@ -270,9 +285,9 @@
         "/cafe/orders/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Orders"
+                    "Cafe Orders"
                 ],
-                "summary": "Get a cafe order",
+                "summary": "Own order details",
                 "operationId": "ddb54b10046cd006c29ffb454b880dfe",
                 "parameters": [
                     {
@@ -286,10 +301,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Order details"
-                    },
-                    "404": {
-                        "description": "Not found"
+                        "description": "Order"
                     }
                 }
             }
@@ -297,9 +309,9 @@
         "/cafe/orders/{id}/status": {
             "put": {
                 "tags": [
-                    "Cafe Mobile Orders"
+                    "Cafe Orders"
                 ],
-                "summary": "Confirm order receipt (only after the delegate marks it delivered)",
+                "summary": "Confirm receipt of a delivered order",
                 "operationId": "766c6aac15f0b1777050785478dff042",
                 "parameters": [
                     {
@@ -331,10 +343,10 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Receipt confirmed"
+                        "description": "Order updated"
                     },
                     "422": {
-                        "description": "Invalid status or order not delivered yet"
+                        "description": "Order is not delivered yet"
                     }
                 }
             }
@@ -342,9 +354,9 @@
         "/cafe/orders/{id}/cancel-request": {
             "post": {
                 "tags": [
-                    "Cafe Mobile Orders"
+                    "Cafe Orders"
                 ],
-                "summary": "Request order cancellation (reviewed by admin)",
+                "summary": "Ask the admins to cancel a pending order",
                 "operationId": "ed7b3b9d607a603f8155adcca0cb4c83",
                 "parameters": [
                     {
@@ -361,7 +373,7 @@
                         "description": "Cancellation requested"
                     },
                     "422": {
-                        "description": "Order cannot be cancelled in its current state"
+                        "description": "Order is not pending"
                     }
                 }
             }
@@ -369,21 +381,21 @@
         "/cafe/addresses": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Addresses"
+                    "Cafe Addresses"
                 ],
-                "summary": "List the cafe user's addresses",
+                "summary": "List own addresses",
                 "operationId": "a07c813cdcc666e312d6fee002a20896",
                 "responses": {
                     "200": {
-                        "description": "Addresses and the delivery price for the user's own location"
+                        "description": "Addresses and the delivery price at the customer's registered location"
                     }
                 }
             },
             "post": {
                 "tags": [
-                    "Cafe Mobile Addresses"
+                    "Cafe Addresses"
                 ],
-                "summary": "Create an address for the cafe user",
+                "summary": "Create an address",
                 "operationId": "33942d72732902c0a6e52aa3afcaa69f",
                 "requestBody": {
                     "required": true,
@@ -398,9 +410,6 @@
                 "responses": {
                     "201": {
                         "description": "Address created"
-                    },
-                    "422": {
-                        "description": "Validation error"
                     }
                 }
             }
@@ -408,9 +417,9 @@
         "/cafe/addresses/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Addresses"
+                    "Cafe Addresses"
                 ],
-                "summary": "Get one of the cafe user's addresses",
+                "summary": "Own address details",
                 "operationId": "9bf8e7685614df8f03734955aa091bac",
                 "parameters": [
                     {
@@ -424,18 +433,15 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Address details"
-                    },
-                    "404": {
-                        "description": "Not found"
+                        "description": "Address"
                     }
                 }
             },
             "put": {
                 "tags": [
-                    "Cafe Mobile Addresses"
+                    "Cafe Addresses"
                 ],
-                "summary": "Update one of the cafe user's addresses",
+                "summary": "Update an address",
                 "operationId": "5f88ea85126e58bf3a13190d1b9e3ed0",
                 "parameters": [
                     {
@@ -460,17 +466,15 @@
                 "responses": {
                     "200": {
                         "description": "Address updated"
-                    },
-                    "403": {
-                        "description": "Forbidden"
                     }
                 }
             },
             "delete": {
                 "tags": [
-                    "Cafe Mobile Addresses"
+                    "Cafe Addresses"
                 ],
-                "summary": "Delete one of the cafe user's addresses",
+                "summary": "Delete an address",
+                "description": "Soft delete; past orders keep their own copy of the delivery address.",
                 "operationId": "09a6b02d13c972073081a82a49f118d4",
                 "parameters": [
                     {
@@ -485,9 +489,6 @@
                 "responses": {
                     "200": {
                         "description": "Address deleted"
-                    },
-                    "409": {
-                        "description": "Address has orders"
                     }
                 }
             }
@@ -495,24 +496,23 @@
         "/cafe/profile": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Profile"
+                    "Cafe Profile"
                 ],
-                "summary": "Get the cafe user's profile with their addresses",
+                "summary": "Customer profile",
                 "operationId": "b61a587e42e4a65a611e9ce586ebe1f0",
                 "responses": {
                     "200": {
-                        "description": "User profile and addresses"
+                        "description": "User fields merged with the customer profile, plus addresses"
                     }
                 }
             },
             "put": {
                 "tags": [
-                    "Cafe Mobile Profile"
+                    "Cafe Profile"
                 ],
-                "summary": "Update the cafe user's profile (name, contact, own location)",
+                "summary": "Update customer profile",
                 "operationId": "6d026f2b75cdcbd36744e80489abf60f",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -523,13 +523,17 @@
                                     "mobile_number": {
                                         "type": "string"
                                     },
+                                    "business_name": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
                                     "latitude": {
                                         "type": "number",
-                                        "format": "float"
+                                        "nullable": true
                                     },
                                     "longitude": {
                                         "type": "number",
-                                        "format": "float"
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -539,7 +543,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Profile updated"
+                        "description": "Updated profile"
                     }
                 }
             }
@@ -547,13 +551,13 @@
         "/cafe/delivery-zones": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Addresses"
+                    "Cafe Addresses"
                 ],
-                "summary": "List active delivery zones for map address placement",
+                "summary": "Active delivery zones for the map",
                 "operationId": "b15b8a190b3b5da333be486589960f5c",
                 "responses": {
                     "200": {
-                        "description": "List of delivery zones"
+                        "description": "Zones"
                     }
                 }
             }
@@ -561,13 +565,13 @@
         "/cafe/categories": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Catalog"
+                    "Cafe Products"
                 ],
-                "summary": "List product categories",
+                "summary": "List categories",
                 "operationId": "a4cb49242b76128b80cc01f04488b6b9",
                 "responses": {
                     "200": {
-                        "description": "List of categories"
+                        "description": "Categories"
                     }
                 }
             }
@@ -575,33 +579,112 @@
         "/cafe/products": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Catalog"
+                    "Cafe Products"
                 ],
-                "summary": "List products",
+                "summary": "List active products (cards)",
                 "operationId": "46d95a00fca533270cd7255284e834f8",
                 "parameters": [
                     {
                         "name": "category_id",
                         "in": "query",
-                        "required": false,
                         "schema": {
                             "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Paginated list of products"
+                        "description": "Products"
                     }
                 }
+            }
+        },
+        "/cafe/featured-sections": {
+            "get": {
+                "tags": [
+                    "Cafe Products"
+                ],
+                "summary": "Curated product sections chosen by the business (title + products in one object)",
+                "operationId": "a6f681d9f21a5448e350d119c7ead111",
+                "responses": {
+                    "200": {
+                        "description": "Active sections in display order; each has id, title and products (same card shape as /cafe/products). Sections without available products are omitted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "title": {
+                                                        "type": "string",
+                                                        "example": "الأكثر طلباً"
+                                                    },
+                                                    "products": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "image_url": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                },
+                                                                "min_price": {
+                                                                    "type": "string"
+                                                                },
+                                                                "category_id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "default_variant_id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "is_favorite": {
+                                                                    "type": "boolean"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/cafe/products/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Catalog"
+                    "Cafe Products"
                 ],
-                "summary": "Get product details",
+                "summary": "Product details",
                 "operationId": "7cdda903aaa51527f8fd6dbf56255e3b",
                 "parameters": [
                     {
@@ -615,10 +698,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Product details"
-                    },
-                    "404": {
-                        "description": "Not found"
+                        "description": "Product with its own images"
                     }
                 }
             }
@@ -626,9 +706,9 @@
         "/cafe/products/{id}/variants": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Catalog"
+                    "Cafe Products"
                 ],
-                "summary": "Get product variants by product id",
+                "summary": "Active sizes of a product",
                 "operationId": "0386483cda431404339ea7082d639ecc",
                 "parameters": [
                     {
@@ -642,10 +722,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "List of product variants"
-                    },
-                    "404": {
-                        "description": "Product not found"
+                        "description": "Variants with images and stock"
                     }
                 }
             }
@@ -653,54 +730,25 @@
         "/cafe/cart": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Cart"
+                    "Cafe Cart"
                 ],
-                "summary": "Get the current cafe user's active cart",
+                "summary": "Current shopping cart (null when none)",
                 "operationId": "6060ee36043911b3bf78c0e8124264cb",
                 "responses": {
                     "200": {
-                        "description": "Cart details"
+                        "description": "Cart"
                     }
                 }
             },
             "delete": {
                 "tags": [
-                    "Cafe Mobile Cart"
+                    "Cafe Cart"
                 ],
-                "summary": "Clear the current cart",
+                "summary": "Empty the shopping cart",
                 "operationId": "3d1c3c31061f190c715e27a63812ac78",
                 "responses": {
                     "200": {
-                        "description": "Cart cleared"
-                    }
-                }
-            }
-        },
-        "/cafe/cart/branch": {
-            "put": {
-                "tags": [
-                    "Cafe Mobile Cart"
-                ],
-                "summary": "Select the delivery address for the cart",
-                "operationId": "097cf16bc26214546452cf27d576ea99",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "address_id": {
-                                        "type": "integer"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Address selected; items are reset when the address changes"
+                        "description": "Cart emptied"
                     }
                 }
             }
@@ -708,13 +756,16 @@
         "/cafe/cart/check-stock": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Cart"
+                    "Cafe Cart"
                 ],
-                "summary": "Check stock availability for every cart item (no reservation)",
+                "summary": "Stock availability for the cart items",
                 "operationId": "5e5d6d84d3c86dc7872e628ccd5881a9",
                 "responses": {
                     "200": {
-                        "description": "Per-item availability report"
+                        "description": "Per-item availability"
+                    },
+                    "400": {
+                        "description": "Cart is empty"
                     }
                 }
             }
@@ -722,9 +773,9 @@
         "/cafe/cart/items": {
             "post": {
                 "tags": [
-                    "Cafe Mobile Cart"
+                    "Cafe Cart"
                 ],
-                "summary": "Add an item to the cafe user's cart",
+                "summary": "Add an item to the shopping cart (sets its quantity)",
                 "operationId": "794d9d7b496382a657bffa19d118ea51",
                 "requestBody": {
                     "required": true,
@@ -732,19 +783,11 @@
                         "application/json": {
                             "schema": {
                                 "properties": {
-                                    "address_id": {
-                                        "type": "integer"
-                                    },
                                     "product_variant_id": {
                                         "type": "integer"
                                     },
                                     "quantity": {
                                         "type": "integer"
-                                    },
-                                    "price_at_add": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -754,10 +797,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Item added"
-                    },
-                    "422": {
-                        "description": "Validation error"
+                        "description": "Item saved"
                     }
                 }
             }
@@ -765,9 +805,9 @@
         "/cafe/cart/items/{id}": {
             "put": {
                 "tags": [
-                    "Cafe Mobile Cart"
+                    "Cafe Cart"
                 ],
-                "summary": "Update a cart item quantity",
+                "summary": "Change a cart item quantity",
                 "operationId": "521658b853f50f47b5ca429cb284d5f9",
                 "parameters": [
                     {
@@ -796,18 +836,15 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Item updated"
-                    },
-                    "404": {
-                        "description": "Not found"
+                        "description": "Cart"
                     }
                 }
             },
             "delete": {
                 "tags": [
-                    "Cafe Mobile Cart"
+                    "Cafe Cart"
                 ],
-                "summary": "Remove an item from the cart",
+                "summary": "Remove a cart item",
                 "operationId": "6923636b1fd67f8b3030e0bf36169f2a",
                 "parameters": [
                     {
@@ -821,10 +858,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Item removed"
-                    },
-                    "404": {
-                        "description": "Not found"
+                        "description": "Cart"
                     }
                 }
             }
@@ -832,16 +866,49 @@
         "/cafe/cart/checkout": {
             "post": {
                 "tags": [
-                    "Cafe Mobile Cart"
+                    "Cafe Cart"
                 ],
-                "summary": "Checkout the cart and create an order",
+                "summary": "Turn the shopping cart into an order",
                 "operationId": "79b4162afa1df0c7ae1dd0acddcde684",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "address_id"
+                                ],
+                                "properties": {
+                                    "address_id": {
+                                        "type": "integer"
+                                    },
+                                    "payment_method": {
+                                        "description": "wallet = pay the full total from the wallet now",
+                                        "type": "string",
+                                        "default": "cash",
+                                        "enum": [
+                                            "cash",
+                                            "wallet"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "201": {
                         "description": "Order created"
                     },
                     "400": {
                         "description": "Cart is empty"
+                    },
+                    "422": {
+                        "description": "Insufficient wallet balance"
+                    },
+                    "409": {
+                        "description": "Insufficient stock"
                     }
                 }
             }
@@ -849,9 +916,9 @@
         "/cafe/orders/{id}/delegate": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Orders"
+                    "Cafe Orders"
                 ],
-                "summary": "Get the assigned delegate live location for a cafe order",
+                "summary": "Live location of the order's delegate",
                 "operationId": "02a3ac627b7c11bde9239ee5916d1a8c",
                 "parameters": [
                     {
@@ -869,6 +936,450 @@
                     },
                     "404": {
                         "description": "No delegate assigned"
+                    }
+                }
+            }
+        },
+        "/cafe/wallet": {
+            "get": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Wallet balance with latest transactions",
+                "operationId": "a0f33c021d19162852897fe9dd67934f",
+                "responses": {
+                    "200": {
+                        "description": "balance, currency, recent_transactions, pending_topups"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/wallet/transactions": {
+            "get": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Wallet transactions",
+                "operationId": "114681462902ee57527405816c77248c",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "topup",
+                                "payment",
+                                "refund",
+                                "adjustment"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated transactions"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/wallet/topups": {
+            "get": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "My top-up requests",
+                "operationId": "65ca1227bf02dfdc007fa1c0435fce4a",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "approved",
+                                "rejected",
+                                "cancelled",
+                                "failed"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated top-ups"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Request a bank-transfer top-up with its receipt; an admin approves it",
+                "operationId": "ad6d31ce206703b58099758d280c32d4",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "amount",
+                                    "method",
+                                    "reference_number",
+                                    "receipt"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number",
+                                        "example": 100
+                                    },
+                                    "method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "bank_transfer"
+                                        ]
+                                    },
+                                    "reference_number": {
+                                        "description": "Transfer reference",
+                                        "type": "string"
+                                    },
+                                    "receipt": {
+                                        "description": "Transfer receipt: jpg/png/webp/heic or pdf, max 5MB",
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Pending top-up created"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/wallet/topups/{id}/cancel": {
+            "post": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Cancel my pending top-up request",
+                "operationId": "b633bce21c992cfcdf05a00a2604e189",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cancelled"
+                    },
+                    "422": {
+                        "description": "Already processed"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/wallet/topups/gateway": {
+            "post": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Start an online top-up; open checkout_url to pay",
+                "operationId": "1b3a8d33f44cc6bc7e2c01043c0790b1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "amount"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number",
+                                        "example": 150
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "topup + checkout_url; the wallet is credited when the gateway confirms"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/favorites": {
+            "get": {
+                "tags": [
+                    "Cafe Favorites"
+                ],
+                "summary": "My favorite products (newest first, product card shape)",
+                "operationId": "cccdcd09cb028b38b63949bedf4c3458",
+                "responses": {
+                    "200": {
+                        "description": "data: products with id, name, image_url, min_price, category_id, default_variant_id, is_favorite, favorited_at"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Cafe Favorites"
+                ],
+                "summary": "Add a product to favorites (idempotent)",
+                "operationId": "e1d2f452e0f5038cdc81042c13e34f2b",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "product_id"
+                                ],
+                                "properties": {
+                                    "product_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "product_id, is_favorite=true, favorites_count"
+                    },
+                    "422": {
+                        "description": "Unknown or inactive product"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/favorites/ids": {
+            "get": {
+                "tags": [
+                    "Cafe Favorites"
+                ],
+                "summary": "Ids of my favorite products (to mark hearts in lists)",
+                "operationId": "644bc8ac850ee6ba899b1d7697b1edeb",
+                "responses": {
+                    "200": {
+                        "description": "data: [product ids]"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/favorites/{productId}": {
+            "delete": {
+                "tags": [
+                    "Cafe Favorites"
+                ],
+                "summary": "Remove a product from favorites (idempotent)",
+                "operationId": "06a0d8923a5cc814088b6d9058056660",
+                "parameters": [
+                    {
+                        "name": "productId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "product_id, is_favorite=false, favorites_count"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List current user notifications",
+                "operationId": "b1274a2aaae8a4295a7e1925e8d8090f",
+                "parameters": [
+                    {
+                        "name": "unread_only",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of notifications"
+                    }
+                }
+            }
+        },
+        "/notifications/unread-count": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get unread notification count",
+                "operationId": "85697ee523a5dace428185c95efb9f2f",
+                "responses": {
+                    "200": {
+                        "description": "Unread count"
+                    }
+                }
+            }
+        },
+        "/notifications/{id}": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get a single notification",
+                "operationId": "6293e7ffc395913cd17da6467e486699",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification details"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Delete a notification",
+                "operationId": "0f28a0400610f81f01e2d25ce4e0edff",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    }
+                }
+            }
+        },
+        "/notifications/{id}/read": {
+            "put": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark a notification as read",
+                "operationId": "a28a3f705edbab5a620d9b567f97d739",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Marked as read"
+                    }
+                }
+            }
+        },
+        "/notifications/mark-all-read": {
+            "put": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "operationId": "4d53e3eb9d0e49c14388b10eed7f8b18",
+                "responses": {
+                    "200": {
+                        "description": "All marked as read"
                     }
                 }
             }
@@ -947,19 +1458,308 @@
                 },
                 "security": []
             }
+        },
+        "/cafe/recurring-carts": {
+            "get": {
+                "tags": [
+                    "Cafe Recurring Carts"
+                ],
+                "summary": "List own recurring carts",
+                "operationId": "bf075ff5575644e2e3010638d473ffe2",
+                "responses": {
+                    "200": {
+                        "description": "Carts with items and current subtotal"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Cafe Recurring Carts"
+                ],
+                "summary": "Create a recurring cart",
+                "operationId": "a7e2da9b9dd4b22f8756aec4829c5b32",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecurringCartRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Cart created"
+                    }
+                }
+            }
+        },
+        "/cafe/recurring-carts/{id}": {
+            "get": {
+                "tags": [
+                    "Cafe Recurring Carts"
+                ],
+                "summary": "Recurring cart details",
+                "operationId": "1d5c37d6c52328a2906a103625ecfbe8",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cart"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Cafe Recurring Carts"
+                ],
+                "summary": "Rename and/or replace the items",
+                "operationId": "5c01bf7d38ab9ca5471da6d44037b134",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecurringCartRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cart updated"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Cafe Recurring Carts"
+                ],
+                "summary": "Delete a recurring cart",
+                "operationId": "c66a4a93f4f26c3a8b4d0a82cedb88a3",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cart deleted"
+                    }
+                }
+            }
+        },
+        "/cafe/recurring-carts/{id}/order": {
+            "post": {
+                "tags": [
+                    "Cafe Recurring Carts"
+                ],
+                "summary": "Place an order from a recurring cart",
+                "description": "The cart is kept as-is so it can be ordered again; prices are the current ones.",
+                "operationId": "7855da88c93ae7873c25e8bffbdf9ab3",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "address_id"
+                                ],
+                                "properties": {
+                                    "address_id": {
+                                        "type": "integer"
+                                    },
+                                    "payment_method": {
+                                        "type": "string",
+                                        "default": "cash",
+                                        "enum": [
+                                            "cash",
+                                            "wallet"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Order created"
+                    },
+                    "409": {
+                        "description": "Insufficient stock"
+                    }
+                }
+            }
+        },
+        "/wallet/gateway/callback": {
+            "post": {
+                "tags": [
+                    "Cafe Wallet"
+                ],
+                "summary": "Payment gateway callback (signed); credits the wallet on success",
+                "operationId": "3a67379bce0bb66ad98d1f565ae63730",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "token": {
+                                        "type": "string"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "paid",
+                                            "failed"
+                                        ]
+                                    },
+                                    "reference": {
+                                        "type": "string"
+                                    },
+                                    "signature": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Processed"
+                    },
+                    "403": {
+                        "description": "Invalid signature"
+                    }
+                }
+            }
+        },
+        "/cafe/dashboard": {
+            "get": {
+                "tags": [
+                    "Cafe Profile"
+                ],
+                "summary": "Customer dashboard stats",
+                "operationId": "3d170e11c2b4501249702f4987b969d8",
+                "responses": {
+                    "200": {
+                        "description": "Stats"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Revoke the current token",
+                "operationId": "1ea30e94456bf034568c7ef70006bce7",
+                "responses": {
+                    "200": {
+                        "description": "Logged out"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/premium-features": {
+            "get": {
+                "tags": [
+                    "Cafe Profile"
+                ],
+                "summary": "Feature flags for the app UI",
+                "operationId": "c9261beb1459a025abb1d769b50fbcff",
+                "responses": {
+                    "200": {
+                        "description": "Features"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/promos": {
+            "get": {
+                "tags": [
+                    "Cafe Promos"
+                ],
+                "summary": "Active promo banners",
+                "operationId": "faea1a5dd4eee5922c1342eac2b3a2c5",
+                "responses": {
+                    "200": {
+                        "description": "Promos"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
         "schemas": {
             "AddressRequest": {
                 "required": [
-                    "user_id",
                     "name",
                     "latitude",
                     "longitude"
                 ],
                 "properties": {
                     "user_id": {
+                        "description": "Required for admin requests; customers always create addresses for themselves.",
                         "type": "integer"
                     },
                     "name": {
@@ -988,6 +1788,9 @@
                         "type": "integer",
                         "nullable": true
                     },
+                    "is_default": {
+                        "type": "boolean"
+                    },
                     "is_active": {
                         "type": "boolean"
                     },
@@ -1008,9 +1811,13 @@
                     "delivery_price"
                 ],
                 "properties": {
+                    "warehouse_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
                     "hex_id": {
                         "type": "string",
-                        "maxLength": 30
+                        "maxLength": 40
                     },
                     "name": {
                         "type": "string",
@@ -1056,40 +1863,69 @@
                         "type": "string",
                         "maxLength": 150
                     },
+                    "brand": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
                     "description": {
                         "type": "string",
+                        "nullable": true
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "image": {
+                        "description": "Stored as the product's primary image",
+                        "type": "string",
+                        "format": "binary",
                         "nullable": true
                     }
                 },
                 "type": "object"
             },
             "ProductVariantRequest": {
+                "description": "A sellable size of a product. Stock lives in inventories; expiry dates on purchase order items.",
                 "required": [
                     "product_id",
-                    "sku",
+                    "name",
                     "price"
                 ],
                 "properties": {
                     "product_id": {
                         "type": "integer"
                     },
-                    "sku": {
+                    "name": {
                         "type": "string",
-                        "maxLength": 50
+                        "maxLength": 100,
+                        "example": "500 جم"
                     },
-                    "attribute_name": {
+                    "sku": {
+                        "description": "Generated when empty",
                         "type": "string",
                         "maxLength": 50,
                         "nullable": true
                     },
-                    "attribute_value": {
+                    "barcode": {
                         "type": "string",
-                        "maxLength": 50,
+                        "maxLength": 100,
                         "nullable": true
                     },
                     "price": {
                         "type": "number",
                         "format": "float"
+                    },
+                    "cost_price": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
                     },
                     "is_active": {
                         "type": "boolean"
@@ -1125,6 +1961,7 @@
                 "type": "object"
             },
             "InventoryRequest": {
+                "description": "POST receives goods (adds to stock, purchase movement); PUT sets the counted on-hand quantity (adjustment movement).",
                 "required": [
                     "warehouse_id",
                     "product_variant_id",
@@ -1132,13 +1969,36 @@
                 ],
                 "properties": {
                     "warehouse_id": {
+                        "description": "POST only",
                         "type": "integer"
                     },
                     "product_variant_id": {
+                        "description": "POST only",
                         "type": "integer"
                     },
                     "quantity": {
                         "type": "integer"
+                    },
+                    "note": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "nullable": true
+                    },
+                    "unit_cost": {
+                        "description": "POST only",
+                        "type": "number",
+                        "nullable": true
+                    },
+                    "manufacturing_year": {
+                        "description": "POST only",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "expiry_date": {
+                        "description": "POST only",
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -1306,67 +2166,60 @@
                     },
                     "is_active": {
                         "type": "boolean"
+                    },
+                    "latitude": {
+                        "description": "Stored on delegate_profiles",
+                        "type": "number",
+                        "nullable": true
+                    },
+                    "longitude": {
+                        "description": "Stored on delegate_profiles",
+                        "type": "number",
+                        "nullable": true
+                    },
+                    "is_available": {
+                        "description": "Stored on delegate_profiles",
+                        "type": "boolean"
                     }
                 },
                 "type": "object"
             },
             "OrderItemRequest": {
+                "description": "Unit price is always taken from the variant on the server.",
                 "required": [
                     "product_variant_id",
-                    "quantity",
-                    "unit_price"
+                    "quantity"
                 ],
                 "properties": {
                     "product_variant_id": {
                         "type": "integer"
                     },
                     "quantity": {
-                        "type": "integer"
-                    },
-                    "unit_price": {
-                        "type": "number",
-                        "format": "float"
+                        "type": "integer",
+                        "minimum": 1
                     }
                 },
                 "type": "object"
             },
             "OrderRequest": {
+                "description": "Totals, delivery fee and the delivery address snapshot are computed on the server.",
                 "required": [
                     "user_id",
                     "address_id",
-                    "status",
-                    "total_amount"
+                    "items"
                 ],
                 "properties": {
                     "user_id": {
+                        "description": "The customer the order is for",
                         "type": "integer"
                     },
                     "address_id": {
+                        "description": "Must belong to the customer",
                         "type": "integer"
                     },
                     "delegate_id": {
                         "type": "integer",
                         "nullable": true
-                    },
-                    "delivery_zone_id": {
-                        "type": "integer",
-                        "nullable": true
-                    },
-                    "delivery_fee": {
-                        "type": "number",
-                        "format": "float"
-                    },
-                    "order_date": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "status": {
-                        "type": "string",
-                        "maxLength": 30
-                    },
-                    "total_amount": {
-                        "type": "number",
-                        "format": "float"
                     },
                     "items": {
                         "type": "array",
@@ -1395,41 +2248,23 @@
                 },
                 "type": "object"
             },
-            "CartRequest": {
+            "RecurringCartRequest": {
                 "required": [
-                    "user_id",
-                    "address_id"
+                    "name",
+                    "items"
                 ],
                 "properties": {
-                    "user_id": {
-                        "type": "integer"
-                    },
-                    "address_id": {
-                        "type": "integer"
-                    },
-                    "status": {
+                    "name": {
                         "type": "string",
-                        "maxLength": 20
-                    }
-                },
-                "type": "object"
-            },
-            "PurchaseOrderRequest": {
-                "required": [
-                    "warehouse_id",
-                    "status"
-                ],
-                "properties": {
-                    "warehouse_id": {
-                        "type": "integer"
+                        "maxLength": 100,
+                        "example": "الطلبية الأسبوعية"
                     },
-                    "order_date": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "status": {
-                        "type": "string",
-                        "maxLength": 20
+                    "items": {
+                        "description": "On update, replaces all items",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderItemRequest"
+                        }
                     }
                 },
                 "type": "object"
@@ -1495,31 +2330,47 @@
     "tags": [
         {
             "name": "Auth",
-            "description": "Shared authentication endpoints"
+            "description": "الدخول، التسجيل برقم الهاتف والتحقق (OTP)، استعادة كلمة المرور، `me` والخروج."
         },
         {
-            "name": "Cafe Mobile Dashboard",
-            "description": "Cafe mobile app dashboard"
+            "name": "Cafe Profile",
+            "description": "الملف الشخصي للمقهى، لوحة الإحصائيات، والميزات المفعّلة في التطبيق."
         },
         {
-            "name": "Cafe Mobile Orders",
-            "description": "Cafe mobile app order management"
+            "name": "Cafe Promos",
+            "description": "بانرات العروض النشطة للصفحة الرئيسية."
         },
         {
-            "name": "Cafe Mobile Addresses",
-            "description": "Cafe mobile app address management"
+            "name": "Cafe Products",
+            "description": "التصنيفات، المنتجات والبحث، تفاصيل المنتج وأحجامه، والأقسام المميزة المختارة من الإدارة."
         },
         {
-            "name": "Cafe Mobile Profile",
-            "description": "Cafe mobile app profile"
+            "name": "Cafe Favorites",
+            "description": "إضافة المنتجات للمفضلة وعرضها. كل كارت منتج يحمل `is_favorite`."
         },
         {
-            "name": "Cafe Mobile Catalog",
-            "description": "Cafe mobile app product catalog"
+            "name": "Cafe Cart",
+            "description": "سلة المشتريات: الإضافة والتعديل، فحص المخزون، وإتمام الطلب (نقداً عند الاستلام أو من المحفظة)."
         },
         {
-            "name": "Cafe Mobile Cart",
-            "description": "Cafe Mobile Cart"
+            "name": "Cafe Recurring Carts",
+            "description": "الطلبيات المتكررة: سلال بأسماء يعاد طلبها بضغطة واحدة."
+        },
+        {
+            "name": "Cafe Orders",
+            "description": "الطلبات: الإنشاء المباشر، القائمة والتفاصيل، تأكيد الاستلام، طلب الإلغاء وموقع المندوب."
+        },
+        {
+            "name": "Cafe Addresses",
+            "description": "عناوين التوصيل ومناطق التوصيل على الخريطة."
+        },
+        {
+            "name": "Cafe Wallet",
+            "description": "المحفظة: الرصيد والحركات، الشحن بتحويل بنكي (مع الإيصال) أو إلكترونياً عبر البوابة."
+        },
+        {
+            "name": "Notifications",
+            "description": "إشعارات المستخدم: القائمة، غير المقروءة، وتحديدها كمقروءة."
         }
     ],
     "security": [

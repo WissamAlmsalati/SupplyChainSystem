@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Enums\CartType;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentMethod;
 use App\Http\Requests\Api\AddressRequest;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\DeliveryZone;
+use App\Models\FeaturedSection;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\PremiumFeature;
@@ -24,9 +26,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
-/**
- * @OA\Tag(name="Cafe Mobile", description="Endpoints for the customer (cafe) mobile app")
- */
 class CafeMobileController extends BaseApiController
 {
     protected function orderScope()
@@ -42,7 +41,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/orders", tags={"Cafe Mobile"}, summary="List own orders",
+     * @OA\Get(path="/cafe/orders", tags={"Cafe Orders"}, summary="List own orders",
      *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string")),
      *     @OA\Parameter(name="address_id", in="query", @OA\Schema(type="integer")),
      *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
@@ -70,7 +69,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/addresses/{id}/orders", tags={"Cafe Mobile"}, summary="Orders delivered to one address",
+     * @OA\Get(path="/cafe/addresses/{id}/orders", tags={"Cafe Addresses"}, summary="Orders delivered to one address",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Paginated orders"))
      */
@@ -89,7 +88,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/orders/{id}", tags={"Cafe Mobile"}, summary="Own order details",
+     * @OA\Get(path="/cafe/orders/{id}", tags={"Cafe Orders"}, summary="Own order details",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Order"))
      */
@@ -103,7 +102,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Put(path="/cafe/orders/{id}/status", tags={"Cafe Mobile"}, summary="Confirm receipt of a delivered order",
+     * @OA\Put(path="/cafe/orders/{id}/status", tags={"Cafe Orders"}, summary="Confirm receipt of a delivered order",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="status", type="string", enum={"received"}))),
      *     @OA\Response(response=200, description="Order updated"),
@@ -125,7 +124,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Post(path="/cafe/orders/{id}/cancel-request", tags={"Cafe Mobile"}, summary="Ask the admins to cancel a pending order",
+     * @OA\Post(path="/cafe/orders/{id}/cancel-request", tags={"Cafe Orders"}, summary="Ask the admins to cancel a pending order",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Cancellation requested"),
      *     @OA\Response(response=422, description="Order is not pending"))
@@ -155,7 +154,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Post(path="/cafe/orders", tags={"Cafe Mobile"}, summary="Place an order directly (without the cart)",
+     * @OA\Post(path="/cafe/orders", tags={"Cafe Orders"}, summary="Place an order directly (without the cart)",
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CafeOrderRequest")),
      *     @OA\Response(response=201, description="Order created"),
      *     @OA\Response(response=409, description="Insufficient stock"))
@@ -167,6 +166,7 @@ class CafeMobileController extends BaseApiController
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'payment_method' => ['nullable', Rule::in([PaymentMethod::Cash->value, PaymentMethod::Wallet->value])],
         ]);
 
         $address = $this->addressScope()->find($data['address_id']);
@@ -175,13 +175,13 @@ class CafeMobileController extends BaseApiController
         }
 
         // ponytail: prices always come from the variant; client-sent prices are ignored
-        $order = $placement->place(auth()->user(), $address, $data['items'], OrderSource::App);
+        $order = $placement->place(auth()->user(), $address, $data['items'], OrderSource::App, null, null, PaymentMethod::from($data['payment_method'] ?? 'cash'));
 
         return $this->orderCreatedResponse($order);
     }
 
     /**
-     * @OA\Get(path="/cafe/addresses", tags={"Cafe Mobile"}, summary="List own addresses",
+     * @OA\Get(path="/cafe/addresses", tags={"Cafe Addresses"}, summary="List own addresses",
      *     @OA\Response(response=200, description="Addresses and the delivery price at the customer's registered location"))
      */
     public function addresses(Request $request): JsonResponse
@@ -216,7 +216,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/addresses/{id}", tags={"Cafe Mobile"}, summary="Own address details",
+     * @OA\Get(path="/cafe/addresses/{id}", tags={"Cafe Addresses"}, summary="Own address details",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Address"))
      */
@@ -226,7 +226,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Post(path="/cafe/addresses", tags={"Cafe Mobile"}, summary="Create an address",
+     * @OA\Post(path="/cafe/addresses", tags={"Cafe Addresses"}, summary="Create an address",
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
      *     @OA\Response(response=201, description="Address created"))
      */
@@ -246,7 +246,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Put(path="/cafe/addresses/{id}", tags={"Cafe Mobile"}, summary="Update an address",
+     * @OA\Put(path="/cafe/addresses/{id}", tags={"Cafe Addresses"}, summary="Update an address",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
      *     @OA\Response(response=200, description="Address updated"))
@@ -260,7 +260,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Delete(path="/cafe/addresses/{id}", tags={"Cafe Mobile"}, summary="Delete an address",
+     * @OA\Delete(path="/cafe/addresses/{id}", tags={"Cafe Addresses"}, summary="Delete an address",
      *     description="Soft delete; past orders keep their own copy of the delivery address.",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Address deleted"))
@@ -273,7 +273,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/profile", tags={"Cafe Mobile"}, summary="Customer profile",
+     * @OA\Get(path="/cafe/profile", tags={"Cafe Profile"}, summary="Customer profile",
      *     @OA\Response(response=200, description="User fields merged with the customer profile, plus addresses"))
      */
     public function profile(): JsonResponse
@@ -285,7 +285,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Put(path="/cafe/profile", tags={"Cafe Mobile"}, summary="Update customer profile",
+     * @OA\Put(path="/cafe/profile", tags={"Cafe Profile"}, summary="Update customer profile",
      *     @OA\RequestBody(@OA\JsonContent(
      *         @OA\Property(property="name", type="string"),
      *         @OA\Property(property="mobile_number", type="string"),
@@ -332,7 +332,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/delivery-zones", tags={"Cafe Mobile"}, summary="Active delivery zones for the map",
+     * @OA\Get(path="/cafe/delivery-zones", tags={"Cafe Addresses"}, summary="Active delivery zones for the map",
      *     @OA\Response(response=200, description="Zones"))
      */
     public function deliveryZones(Request $request): JsonResponse
@@ -345,7 +345,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/categories", tags={"Cafe Mobile"}, summary="List categories",
+     * @OA\Get(path="/cafe/categories", tags={"Cafe Products"}, summary="List categories",
      *     @OA\Response(response=200, description="Categories"))
      */
     public function categories(Request $request): JsonResponse
@@ -354,7 +354,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/products", tags={"Cafe Mobile"}, summary="List active products (cards)",
+     * @OA\Get(path="/cafe/products", tags={"Cafe Products"}, summary="List active products (cards)",
      *     @OA\Parameter(name="category_id", in="query", @OA\Schema(type="integer")),
      *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
      *     @OA\Response(response=200, description="Products"))
@@ -375,24 +375,76 @@ class CafeMobileController extends BaseApiController
             return $this->jsonResponse(['data' => $this->searchProducts($request, $query)]);
         }
 
-        // ponytail: mobile list cards only need name/price/image — full description
-        // and variants live in show() and /variants (quick-add uses default_variant_id).
-        $products = $query->get()->map(fn (Product $product) => [
+        $favorites = $this->favoriteIds();
+
+        return $this->jsonResponse(['data' => $query->get()->map(fn (Product $product) => self::productCard($product, $favorites->contains($product->id)))]);
+    }
+
+    // Product ids the signed-in customer has favorited.
+    private function favoriteIds()
+    {
+        return auth()->user()->favoriteProducts()->pluck('products.id');
+    }
+
+    // ponytail: mobile list cards only need name/price/image — full description
+    // and variants live in show() and /variants (quick-add uses default_variant_id).
+    public static function productCard(Product $product, bool $isFavorite = false): array
+    {
+        return [
             'id' => $product->id,
             'name' => $product->name,
             'image_url' => $product->image_url,
             'min_price' => $product->variants->min('price'),
             'category_id' => $product->category_id,
             'default_variant_id' => $product->variants->first()?->id,
-        ]);
+            'is_favorite' => $isFavorite,
+        ];
+    }
 
-        return $this->jsonResponse(['data' => $products]);
+    /**
+     * @OA\Get(path="/cafe/featured-sections", tags={"Cafe Products"}, summary="Curated product sections chosen by the business (title + products in one object)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Active sections in display order; each has id, title and products (same card shape as /cafe/products). Sections without available products are omitted.",
+     *         @OA\JsonContent(@OA\Property(property="data", type="array", @OA\Items(
+     *             @OA\Property(property="id", type="integer"),
+     *             @OA\Property(property="title", type="string", example="الأكثر طلباً"),
+     *             @OA\Property(property="products", type="array", @OA\Items(
+     *                 @OA\Property(property="id", type="integer"), @OA\Property(property="name", type="string"),
+     *                 @OA\Property(property="image_url", type="string", nullable=true), @OA\Property(property="min_price", type="string"),
+     *                 @OA\Property(property="category_id", type="integer"), @OA\Property(property="default_variant_id", type="integer"),
+     *                 @OA\Property(property="is_favorite", type="boolean")))
+     *         )))))
+     */
+    public function featuredSections(): JsonResponse
+    {
+        $sections = FeaturedSection::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->with(['products' => fn ($q) => $q
+                ->where('is_active', true)
+                ->whereHas('variants', fn ($v) => $v->where('is_active', true))
+                ->with(['allImages', 'variants' => fn ($v) => $v->where('is_active', true)->orderBy('id')]),
+            ])
+            ->get()
+            ->filter(fn (FeaturedSection $section) => $section->products->isNotEmpty());
+        $favorites = $this->favoriteIds();
+
+        $sections = $sections
+            ->map(fn (FeaturedSection $section) => [
+                'id' => $section->id,
+                'title' => $section->title,
+                'products' => $section->products->map(fn (Product $product) => self::productCard($product, $favorites->contains($product->id)))->values(),
+            ])
+            ->values();
+
+        return $this->jsonResponse(['data' => $sections]);
     }
 
     private function searchProducts(Request $request, $query): array
     {
         $search = trim((string) $request->input('search'));
         $results = [];
+        $favorites = $this->favoriteIds();
 
         foreach ($query->get() as $product) {
             $variantHit = false;
@@ -407,18 +459,12 @@ class CafeMobileController extends BaseApiController
                         'min_price' => $variant->price,
                         'category_id' => $product->category_id,
                         'default_variant_id' => $variant->id,
+                        'is_favorite' => $favorites->contains($product->id),
                     ];
                 }
             }
             if (! $variantHit && (mb_stripos($product->name, $search) !== false || in_array($search, $product->tags ?? []))) {
-                $results[] = [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'image_url' => $product->image_url,
-                    'min_price' => $product->variants->min('price'),
-                    'category_id' => $product->category_id,
-                    'default_variant_id' => $product->variants->first()?->id,
-                ];
+                $results[] = self::productCard($product, $favorites->contains($product->id));
             }
         }
 
@@ -426,7 +472,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/products/{id}", tags={"Cafe Mobile"}, summary="Product details",
+     * @OA\Get(path="/cafe/products/{id}", tags={"Cafe Products"}, summary="Product details",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Product with its own images"))
      */
@@ -442,11 +488,12 @@ class CafeMobileController extends BaseApiController
             'image_url' => $product->image_url,
             'images' => $product->allImages->whereNull('product_variant_id')->values(),
             'category' => $product->category,
+            'is_favorite' => $this->favoriteIds()->contains($product->id),
         ]);
     }
 
     /**
-     * @OA\Get(path="/cafe/products/{id}/variants", tags={"Cafe Mobile"}, summary="Active sizes of a product",
+     * @OA\Get(path="/cafe/products/{id}/variants", tags={"Cafe Products"}, summary="Active sizes of a product",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Variants with images and stock"))
      */
@@ -462,7 +509,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/cart", tags={"Cafe Mobile"}, summary="Current shopping cart (null when none)",
+     * @OA\Get(path="/cafe/cart", tags={"Cafe Cart"}, summary="Current shopping cart (null when none)",
      *     @OA\Response(response=200, description="Cart"))
      */
     public function cart(): JsonResponse
@@ -473,7 +520,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/cart/check-stock", tags={"Cafe Mobile"}, summary="Stock availability for the cart items",
+     * @OA\Get(path="/cafe/cart/check-stock", tags={"Cafe Cart"}, summary="Stock availability for the cart items",
      *     @OA\Response(response=200, description="Per-item availability"),
      *     @OA\Response(response=400, description="Cart is empty"))
      */
@@ -508,7 +555,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Post(path="/cafe/cart/items", tags={"Cafe Mobile"}, summary="Add an item to the shopping cart (sets its quantity)",
+     * @OA\Post(path="/cafe/cart/items", tags={"Cafe Cart"}, summary="Add an item to the shopping cart (sets its quantity)",
      *     @OA\RequestBody(required=true, @OA\JsonContent(
      *         @OA\Property(property="product_variant_id", type="integer"),
      *         @OA\Property(property="quantity", type="integer"))),
@@ -535,7 +582,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Put(path="/cafe/cart/items/{id}", tags={"Cafe Mobile"}, summary="Change a cart item quantity",
+     * @OA\Put(path="/cafe/cart/items/{id}", tags={"Cafe Cart"}, summary="Change a cart item quantity",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="quantity", type="integer"))),
      *     @OA\Response(response=200, description="Cart"))
@@ -555,7 +602,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Delete(path="/cafe/cart/items/{id}", tags={"Cafe Mobile"}, summary="Remove a cart item",
+     * @OA\Delete(path="/cafe/cart/items/{id}", tags={"Cafe Cart"}, summary="Remove a cart item",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Cart"))
      */
@@ -572,7 +619,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Delete(path="/cafe/cart", tags={"Cafe Mobile"}, summary="Empty the shopping cart",
+     * @OA\Delete(path="/cafe/cart", tags={"Cafe Cart"}, summary="Empty the shopping cart",
      *     @OA\Response(response=200, description="Cart emptied"))
      */
     public function clearCart(): JsonResponse
@@ -583,15 +630,21 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Post(path="/cafe/cart/checkout", tags={"Cafe Mobile"}, summary="Turn the shopping cart into an order",
-     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="address_id", type="integer"))),
+     * @OA\Post(path="/cafe/cart/checkout", tags={"Cafe Cart"}, summary="Turn the shopping cart into an order",
+     *     @OA\RequestBody(required=true, @OA\JsonContent(required={"address_id"},
+     *         @OA\Property(property="address_id", type="integer"),
+     *         @OA\Property(property="payment_method", type="string", enum={"cash","wallet"}, default="cash", description="wallet = pay the full total from the wallet now"))),
      *     @OA\Response(response=201, description="Order created"),
      *     @OA\Response(response=400, description="Cart is empty"),
+     *     @OA\Response(response=422, description="Insufficient wallet balance"),
      *     @OA\Response(response=409, description="Insufficient stock"))
      */
     public function checkout(Request $request, OrderPlacementService $placement): JsonResponse
     {
-        $data = $request->validate(['address_id' => ['required', 'integer']]);
+        $data = $request->validate([
+            'address_id' => ['required', 'integer'],
+            'payment_method' => ['nullable', Rule::in([PaymentMethod::Cash->value, PaymentMethod::Wallet->value])],
+        ]);
 
         $cart = $this->shoppingCart();
         if (! $cart || $cart->items->isEmpty()) {
@@ -600,8 +653,8 @@ class CafeMobileController extends BaseApiController
 
         $address = $this->addressScope()->findOrFail($data['address_id']);
 
-        $order = DB::transaction(function () use ($placement, $cart, $address) {
-            $order = $placement->place(auth()->user(), $address, $cart->items->toArray(), OrderSource::App, $cart);
+        $order = DB::transaction(function () use ($placement, $cart, $address, $data) {
+            $order = $placement->place(auth()->user(), $address, $cart->items->toArray(), OrderSource::App, $cart, null, PaymentMethod::from($data['payment_method'] ?? 'cash'));
             $cart->items()->delete();
 
             return $order;
@@ -611,7 +664,7 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/orders/{id}/delegate", tags={"Cafe Mobile"}, summary="Live location of the order's delegate",
+     * @OA\Get(path="/cafe/orders/{id}/delegate", tags={"Cafe Orders"}, summary="Live location of the order's delegate",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Delegate location"),
      *     @OA\Response(response=404, description="No delegate assigned"))
@@ -659,6 +712,8 @@ class CafeMobileController extends BaseApiController
             'status' => $order->status,
             'total_amount' => $order->total_amount,
             'delegate_id' => $order->delegate_id,
+            'payment_method' => $order->payments()->where('method', PaymentMethod::Wallet->value)->exists() ? 'wallet' : 'cash',
+            'wallet_balance' => auth()->user()->wallet()->value('balance'),
             'message' => 'تم إنشاء الطلب بنجاح',
         ], 201);
     }

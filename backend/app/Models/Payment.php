@@ -15,6 +15,7 @@ class Payment extends Model
         'method',
         'status',
         'paid_at',
+        'collected_by',
     ];
 
     protected $casts = [
@@ -23,6 +24,11 @@ class Payment extends Model
         'status' => PaymentStatus::class,
         'paid_at' => 'datetime',
     ];
+
+    public function collector(): BelongsTo
+    {
+        return $this->belongsTo(AppUser::class, 'collected_by');
+    }
 
     public function order(): BelongsTo
     {

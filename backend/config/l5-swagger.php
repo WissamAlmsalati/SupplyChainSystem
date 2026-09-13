@@ -85,7 +85,8 @@ return [
             'scanOptions' => [
                 'default_processors_configuration' => [
                     'pathFilter' => [
-                        'tags' => ['/^Cafe Mobile/', '/^Auth$/'],
+                        // Every customer-app tag: Cafe Mobile, Cafe Wallet, Cafe Favorites, Cafe Recurring Carts…
+                        'tags' => ['/^Cafe /', '/^Auth$/', '/^Notifications$/'],
                     ],
                 ],
             ],

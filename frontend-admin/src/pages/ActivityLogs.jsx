@@ -90,7 +90,6 @@ export default function ActivityLogs() {
           <option value="Warehouse">مستودع</option>
           <option value="Inventory">مخزون</option>
           <option value="Order">طلب</option>
-          <option value="PurchaseOrder">طلب شراء</option>
           <option value="DeliveryZone">منطقة توصيل</option>
           <option value="AppUser">مستخدم</option>
           <option value="UserType">نوع مستخدم</option>

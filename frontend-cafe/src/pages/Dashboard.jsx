@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import client from '../api/client'
+import FavoriteButton from '../components/FavoriteButton'
 import { useCart } from '../context/CartContext'
 import PromoBanner from '../components/PromoBanner'
 
@@ -27,16 +28,19 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [adding, setAdding] = useState(null)
+  const [sections, setSections] = useState([])
 
   useEffect(() => {
     async function load() {
       setLoading(true)
       try {
-        const [categoriesRes, productsRes, addressesRes] = await Promise.all([
+        const [categoriesRes, productsRes, addressesRes, sectionsRes] = await Promise.all([
           client.get('/cafe/categories'),
           client.get('/cafe/products'),
           client.get('/cafe/addresses'),
+          client.get('/cafe/featured-sections').catch(() => ({ data: { data: [] } })),
         ])
+        setSections(sectionsRes.data?.data ?? [])
         setCategories(categoriesRes.data?.data ?? [])
         setProducts(productsRes.data?.data ?? [])
         setAddresses(addressesRes.data?.data?.addresses ?? [])
@@ -50,6 +54,41 @@ export default function Dashboard() {
   }, [])
 
   const featured = products.slice(0, 8)
+  const renderCard = (p) => {
+    const price = p.min_price ?? 0
+    return (
+      <div
+        key={p.id}
+        onClick={() => navigate(`/products/${p.id}`)}
+        className="group cursor-pointer overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition hover:border-primary hover:shadow-md"
+      >
+        <div className="relative aspect-square bg-background">
+                    <FavoriteButton productId={p.id} className="absolute end-3 top-3 z-10" />
+          {p.image_url ? (
+            <img
+              src={p.image_url}
+              alt={p.name}
+              className="h-full w-full object-cover transition group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted">لا توجد صورة</div>
+          )}
+          <button
+            onClick={(e) => handleAdd(p, e)}
+            disabled={adding === p.id}
+            className="absolute bottom-3 start-3 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 disabled:opacity-60"
+          >
+            <PlusIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-4">
+          <h3 className="font-semibold text-foreground">{p.name}</h3>
+          <div className="mt-2 text-lg font-bold text-primary">{formatMoney(price)} د.ل</div>
+        </div>
+      </div>
+    )
+  }
+
   const handleAdd = async (product, e) => {
     e.stopPropagation()
     if (!product.default_variant_id) return
@@ -137,42 +176,22 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {featured.map((p) => {
-              const price = p.min_price ?? 0
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => navigate(`/products/${p.id}`)}
-                  className="group cursor-pointer overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition hover:border-primary hover:shadow-md"
-                >
-                  <div className="relative aspect-square bg-background">
-                    {p.image_url ? (
-                      <img
-                        src={p.image_url}
-                        alt={p.name}
-                        className="h-full w-full object-cover transition group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-muted">لا توجد صورة</div>
-                    )}
-                    <button
-                      onClick={(e) => handleAdd(p, e)}
-                      disabled={adding === p.id}
-                      className="absolute bottom-3 start-3 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 disabled:opacity-60"
-                    >
-                      <PlusIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-foreground">{p.name}</h3>
-                    <div className="mt-2 text-lg font-bold text-primary">{formatMoney(price)} د.ل</div>
-                  </div>
-                </div>
-              )
-            })}
+            {featured.map(renderCard)}
           </div>
         )}
       </section>
+      {/* Curated sections chosen by the business */}
+      {sections.map((section) => (
+        <section key={section.id} className="mt-10">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-foreground">{section.title}</h2>
+            <span className="text-sm text-muted">{section.products.length} منتج</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {section.products.map(renderCard)}
+          </div>
+        </section>
+      ))}
     </div>
   )
 }

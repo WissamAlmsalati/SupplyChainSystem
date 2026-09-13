@@ -135,11 +135,16 @@ class DelegateMobileController extends BaseApiController
         ]);
 
         $order = Order::where('delegate_id', auth()->id())->findOrFail($id);
+        $wasDelivered = $order->status === OrderStatus::Delivered;
         $order->update(['status' => OrderStatus::Delivered]);
+
+        $collected = $wasDelivered ? 0 : (float) $order->payments()->where('collected_by', auth()->id())->sum('amount');
 
         return $this->jsonResponse([
             'id' => $order->id,
             'status' => $order->status,
+            'cash_collected' => round($collected, 2),
+            'custody_balance' => auth()->user()->delegateProfile()->value('custody_balance'),
             'message' => 'تم تحديث حالة الطلب',
         ]);
     }

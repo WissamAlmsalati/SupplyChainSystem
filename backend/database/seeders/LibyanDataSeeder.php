@@ -3,8 +3,6 @@
 namespace Database\Seeders;
 
 use App\Enums\CartType;
-use App\Enums\PurchaseOrderStatus;
-use App\Enums\StockMovementType;
 use App\Enums\UserRole;
 use App\Models\Address;
 use App\Models\AppUser;
@@ -13,14 +11,13 @@ use App\Models\Category;
 use App\Models\DeliveryZone;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\PurchaseOrder;
 use App\Models\UserType;
 use App\Models\Warehouse;
 use App\Services\StockService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
-// Catalog, warehouses (stocked via received purchase orders), customers with
+// Catalog, warehouses (stocked through goods-in movements), customers with
 // addresses and a recurring cart, and delegates.
 class LibyanDataSeeder extends Seeder
 {
@@ -122,19 +119,25 @@ class LibyanDataSeeder extends Seeder
             }
         }
 
-        // Opening stock: one received purchase order per warehouse.
+        // Opening stock received into every warehouse.
         foreach ($warehouseRecords as $warehouse) {
-            $po = PurchaseOrder::create(['warehouse_id' => $warehouse->id, 'note' => 'رصيد افتتاحي']);
             foreach ($variants as $variant) {
-                $item = $po->items()->create([
-                    'product_variant_id' => $variant->id,
-                    'quantity' => fake()->numberBetween(40, 200),
+                $stock->receive($warehouse->id, $variant->id, fake()->numberBetween(40, 200), [
                     'unit_cost' => $variant->cost_price,
                     'expiry_date' => now()->addMonths(fake()->numberBetween(3, 18))->toDateString(),
-                ]);
-                $stock->adjust($warehouse->id, $variant->id, $item->quantity, StockMovementType::Purchase, $po);
+                ], 'رصيد افتتاحي');
             }
-            $po->update(['status' => PurchaseOrderStatus::Received, 'received_at' => now()]);
+        }
+
+        // Curated rows for the customer app home screen.
+        $sections = [
+            'الأكثر طلباً' => ['بن عربي محمص', 'بن إسبريسو', 'حليب مبخر', 'أكواب ورقية'],
+            'مستلزمات التحضير' => ['سكر أبيض', 'شراب فانيليا', 'أغطية أكواب'],
+        ];
+        foreach (array_keys($sections) as $i => $title) {
+            $section = \App\Models\FeaturedSection::create(['title' => $title, 'sort_order' => $i]);
+            $section->syncProducts(Product::whereIn('name', $sections[$title])->get()
+                ->sortBy(fn ($p) => array_search($p->name, $sections[$title]))->pluck('id')->all());
         }
 
         $customerType = UserType::where('name', UserRole::Customer->value)->firstOrFail();

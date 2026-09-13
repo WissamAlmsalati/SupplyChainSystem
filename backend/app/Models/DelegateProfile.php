@@ -13,6 +13,7 @@ class DelegateProfile extends Model
         'latitude',
         'longitude',
         'location_updated_at',
+        'custody_balance',
     ];
 
     protected $casts = [
@@ -20,6 +21,7 @@ class DelegateProfile extends Model
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'location_updated_at' => 'datetime',
+        'custody_balance' => 'decimal:2',
     ];
 
     public function user(): BelongsTo

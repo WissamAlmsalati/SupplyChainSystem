@@ -16,6 +16,9 @@ class StockMovement extends Model
         'product_variant_id',
         'quantity_change',
         'type',
+        'unit_cost',
+        'manufacturing_year',
+        'expiry_date',
         'reference_type',
         'reference_id',
         'note',
@@ -25,6 +28,9 @@ class StockMovement extends Model
     protected $casts = [
         'quantity_change' => 'integer',
         'type' => StockMovementType::class,
+        'unit_cost' => 'decimal:2',
+        'manufacturing_year' => 'integer',
+        'expiry_date' => 'date:Y-m-d',
     ];
 
     public function warehouse(): BelongsTo

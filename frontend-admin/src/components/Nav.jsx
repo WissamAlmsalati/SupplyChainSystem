@@ -18,6 +18,10 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
+  Wallet,
+  BanknoteArrowUp,
+  HandCoins,
+  LayoutList,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Button from './ui/Button'
@@ -37,6 +41,10 @@ const icons = {
   Bell,
   Star,
   Megaphone,
+  Wallet,
+  BanknoteArrowUp,
+  HandCoins,
+  LayoutList,
 }
 
 const groups = [
@@ -47,7 +55,14 @@ const groups = [
       { to: '/orders', label: 'الطلبات', icon: 'ShoppingCart', permission: 'ORDERS_VIEW' },
       { to: '/products', label: 'المنتجات', icon: 'Package', permission: 'PRODUCTS_VIEW' },
       { to: '/inventory', label: 'المخزون', icon: 'Warehouse', permission: 'INVENTORY_VIEW' },
-      { to: '/purchase-orders', label: 'طلبات الشراء', icon: 'Warehouse', permission: 'PURCHASE_ORDERS_VIEW' },
+    ],
+  },
+  {
+    title: 'المالية',
+    links: [
+      { to: '/wallets', label: 'المحافظ والسيولة', icon: 'Wallet', permission: 'WALLETS_VIEW' },
+      { to: '/wallet-topups', label: 'طلبات الشحن', icon: 'BanknoteArrowUp', permission: 'WALLET_TOPUPS_VIEW' },
+      { to: '/custody', label: 'عهد المناديب', icon: 'HandCoins', permission: 'CUSTODY_VIEW' },
     ],
   },
   {
@@ -63,6 +78,7 @@ const groups = [
     title: 'الكتالوج',
     links: [
       { to: '/categories', label: 'التصنيفات', icon: 'Tags', permission: 'CATEGORIES_VIEW' },
+      { to: '/featured-sections', label: 'الأقسام المميزة', icon: 'LayoutList', permission: 'FEATURED_SECTIONS_VIEW' },
     ],
   },
   {

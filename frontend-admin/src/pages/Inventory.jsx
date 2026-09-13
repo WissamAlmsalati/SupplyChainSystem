@@ -14,6 +14,7 @@ import { FilterSelect } from '../components/ui/TableFilters'
 const initial = {
   warehouse_id: '', product_variant_id: '', product_id: '', variant_name: '', quantity: '',
   cost_price: '', price: '', barcode: '',
+  manufacturing_year: '', expiry_date: '', note: '',
 }
 
 function variantLabel(v) {
@@ -26,7 +27,9 @@ export default function Inventory() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filterWarehouse, setFilterWarehouse] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/inventory', { search, warehouse_id: filterWarehouse })
+  const [tab, setTab] = useState('balances')
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog, fetch } = useApiResource('/inventory', { search, warehouse_id: filterWarehouse })
+  const receipts = useApiResource('/stock-movements', { type: 'purchase', warehouse_id: filterWarehouse })
   const warehouses = useApiList('/warehouses?per_page=10000')
   const variants = useApiList('/product-variants?per_page=10000')
   const products = useApiList('/products?per_page=10000')
@@ -148,13 +151,21 @@ export default function Inventory() {
           })
         }
       }
-      // POST adds stock; PUT sets the counted on-hand quantity (both recorded as stock movements).
-      if (editing) await update(editing.id, { quantity: Number(form.quantity) })
-      else await create({
-        warehouse_id: Number(form.warehouse_id),
-        product_variant_id: Number(variantId),
-        quantity: Number(form.quantity),
-      })
+      // POST receives goods (purchase movement with cost/expiry); PUT sets the counted quantity (adjustment).
+      if (editing) {
+        await update(editing.id, { quantity: Number(form.quantity), note: form.note || null })
+      } else {
+        await create({
+          warehouse_id: Number(form.warehouse_id),
+          product_variant_id: Number(variantId),
+          quantity: Number(form.quantity),
+          unit_cost: form.cost_price !== '' ? Number(form.cost_price) : null,
+          manufacturing_year: form.manufacturing_year ? Number(form.manufacturing_year) : null,
+          expiry_date: form.expiry_date || null,
+          note: form.note || null,
+        })
+        receipts.fetch()
+      }
       for (const file of imageFiles) {
         const fd = new FormData()
         fd.append('product_variant_id', variantId)
@@ -180,6 +191,18 @@ export default function Inventory() {
     { key: 'updated_at', label: 'آخر تحديث', render: (r) => r.updated_at ? new Date(r.updated_at).toLocaleString('en-US') : '-' },
   ]
 
+  const receiptColumns = [
+    { key: 'created_at', label: 'التاريخ', render: (r) => (r.created_at ? new Date(r.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '-') },
+    { key: 'warehouse', label: 'المستودع', render: (r) => r.warehouse?.name ?? '-' },
+    { key: 'product_variant', label: 'الصنف', render: (r) => (r.product_variant ? variantLabel(r.product_variant) : '-') },
+    { key: 'quantity_change', label: 'الكمية', render: (r) => <span className="font-semibold text-success">+{r.quantity_change}</span> },
+    { key: 'unit_cost', label: 'تكلفة الوحدة', render: (r) => (r.unit_cost != null ? `${Number(r.unit_cost).toFixed(2)} د.ل` : '-') },
+    { key: 'manufacturing_year', label: 'سنة التصنيع', render: (r) => r.manufacturing_year ?? '-' },
+    { key: 'expiry_date', label: 'تاريخ الصلاحية', render: (r) => r.expiry_date ?? '-' },
+    { key: 'created_by', label: 'بواسطة', render: (r) => r.created_by?.name ?? '-' },
+    { key: 'note', label: 'ملاحظة', render: (r) => r.note ?? '-' },
+  ]
+
   return (
     <>
       <header className="flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
@@ -200,26 +223,48 @@ export default function Inventory() {
               options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
             />
           )}
-          {canCreate && <Button variant="primary" onClick={openCreate}>إضافة مخزون</Button>}
+          {canCreate && <Button variant="primary" onClick={openCreate}>إدخال بضاعة</Button>}
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
       {confirmDialog}
-      <DataTable
-        columns={columns}
-        rows={items}
-        loading={loading}
-        pagination={pagination}
-        onPageChange={setPage}
-        emptyText="لا توجد سجلات مخزون."
-        actions={canEdit || canDelete ? (row) => (
-          <>
-            {canEdit && <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>تعديل</Button>}
-            {canDelete && <Button variant="danger" size="sm" onClick={() => remove(row.id)}>حذف</Button>}
-          </>
-        ) : undefined}
-      />
-      <Modal title={editing ? 'تعديل مخزون' : 'إضافة مخزون'} open={modal} onClose={close}>
+      <div className="my-4 flex gap-2">
+        {[['balances', 'الأرصدة'], ['receipts', 'سجل إدخال البضاعة']].map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium ${tab === key ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface text-foreground hover:bg-background'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'balances' ? (
+        <DataTable
+          columns={columns}
+          rows={items}
+          loading={loading}
+          pagination={pagination}
+          onPageChange={setPage}
+          emptyText="لا توجد سجلات مخزون."
+          actions={canEdit || canDelete ? (row) => (
+            <>
+              {canEdit && <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>جرد</Button>}
+              {canDelete && <Button variant="danger" size="sm" onClick={() => remove(row.id)}>حذف</Button>}
+            </>
+          ) : undefined}
+        />
+      ) : (
+        <DataTable
+          columns={receiptColumns}
+          rows={receipts.items}
+          loading={receipts.loading}
+          pagination={receipts.pagination}
+          onPageChange={receipts.setPage}
+          emptyText="لا توجد عمليات إدخال بعد."
+        />
+      )}
+      <Modal title={editing ? 'جرد المخزون' : 'إدخال بضاعة للمستودع'} open={modal} onClose={close}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {warehouses.length !== 1 && (
             <SearchableSelect
@@ -287,12 +332,39 @@ export default function Inventory() {
             </>
           )}
           <Input
-            label="الكمية"
+            label={editing ? 'الكمية الفعلية بعد الجرد' : 'الكمية المستلمة'}
             type="number"
-            min="0"
+            min={editing ? '0' : '1'}
             value={form.quantity}
             onChange={(e) => setForm({ ...form, quantity: e.target.value })}
             required
+          />
+          {!editing && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="سنة التصنيع"
+                type="number"
+                min="1900"
+                max="2100"
+                value={form.manufacturing_year}
+                onChange={(e) => setForm({ ...form, manufacturing_year: e.target.value })}
+              />
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-muted">تاريخ انتهاء الصلاحية</label>
+                <input
+                  type="date"
+                  value={form.expiry_date}
+                  onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
+                  className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+          <Input
+            label="ملاحظة (اختياري)"
+            placeholder={editing ? 'مثال: جرد نهاية الشهر' : 'مثال: شحنة من الميناء'}
+            value={form.note}
+            onChange={(e) => setForm({ ...form, note: e.target.value })}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Input

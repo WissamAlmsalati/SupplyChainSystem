@@ -41,31 +41,17 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    autonumber
     actor A as Admin
-    participant PO as PurchaseOrderController
-    participant POI as PurchaseOrderItemController
-    participant I as InventoryController
+    participant INV as InventoryController
+    participant SS as StockService
     participant DB as Database
 
-    A->>PO: POST /purchase-orders
-    PO->>DB: insert purchase_order
-    DB-->>PO: purchase_order
-    PO-->>A: 201 Created
-
-    loop Add requested items
-        A->>POI: POST /purchase-order-items
-        POI->>DB: insert purchase_order_item
-        DB-->>POI: item
-        POI-->>A: 201 Created
-    end
-
-    A->>PO: PUT /purchase-orders/{id} (mark received)
-    PO->>I: receive stock
-    I->>DB: update inventory quantities
-    DB-->>I: inventories
-    I-->>PO: done
-    PO-->>A: 200 OK
+    A->>INV: POST /inventory (warehouse, variant, quantity, unit_cost, expiry_date)
+    INV->>SS: receive()
+    SS->>DB: lock/insert inventories row, quantity += received
+    SS->>DB: insert stock_movements (type=purchase, cost, expiry)
+    DB-->>INV: inventory balance
+    INV-->>A: 201 balance
 ```
 
 ## 3. Inventory update flow

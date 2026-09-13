@@ -83,7 +83,10 @@ export default function DelegateOrderDetail() {
   const updateStatus = async (status) => {
     setUpdating(true)
     try {
-      await client.post(`/delegate/orders/${id}/status`, { status })
+      const res = await client.post(`/delegate/orders/${id}/status`, { status })
+      if (Number(res.data?.cash_collected) > 0) {
+        window.alert(`تم تسجيل تحصيل ${Number(res.data.cash_collected).toFixed(2)} د.ل في عهدتك`)
+      }
       load()
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تحديث الحالة')

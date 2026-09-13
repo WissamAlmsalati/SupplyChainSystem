@@ -14,6 +14,8 @@ export default function Cart() {
   const { cart, updateItem, removeItem, clearCart, checkout } = useCart()
   const [addresses, setAddresses] = useState([])
   const [addressId, setAddressId] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [walletBalance, setWalletBalance] = useState(null)
   const [updating, setUpdating] = useState(null)
   const [checkingOut, setCheckingOut] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -30,6 +32,7 @@ export default function Cart() {
         if (preferred) setAddressId(String(preferred.id))
       })
       .catch(() => setAddresses([]))
+    client.get('/cafe/wallet').then((res) => setWalletBalance(Number(res.data?.data?.balance ?? 0))).catch(() => setWalletBalance(null))
   }, [])
 
   const items = cart?.items ?? []
@@ -38,6 +41,7 @@ export default function Cart() {
   const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * unitPrice(item), 0)
   const deliveryFee = Number(address?.delivery_zone?.delivery_price) || 0
   const total = subtotal + deliveryFee
+  const walletShort = walletBalance !== null && walletBalance < total
 
   const handleUpdate = async (item, quantity) => {
     if (quantity < 1) return
@@ -74,7 +78,7 @@ export default function Cart() {
     setError('')
     setSuccess('')
     try {
-      const res = await checkout(Number(addressId))
+      const res = await checkout(Number(addressId), paymentMethod)
       const orderNumber = res.data?.order_number ?? res.data?.id
       setSuccess(`${res.message || 'تم إنشاء الطلب بنجاح'} — رقم الطلب: ${orderNumber}`)
       setTimeout(() => navigate('/orders'), 2000)
@@ -231,9 +235,26 @@ export default function Cart() {
                   <span>{formatMoney(total)} د.ل</span>
                 </div>
               </div>
+              <div className="mt-4 space-y-2">
+                <div className="text-sm font-medium text-muted">طريقة الدفع</div>
+                <label className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 text-sm ${paymentMethod === 'cash' ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                  <span className="flex items-center gap-2"><input type="radio" checked={paymentMethod === 'cash'} onChange={() => setPaymentMethod('cash')} /> الدفع عند الاستلام</span>
+                </label>
+                <label className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${walletShort ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${paymentMethod === 'wallet' ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                  <span className="flex items-center gap-2">
+                    <input type="radio" disabled={walletShort} checked={paymentMethod === 'wallet'} onChange={() => setPaymentMethod('wallet')} /> المحفظة
+                  </span>
+                  <span className="text-xs text-muted">الرصيد: {formatMoney(walletBalance ?? 0)} د.ل</span>
+                </label>
+                {walletShort && (
+                  <button type="button" onClick={() => navigate('/wallet')} className="text-xs text-primary hover:underline">
+                    الرصيد لا يكفي لكامل الطلب — اشحن محفظتك
+                  </button>
+                )}
+              </div>
               <button
                 onClick={handleCheckout}
-                disabled={checkingOut || items.length === 0 || !addressId}
+                disabled={checkingOut || items.length === 0 || !addressId || (paymentMethod === 'wallet' && walletShort)}
                 className="mt-5 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
               >
                 {checkingOut ? 'جاري إتمام الطلب...' : 'إتمام الطلب'}

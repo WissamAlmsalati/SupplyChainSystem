@@ -16,6 +16,17 @@ class CheckPermission
         'store' => 'CREATE',
         'update' => 'EDIT',
         'destroy' => 'DELETE',
+        'transactions' => 'VIEW',
+        'adjust' => 'EDIT',
+        'approve' => 'EDIT',
+        'reject' => 'EDIT',
+        'receive' => 'EDIT',
+        'cancel' => 'EDIT',
+        'toggle-active' => 'EDIT',
+        'entries' => 'VIEW',
+        'summary' => 'VIEW',
+        'reorder' => 'EDIT',
+        'settle' => 'EDIT',
     ];
 
     public function handle(Request $request, Closure $next): Response

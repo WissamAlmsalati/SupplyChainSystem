@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
+use App\Services\CustodyService;
 use App\Services\StockService;
+use App\Services\WalletService;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -63,9 +65,14 @@ class Order extends Model
                 return;
             }
             $order->logStatus($order->getOriginal('status'));
+            // Delivering a cash order means its delegate collected the unpaid amount.
+            if ($order->status === OrderStatus::Delivered) {
+                app(CustodyService::class)->collectOrderCash($order);
+            }
             // Cancelling returns whatever this order took from stock.
             if ($order->status === OrderStatus::Cancelled) {
                 app(StockService::class)->restockOrder($order);
+                app(WalletService::class)->refundOrder($order);
             }
         });
     }
