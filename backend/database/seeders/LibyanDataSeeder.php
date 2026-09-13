@@ -2,21 +2,26 @@
 
 namespace Database\Seeders;
 
+use App\Enums\CartType;
+use App\Enums\PurchaseOrderStatus;
+use App\Enums\StockMovementType;
+use App\Enums\UserRole;
+use App\Models\Address;
 use App\Models\AppUser;
-use App\Models\Cafe;
-use App\Models\CafeBranch;
+use App\Models\Cart;
 use App\Models\Category;
 use App\Models\DeliveryZone;
-use App\Models\Inventory;
-use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\PurchaseOrder;
 use App\Models\UserType;
 use App\Models\Warehouse;
+use App\Services\StockService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
+// Catalog, warehouses (stocked via received purchase orders), customers with
+// addresses and a recurring cart, and delegates.
 class LibyanDataSeeder extends Seeder
 {
     private array $cities = [
@@ -39,11 +44,11 @@ class LibyanDataSeeder extends Seeder
     ];
 
     private array $categories = [
-        'مشروبات ساخنة',
-        'مشروبات باردة',
+        'قهوة',
+        'شاي',
+        'مستلزمات التحضير',
         'حلويات',
-        'ساندويتشات',
-        'وجبات خفيفة',
+        'أكواب وتغليف',
     ];
 
     private array $warehouses = [
@@ -52,50 +57,38 @@ class LibyanDataSeeder extends Seeder
         'مستودع مصراتة',
     ];
 
+    // Each product is sold in the listed sizes (variants) at the listed prices.
     private array $products = [
-        ['name' => 'قهوة تركية', 'category' => 'مشروبات ساخنة', 'price' => 4.00, 'attr' => 'حجم'],
-        ['name' => 'كابتشينو', 'category' => 'مشروبات ساخنة', 'price' => 5.50, 'attr' => 'حجم'],
-        ['name' => 'شاي أخضر', 'category' => 'مشروبات ساخنة', 'price' => 3.00, 'attr' => 'حجم'],
-        ['name' => 'عصير برتقال طازج', 'category' => 'مشروبات باردة', 'price' => 6.00, 'attr' => 'حجم'],
-        ['name' => 'ليموناضة', 'category' => 'مشروبات باردة', 'price' => 5.00, 'attr' => 'حجم'],
-        ['name' => 'ميلك شيك فراولة', 'category' => 'مشروبات باردة', 'price' => 8.00, 'attr' => 'حجم'],
-        ['name' => 'كيكة الشوكولاتة', 'category' => 'حلويات', 'price' => 7.00, 'attr' => 'قطعة'],
-        ['name' => 'كرواسان', 'category' => 'حلويات', 'price' => 4.50, 'attr' => 'حجم'],
-        ['name' => 'ساندويتش دجاج', 'category' => 'ساندويتشات', 'price' => 9.00, 'attr' => 'حجم'],
-        ['name' => 'ساندويتش تونة', 'category' => 'ساندويتشات', 'price' => 8.00, 'attr' => 'حجم'],
-        ['name' => 'بطاطس مقلي', 'category' => 'وجبات خفيفة', 'price' => 4.00, 'attr' => 'حجم'],
-        ['name' => 'ناجتس دجاج', 'category' => 'وجبات خفيفة', 'price' => 6.50, 'attr' => 'قطع'],
+        ['name' => 'بن عربي محمص', 'brand' => 'الريف', 'category' => 'قهوة', 'sizes' => ['250 جم' => 12.0, '500 جم' => 22.0, '1 كجم' => 40.0]],
+        ['name' => 'بن إسبريسو', 'brand' => 'لافاتزا', 'category' => 'قهوة', 'sizes' => ['500 جم' => 35.0, '1 كجم' => 65.0]],
+        ['name' => 'قهوة تركية', 'brand' => 'محمد أفندي', 'category' => 'قهوة', 'sizes' => ['250 جم' => 15.0, '500 جم' => 28.0]],
+        ['name' => 'شاي أخضر', 'brand' => 'ليبتون', 'category' => 'شاي', 'sizes' => ['25 كيس' => 6.0, '100 كيس' => 20.0]],
+        ['name' => 'شاي أحمر', 'brand' => 'الربيع', 'category' => 'شاي', 'sizes' => ['400 جم' => 9.0, '1 كجم' => 21.0]],
+        ['name' => 'سكر أبيض', 'brand' => null, 'category' => 'مستلزمات التحضير', 'sizes' => ['1 كجم' => 4.0, '5 كجم' => 18.0]],
+        ['name' => 'حليب مبخر', 'brand' => 'نيدو', 'category' => 'مستلزمات التحضير', 'sizes' => ['400 جم' => 11.0, '900 جم' => 23.0]],
+        ['name' => 'شراب فانيليا', 'brand' => 'مونين', 'category' => 'مستلزمات التحضير', 'sizes' => ['700 مل' => 30.0]],
+        ['name' => 'كرواسان مجمد', 'brand' => null, 'category' => 'حلويات', 'sizes' => ['12 قطعة' => 25.0, '24 قطعة' => 46.0]],
+        ['name' => 'كيكة الشوكولاتة', 'brand' => null, 'category' => 'حلويات', 'sizes' => ['قالب' => 45.0]],
+        ['name' => 'أكواب ورقية', 'brand' => null, 'category' => 'أكواب وتغليف', 'sizes' => ['8 أونصة × 50' => 8.0, '12 أونصة × 50' => 10.0]],
+        ['name' => 'أغطية أكواب', 'brand' => null, 'category' => 'أكواب وتغليف', 'sizes' => ['× 100' => 7.0]],
     ];
 
     public function run(): void
     {
-        $adminType = UserType::where('name', 'admin')->first();
-        $cafeType = UserType::where('name', 'cafe')->first();
+        $stock = app(StockService::class);
 
-        $admin = AppUser::factory()->create([
-            'name' => 'مدير النظام',
-            'email' => 'admin@example.com',
-            'user_type_id' => $adminType?->id,
-            'password_hash' => Hash::make('password'),
-        ]);
+        $warehouseRecords = collect($this->warehouses)->map(fn ($name, $i) => Warehouse::create([
+            'name' => $name,
+            'city' => $this->cities[$i]['name'],
+            'latitude' => $this->cities[$i]['lat'],
+            'longitude' => $this->cities[$i]['lng'],
+        ]));
 
-        // Warehouses
-        $warehouseRecords = [];
-        foreach ($this->warehouses as $i => $name) {
-            $city = $this->cities[$i];
-            $warehouseRecords[] = Warehouse::create([
-                'name' => $name,
-                'city' => $city['name'],
-                'latitude' => $city['lat'],
-                'longitude' => $city['lng'],
-            ]);
-        }
-
-        // Delivery zones
         $zoneRecords = [];
-        foreach ($this->cities as $city) {
+        foreach ($this->cities as $i => $city) {
             $zoneRecords[$city['name']] = DeliveryZone::create([
-                'hex_id' => 'libya_' . strtolower(str_replace(' ', '_', $city['name'])),
+                'warehouse_id' => $warehouseRecords[$i % $warehouseRecords->count()]->id,
+                'hex_id' => 'libya_' . str_replace(' ', '_', $city['name']),
                 'name' => 'منطقة ' . $city['name'],
                 'delivery_price' => fake()->randomElement([3.00, 4.00, 5.00, 6.00]),
                 'latitude' => $city['lat'],
@@ -104,138 +97,108 @@ class LibyanDataSeeder extends Seeder
             ]);
         }
 
-        // Categories
-        $categoryRecords = [];
-        foreach ($this->categories as $name) {
-            $categoryRecords[$name] = Category::create(['name' => $name]);
-        }
+        $categoryRecords = collect($this->categories)->mapWithKeys(fn ($name) => [$name => Category::create(['name' => $name])]);
 
-        // Products and variants
-        $variantRecords = [];
-        foreach ($this->products as $i => $productData) {
+        $variants = collect();
+        foreach ($this->products as $i => $data) {
             $product = Product::create([
-                'name' => $productData['name'],
-                'description' => $productData['name'] . ' من أفضل المنتجات',
-                'category_id' => $categoryRecords[$productData['category']]->id,
-            ]);
-
-            foreach (['صغير', 'كبير'] as $size) {
-                $variantRecords[] = ProductVariant::create([
-                    'product_id' => $product->id,
-                    'sku' => 'PRD-' . ($i + 1) . '-' . ($size === 'كبير' ? 'L' : 'S'),
-                    'attribute_name' => $productData['attr'],
-                    'attribute_value' => $size,
-                    'price' => $size === 'كبير' ? $productData['price'] + 2 : $productData['price'],
-                    'is_active' => true,
-                ]);
-            }
-        }
-
-        // Inventory
-        foreach ($variantRecords as $variant) {
-            foreach ($warehouseRecords as $warehouse) {
-                Inventory::create([
-                    'warehouse_id' => $warehouse->id,
-                    'product_variant_id' => $variant->id,
-                    'quantity' => fake()->numberBetween(5, 100),
-                ]);
-            }
-        }
-
-        // Cafes, branches and cafe users
-        $cafeRecords = [];
-        foreach ($this->cafeNames as $i => $cafeName) {
-            $city = $this->cities[$i % count($this->cities)];
-            $cafe = Cafe::create([
-                'name' => $cafeName,
-                'contact_info' => '021234567' . $i,
+                'category_id' => $categoryRecords[$data['category']]->id,
+                'name' => $data['name'],
+                'brand' => $data['brand'],
+                'description' => $data['name'] . ' بجودة عالية لتوريد المقاهي',
                 'is_active' => true,
-                'created_by_admin_id' => $admin->id,
             ]);
-            $cafeRecords[] = $cafe;
 
-            AppUser::factory()->create([
-                'name' => 'مدير ' . $cafeName,
+            $s = 0;
+            foreach ($data['sizes'] as $size => $price) {
+                $variants->push(ProductVariant::create([
+                    'product_id' => $product->id,
+                    'name' => $size,
+                    'sku' => sprintf('PRD-%04d-%02d', $i + 1, ++$s),
+                    'price' => $price,
+                    'cost_price' => round($price * 0.7, 2),
+                    'is_active' => true,
+                ]));
+            }
+        }
+
+        // Opening stock: one received purchase order per warehouse.
+        foreach ($warehouseRecords as $warehouse) {
+            $po = PurchaseOrder::create(['warehouse_id' => $warehouse->id, 'note' => 'رصيد افتتاحي']);
+            foreach ($variants as $variant) {
+                $item = $po->items()->create([
+                    'product_variant_id' => $variant->id,
+                    'quantity' => fake()->numberBetween(40, 200),
+                    'unit_cost' => $variant->cost_price,
+                    'expiry_date' => now()->addMonths(fake()->numberBetween(3, 18))->toDateString(),
+                ]);
+                $stock->adjust($warehouse->id, $variant->id, $item->quantity, StockMovementType::Purchase, $po);
+            }
+            $po->update(['status' => PurchaseOrderStatus::Received, 'received_at' => now()]);
+        }
+
+        $customerType = UserType::where('name', UserRole::Customer->value)->firstOrFail();
+        foreach ($this->cafeNames as $i => $cafeName) {
+            $city = $this->cities[$i];
+            $secondaryCity = $this->cities[($i + 1) % count($this->cities)];
+
+            $customer = AppUser::create([
+                'name' => $cafeName,
                 'email' => 'cafe' . ($i + 1) . '@example.com',
-                'user_type_id' => $cafeType?->id,
-                'password_hash' => Hash::make('password'),
-            ])->syncCafeUser(['cafe_id' => $cafe->id]);
+                'mobile_number' => '091000000' . ($i + 1),
+                'user_type_id' => $customerType->id,
+                'password' => Hash::make('password'),
+                'is_active' => true,
+            ]);
+            $customer->customerProfile->update([
+                'business_name' => $cafeName,
+                'latitude' => $city['lat'],
+                'longitude' => $city['lng'],
+            ]);
 
-            // Main branch
-            CafeBranch::create([
-                'cafe_id' => $cafe->id,
+            Address::create([
+                'user_id' => $customer->id,
                 'name' => 'فرع ' . $city['name'] . ' الرئيسي',
                 'city' => $city['name'],
                 'street' => 'شارع الجمهورية',
+                'contact_phones' => [$customer->mobile_number],
                 'latitude' => $city['lat'],
                 'longitude' => $city['lng'],
-                'delivery_zone_id' => $zoneRecords[$city['name']]?->id,
-                'is_active' => true,
+                'delivery_zone_id' => $zoneRecords[$city['name']]->id,
+                'is_default' => true,
             ]);
-
-            // Secondary branch in another city
-            $secondaryCity = $this->cities[($i + 1) % count($this->cities)];
-            CafeBranch::create([
-                'cafe_id' => $cafe->id,
+            Address::create([
+                'user_id' => $customer->id,
                 'name' => 'فرع ' . $secondaryCity['name'],
                 'city' => $secondaryCity['name'],
                 'street' => 'شارع عمر المختار',
                 'latitude' => $secondaryCity['lat'] + 0.002,
                 'longitude' => $secondaryCity['lng'] + 0.002,
-                'delivery_zone_id' => $zoneRecords[$secondaryCity['name']]?->id,
-                'is_active' => true,
+                'delivery_zone_id' => $zoneRecords[$secondaryCity['name']]->id,
             ]);
+
+            $recurring = Cart::create(['user_id' => $customer->id, 'type' => CartType::Recurring, 'name' => 'الطلبية الأسبوعية']);
+            $recurring->items()->createMany(
+                $variants->random(3)->map(fn ($v) => ['product_variant_id' => $v->id, 'quantity' => fake()->numberBetween(2, 6)])->all()
+            );
         }
 
-        // Orders
-        $branches = CafeBranch::all();
-        $cafeUsers = AppUser::where('user_type_id', $cafeType?->id)->get();
-
-        foreach ($cafeUsers as $user) {
-            $branch = $branches->where('cafe_id', $user->cafe_id)->first();
-            if (! $branch) {
-                continue;
-            }
-
-            $itemsCount = fake()->numberBetween(1, 3);
-            $items = [];
-            $total = 0;
-
-            for ($k = 0; $k < $itemsCount; $k++) {
-                $variant = $variantRecords[array_rand($variantRecords)];
-                $qty = fake()->numberBetween(1, 4);
-                $price = (float) $variant->price;
-                $total += $price * $qty;
-                $items[] = [
-                    'product_variant_id' => $variant->id,
-                    'quantity' => $qty,
-                    'unit_price' => $price,
-                ];
-            }
-
-            $deliveryFee = (float) ($branch->deliveryZone?->delivery_price ?? 0);
-            $total += $deliveryFee;
-
-            $order = Order::create([
-                'user_id' => $user->id,
-                'branch_id' => $branch->id,
-                'delegate_id' => null,
-                'delivery_zone_id' => $branch->delivery_zone_id,
-                'delivery_fee' => $deliveryFee,
-                'order_date' => now()->subDays(fake()->numberBetween(0, 60))->toDateTimeString(),
-                'status' => fake()->randomElement(['pending', 'processing', 'completed', 'cancelled']),
-                'source' => fake()->randomElement(['app', 'add order from dashboard']),
-                'total_amount' => $total,
+        $delegateType = UserType::where('name', UserRole::Delegate->value)->firstOrFail();
+        foreach (array_slice($this->cities, 0, 3) as $i => $city) {
+            $delegate = AppUser::create([
+                'name' => 'مندوب ' . $city['name'],
+                'email' => 'delegate' . ($i + 1) . '@example.com',
+                'mobile_number' => '092000000' . ($i + 1),
+                'user_type_id' => $delegateType->id,
+                'password' => Hash::make('password'),
+                'is_active' => true,
             ]);
-
-            foreach ($items as $item) {
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_variant_id' => $item['product_variant_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                ]);
-            }
+            $delegate->delegateProfile->update([
+                'is_available' => true,
+                'latitude' => $city['lat'] + 0.01,
+                'longitude' => $city['lng'] + 0.01,
+                'location_updated_at' => now(),
+            ]);
         }
     }
 }

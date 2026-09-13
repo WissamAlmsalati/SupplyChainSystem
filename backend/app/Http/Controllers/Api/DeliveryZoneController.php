@@ -88,7 +88,7 @@ class DeliveryZoneController extends BaseApiController
      */
     public function show(DeliveryZone $deliveryZone): JsonResponse
     {
-        return $this->jsonResponse($deliveryZone->load(['warehouse', 'cafeBranches', 'orders']));
+        return $this->jsonResponse($deliveryZone->load(['warehouse', 'addresses', 'orders']));
     }
 
     /**

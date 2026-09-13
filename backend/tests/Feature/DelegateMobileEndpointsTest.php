@@ -2,16 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Models\Address;
 use App\Models\AppUser;
-use App\Models\Cafe;
-use App\Models\CafeBranch;
 use App\Models\Category;
 use App\Models\DeliveryZone;
+use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\Permission;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\UserType;
+use App\Models\Warehouse;
 use App\Events\DelegateLocationUpdated;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -23,7 +24,7 @@ class DelegateMobileEndpointsTest extends TestCase
 
     protected AppUser $delegate;
     protected UserType $delegateType;
-    protected CafeBranch $branch;
+    protected Address $address;
     protected ProductVariant $variant;
 
     protected function setUp(): void
@@ -36,7 +37,14 @@ class DelegateMobileEndpointsTest extends TestCase
         Permission::create(['code' => 'ORDERS_CREATE']);
         $this->delegateType->permissions()->sync([Permission::where('code', 'ORDERS_CREATE')->value('id')]);
 
-        $cafe = Cafe::create(['name' => 'مقهى اختبار', 'contact_info' => '0911111111', 'is_active' => true]);
+        $cafeUser = AppUser::create([
+            'name' => 'Cafe Owner',
+            'email' => 'cafeowner@test.com',
+            'mobile_number' => '0911111111',
+            'password' => bcrypt('password'),
+            'user_type_id' => UserType::where('name', 'cafe')->value('id'),
+            'is_active' => true,
+        ]);
 
         $zone = DeliveryZone::create([
             'hex_id' => '842da29ffffffff',
@@ -47,8 +55,8 @@ class DelegateMobileEndpointsTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->branch = CafeBranch::create([
-            'cafe_id' => $cafe->id,
+        $this->address = Address::create([
+            'user_id' => $cafeUser->id,
             'name' => 'فرع رئيسي',
             'city' => 'طرابلس',
             'street' => 'الشارع الرئيسي',
@@ -62,11 +70,11 @@ class DelegateMobileEndpointsTest extends TestCase
             'name' => 'Delegate One',
             'email' => 'delegate1@test.com',
             'mobile_number' => '0933333333',
-            'password_hash' => bcrypt('password'),
+            'password' => bcrypt('password'),
             'user_type_id' => $this->delegateType->id,
             'is_active' => true,
         ]);
-        $this->delegate->syncCafeUser([
+        $this->delegate->delegateProfile->update([
             'is_available' => true,
             'latitude' => 27.001,
             'longitude' => 17.001,
@@ -83,9 +91,16 @@ class DelegateMobileEndpointsTest extends TestCase
         $this->variant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'TEST-001',
-            'attribute_value' => 'افتراضي',
+            'name' => 'افتراضي',
             'price' => 10,
             'is_active' => true,
+        ]);
+
+        $warehouse = Warehouse::create(['name' => 'مستودع اختبار', 'city' => 'طرابلس']);
+        Inventory::create([
+            'warehouse_id' => $warehouse->id,
+            'product_variant_id' => $this->variant->id,
+            'quantity' => 100,
         ]);
     }
 
@@ -110,7 +125,7 @@ class DelegateMobileEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('cafe_user', [
+        $this->assertDatabaseHas('delegate_profiles', [
             'user_id' => $this->delegate->id,
             'latitude' => 27.5,
             'longitude' => 17.5,
@@ -125,7 +140,7 @@ class DelegateMobileEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('cafe_user', [
+        $this->assertDatabaseHas('delegate_profiles', [
             'user_id' => $this->delegate->id,
             'is_available' => false,
         ]);
@@ -134,16 +149,6 @@ class DelegateMobileEndpointsTest extends TestCase
     public function test_order_auto_assigns_nearest_delegate(): void
     {
         $cafeType = UserType::where('name', 'cafe')->first();
-        $cafeUser = AppUser::create([
-            'name' => 'Cafe Owner',
-            'email' => 'cafe@test.com',
-            'mobile_number' => '0911111111',
-            'password_hash' => bcrypt('password'),
-            'user_type_id' => $cafeType->id,
-            'is_active' => true,
-        ]);
-        $cafeUser->syncCafeUser(['cafe_id' => $this->branch->cafe_id]);
-
         $codes = ['ORDERS_CREATE', 'ORDERS_VIEW', 'CAFE_BRANCHES_VIEW'];
         $perms = collect($codes)->map(fn ($code) => Permission::firstOrCreate(['code' => $code]));
         $cafeType->permissions()->syncWithoutDetaching($perms->pluck('id'));
@@ -156,7 +161,7 @@ class DelegateMobileEndpointsTest extends TestCase
         $token = $res->json('token');
 
         $res = $this->postJson('/api/v1/cafe/orders', [
-            'branch_id' => $this->branch->id,
+            'address_id' => $this->address->id,
             'items' => [
                 [
                     'product_variant_id' => $this->variant->id,
@@ -167,8 +172,8 @@ class DelegateMobileEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertCreated();
-        $this->assertDatabaseHas('order', [
-            'branch_id' => $this->branch->id,
+        $this->assertDatabaseHas('orders', [
+            'address_id' => $this->address->id,
             'delegate_id' => $this->delegate->id,
         ]);
     }
@@ -220,7 +225,7 @@ class DelegateMobileEndpointsTest extends TestCase
 
         $res->assertOk();
         $this->assertEquals($order->id, $res->json('id'));
-        $this->assertEquals($this->branch->id, $res->json('branch.id'));
+        $this->assertEquals($this->address->id, $res->json('address.id'));
     }
 
     public function test_delegate_cannot_view_unassigned_order_detail(): void
@@ -243,7 +248,7 @@ class DelegateMobileEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('order', [
+        $this->assertDatabaseHas('orders', [
             'id' => $order->id,
             'status' => 'delivered',
         ]);
@@ -271,7 +276,7 @@ class DelegateMobileEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertUnprocessable();
-        $this->assertDatabaseHas('order', [
+        $this->assertDatabaseHas('orders', [
             'id' => $order->id,
             'status' => 'pending',
         ]);
@@ -285,22 +290,24 @@ class DelegateMobileEndpointsTest extends TestCase
             [
                 'name' => 'Cafe Owner',
                 'mobile_number' => '0944444444',
-                'password_hash' => bcrypt('password'),
+                'password' => bcrypt('password'),
                 'user_type_id' => $cafeType->id,
-                'cafe_id' => $this->branch->cafe_id,
                 'is_active' => true,
             ]
         );
 
         return Order::create(array_merge([
             'user_id' => $cafeUser->id,
-            'branch_id' => $this->branch->id,
+            'address_id' => $this->address->id,
+            'delivery_latitude' => $this->address->latitude,
+            'delivery_longitude' => $this->address->longitude,
             'delegate_id' => $this->delegate->id,
-            'delivery_zone_id' => $this->branch->delivery_zone_id,
+            'delivery_zone_id' => $this->address->delivery_zone_id,
             'delivery_fee' => 5,
-            'order_date' => now(),
+            'subtotal' => 10,
+            'placed_at' => now(),
             'status' => 'pending',
-            'source' => 'cafe_app',
+            'source' => 'app',
             'total_amount' => 15,
         ], $overrides));
     }

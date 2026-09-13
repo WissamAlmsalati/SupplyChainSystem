@@ -33,8 +33,7 @@ const operationLabels = {
 }
 
 const moduleLabels = {
-  cafes: 'المقاهي',
-  cafe_branches: 'فروع المقاهي',
+  cafe_branches: 'العناوين',
   categories: 'التصنيفات',
   products: 'المنتجات',
   inventory: 'المخزون',

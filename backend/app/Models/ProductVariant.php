@@ -2,48 +2,44 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProductVariant extends Model
 {
-    use HasFactory, \App\Traits\LogsActivity;
-
-    protected $table = 'product_variant';
-
-    public $timestamps = false;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'product_id',
+        'name',
         'sku',
-        'attribute_name',
-        'attribute_value',
-        'price',
-        'sell_price',
-        'cost_price',
-        'manufacturing_year',
-        'expiry_date',
         'barcode',
-        'stock_quantity',
+        'price',
+        'cost_price',
         'is_active',
-        'status',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
         'price' => 'decimal:2',
-        'sell_price' => 'decimal:2',
         'cost_price' => 'decimal:2',
-        'manufacturing_year' => 'integer',
-        'expiry_date' => 'date',
-        'stock_quantity' => 'integer',
+        'is_active' => 'boolean',
     ];
+
+    // "Product - size" label used in dashboards and stock reports.
+    public function label(): string
+    {
+        $productName = $this->product?->name ?? 'منتج';
+
+        return $this->name ? "{$productName} - {$this->name}" : $productName;
+    }
 
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
     }
 
     public function inventories(): HasMany
@@ -51,9 +47,14 @@ class ProductVariant extends Model
         return $this->hasMany(Inventory::class);
     }
 
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
     public function images(): HasMany
     {
-        return $this->hasMany(ProductImage::class);
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function cartItems(): HasMany

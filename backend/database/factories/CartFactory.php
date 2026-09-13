@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\CartType;
 use App\Models\AppUser;
-use App\Models\CafeBranch;
 use App\Models\Cart;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -14,9 +14,17 @@ class CartFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => AppUser::factory(),
-            'branch_id' => CafeBranch::factory(),
-            'status' => $this->faker->randomElement(['active', 'abandoned', 'converted']),
+            'user_id' => AppUser::factory()->customer(),
+            'type' => CartType::Shopping,
+            'name' => null,
         ];
+    }
+
+    public function recurring(?string $name = null): static
+    {
+        return $this->state(fn () => [
+            'type' => CartType::Recurring,
+            'name' => $name ?? $this->faker->words(2, true),
+        ]);
     }
 }

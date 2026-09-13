@@ -6,15 +6,17 @@ import 'leaflet/dist/leaflet.css'
 import { Skeleton, SkeletonCard } from '../components/ui/Skeleton'
 
 const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
+  pending: 'قيد الانتظار',
+  confirmed: 'مؤكد',
+  preparing: 'قيد التجهيز',
+  out_for_delivery: 'في الطريق',
   delivered: 'تم التوصيل',
+  received: 'تم الاستلام',
+  cancellation_requested: 'طلب إلغاء',
   cancelled: 'ملغي',
-  failed: 'فاشل',
 }
 
-const availableStatuses = ['pending', 'processing', 'completed', 'delivered', 'cancelled', 'failed']
+const availableStatuses = Object.keys(statusLabels)
 
 function formatMoney(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -58,8 +60,8 @@ export default function DelegateOrderDetail() {
   useEffect(() => {
     if (!order || mapInstanceRef.current) return
 
-    const lat = Number(order.branch?.latitude)
-    const lng = Number(order.branch?.longitude)
+    const lat = Number(order.delivery_latitude)
+    const lng = Number(order.delivery_longitude)
     const hasCoords = !isNaN(lat) && !isNaN(lng)
     const center = hasCoords ? [lat, lng] : [27.0, 17.0]
 
@@ -71,7 +73,7 @@ export default function DelegateOrderDetail() {
     if (hasCoords) {
       L.marker([lat, lng], { icon: defaultIcon })
         .addTo(map)
-        .bindPopup(`<b>${order.branch?.name ?? 'الفرع'}</b><br/>${order.branch?.city ?? ''}`)
+        .bindPopup(`<b>${order.delivery_address_name ?? 'العنوان'}</b><br/>${order.delivery_city ?? ''}`)
         .openPopup()
     }
 
@@ -147,7 +149,7 @@ export default function DelegateOrderDetail() {
             <h2 className="mb-3 font-bold text-foreground">معلومات الطلب</h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-muted">الحالة</span><span className="font-semibold">{statusLabels[order.status] || order.status}</span></div>
-              <div className="flex justify-between"><span className="text-muted">التاريخ</span><span>{order.order_date ? new Date(order.order_date).toLocaleString('ar-LY') : '-'}</span></div>
+              <div className="flex justify-between"><span className="text-muted">التاريخ</span><span>{order.placed_at ? new Date(order.placed_at).toLocaleString('ar-LY') : '-'}</span></div>
               <div className="flex justify-between"><span className="text-muted">رسوم التوصيل</span><span>{formatMoney(deliveryFee)} د.ل</span></div>
               <div className="flex justify-between"><span className="text-muted">الإجمالي</span><span className="font-bold text-foreground">{formatMoney(order.total_amount)} د.ل</span></div>
             </div>
@@ -187,13 +189,13 @@ export default function DelegateOrderDetail() {
           <div ref={mapRef} className="h-80 rounded-xl border border-border bg-surface shadow-sm" />
 
           <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-            <h2 className="mb-3 font-bold text-foreground">الفرع</h2>
+            <h2 className="mb-3 font-bold text-foreground">العنوان</h2>
             <div className="space-y-2 text-sm">
-              <div><span className="text-muted">الاسم:</span> <span className="text-foreground">{order.branch?.name ?? '-'}</span></div>
-              <div><span className="text-muted">المدينة:</span> <span className="text-foreground">{order.branch?.city ?? '-'}</span></div>
-              <div><span className="text-muted">الشارع:</span> <span className="text-foreground">{order.branch?.street ?? '-'}</span></div>
-              <div><span className="text-muted">خط العرض:</span> <span className="text-foreground">{order.branch?.latitude ?? '-'}</span></div>
-              <div><span className="text-muted">خط الطول:</span> <span className="text-foreground">{order.branch?.longitude ?? '-'}</span></div>
+              <div><span className="text-muted">الاسم:</span> <span className="text-foreground">{order.delivery_address_name ?? '-'}</span></div>
+              <div><span className="text-muted">المدينة:</span> <span className="text-foreground">{order.delivery_city ?? '-'}</span></div>
+              <div><span className="text-muted">الشارع:</span> <span className="text-foreground">{order.delivery_street ?? '-'}</span></div>
+              <div><span className="text-muted">خط العرض:</span> <span className="text-foreground">{order.delivery_latitude ?? '-'}</span></div>
+              <div><span className="text-muted">خط الطول:</span> <span className="text-foreground">{order.delivery_longitude ?? '-'}</span></div>
             </div>
           </div>
         </div>
@@ -216,7 +218,7 @@ export default function DelegateOrderDetail() {
                 const lineTotal = (Number(item.quantity) || 0) * (Number(item.unit_price) || 0)
                 const variant = item.product_variant
                 const productName = variant?.product?.name ?? 'منتج'
-                const label = variant?.attribute_value ? `${productName} - ${variant.attribute_value}` : productName
+                const label = item.variant_name ? `${item.product_name} - ${item.variant_name}` : item.product_name
                 return (
                   <tr key={item.id}>
                     <td className="py-3 text-foreground">{label}</td>

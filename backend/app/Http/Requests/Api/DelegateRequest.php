@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class DelegateRequest extends FormRequest
 {
@@ -17,14 +18,14 @@ class DelegateRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'string', 'email', 'max:150', 'unique:user,email' . ($delegateId ? ",$delegateId" : '')],
-            'mobile_number' => ['nullable', 'string', 'max:20', 'unique:user,mobile_number' . ($delegateId ? ",$delegateId" : '')],
+            'email' => ['required', 'string', 'email', 'max:150', Rule::unique('users', 'email')->ignore($delegateId)],
+            'mobile_number' => ['nullable', 'string', 'max:20', Rule::unique('users', 'mobile_number')->ignore($delegateId)],
             'password' => [$delegateId ? 'nullable' : 'required', 'string', 'min:6'],
-            'cafe_id' => ['nullable', 'integer', 'exists:cafe,id'],
+            'is_active' => ['boolean'],
+            // Stored on delegate_profiles.
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'is_available' => ['boolean'],
-            'is_active' => ['boolean'],
         ];
     }
 }

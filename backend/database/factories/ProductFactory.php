@@ -15,7 +15,9 @@ class ProductFactory extends Factory
         return [
             'category_id' => Category::factory(),
             'name' => $this->faker->words(3, true),
+            'brand' => $this->faker->optional()->company(),
             'description' => $this->faker->paragraph(),
+            'is_active' => true,
         ];
     }
 }

@@ -11,11 +11,13 @@ const initial = {
   longitude: '',
   hex_id: '',
   delivery_zone_id: '',
+  contact_phones: '',
   is_active: true,
 }
 
-export default function Branches() {
-  const [branches, setBranches] = useState([])
+export default function Addresses() {
+  const [addresses, setAddresses] = useState([])
+  const [deliveryPrice, setDeliveryPrice] = useState(null)
   const [zones, setZones] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -30,14 +32,15 @@ export default function Branches() {
     setLoading(true)
     setError('')
     try {
-      const [branchesRes, zonesRes] = await Promise.all([
-        client.get('/cafe-branches?per_page=100'),
+      const [addressesRes, zonesRes] = await Promise.all([
+        client.get('/cafe/addresses'),
         client.get('/cafe/delivery-zones'),
       ])
-      setBranches(branchesRes.data.data)
+      setAddresses(addressesRes.data.data.addresses ?? [])
+      setDeliveryPrice(addressesRes.data.data.delivery_price ?? null)
       setZones(zonesRes.data.data)
     } catch (err) {
-      setError(err.response?.data?.message || 'فشل تحميل الفروع')
+      setError(err.response?.data?.message || 'فشل تحميل العناوين')
     } finally {
       setLoading(false)
     }
@@ -61,6 +64,7 @@ export default function Branches() {
       longitude: item.longitude ?? '',
       hex_id: item.delivery_zone?.hex_id ?? '',
       delivery_zone_id: item.delivery_zone_id ?? '',
+      contact_phones: (item.contact_phones ?? []).join('\n'),
     })
     setEditing(item)
     setModal(true)
@@ -85,7 +89,7 @@ export default function Branches() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.delivery_zone_id && !form.hex_id) {
-      setError('اختر موقع الفرع على الخريطة ضمن منطقة توصيل مسعّرة.')
+      setError('اختر موقع العنوان على الخريطة ضمن منطقة توصيل مسعّرة.')
       return
     }
     setSaving(true)
@@ -100,6 +104,7 @@ export default function Branches() {
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
         delivery_zone_id: deliveryZoneId,
+        contact_phones: form.contact_phones.split('\n').map((p) => p.trim()).filter(Boolean),
         is_active: Boolean(form.is_active),
       }
       if (!data.street) data.street = null
@@ -107,14 +112,14 @@ export default function Branches() {
       delete data.hex_id
 
       if (editing) {
-        await client.put(`/cafe-branches/${editing.id}`, data)
+        await client.put(`/cafe/addresses/${editing.id}`, data)
       } else {
-        await client.post('/cafe-branches', data)
+        await client.post('/cafe/addresses', data)
       }
       close()
       load()
     } catch (err) {
-      setError(err.response?.data?.message || 'فشل حفظ الفرع')
+      setError(err.response?.data?.message || 'فشل حفظ العنوان')
     } finally {
       setSaving(false)
     }
@@ -124,15 +129,18 @@ export default function Branches() {
     <>
       <header className="mb-6 flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-foreground">فروعي</h1>
-          <p className="mt-1 text-muted">إدارة فروع مقهاك</p>
+          <h1 className="text-2xl font-extrabold text-foreground">عناويني</h1>
+          <p className="mt-1 text-muted">إدارة عناوين توصيل مقهاك</p>
+          {deliveryPrice != null && (
+            <p className="mt-1 text-sm text-primary">سعر التوصيل لموقعك: {Number(deliveryPrice).toFixed(2)} د.ل</p>
+          )}
         </div>
         {branchesFeature && (
           <button
             onClick={openCreate}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
-            + إضافة فرع
+            + إضافة عنوان
           </button>
         )}
       </header>
@@ -146,6 +154,7 @@ export default function Branches() {
               <th className="px-4 py-3 text-start">الاسم</th>
               <th className="px-4 py-3 text-start">المدينة</th>
               <th className="px-4 py-3 text-start">الشارع</th>
+              <th className="px-4 py-3 text-start">أرقام التواصل</th>
               <th className="px-4 py-3 text-start">الموقع</th>
               <th className="px-4 py-3 text-start">الحالة</th>
               <th className="px-4 py-3 text-start">إجراء</th>
@@ -158,30 +167,32 @@ export default function Branches() {
                   <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded-md bg-border" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded-md bg-border" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-28 animate-pulse rounded-md bg-border" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded-md bg-border" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-32 animate-pulse rounded-md bg-border" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-16 animate-pulse rounded-md bg-border" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-12 animate-pulse rounded-md bg-border" /></td>
                 </tr>
               ))
-            ) : branches.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">لا توجد فروع.</td></tr>
+            ) : addresses.length === 0 ? (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted">لا توجد عناوين.</td></tr>
             ) : (
-              branches.map((b) => (
-                <tr key={b.id} className="hover:bg-background/50">
-                  <td className="px-4 py-3 font-medium">{b.name}</td>
-                  <td className="px-4 py-3">{b.city ?? '-'}</td>
-                  <td className="px-4 py-3">{b.street ?? '-'}</td>
+              addresses.map((a) => (
+                <tr key={a.id} className="hover:bg-background/50">
+                  <td className="px-4 py-3 font-medium">{a.name}</td>
+                  <td className="px-4 py-3">{a.city ?? '-'}</td>
+                  <td className="px-4 py-3">{a.street ?? '-'}</td>
+                  <td className="px-4 py-3">{(a.contact_phones ?? []).join('، ') || '-'}</td>
                   <td className="px-4 py-3 text-xs text-muted">
-                    {b.latitude && b.longitude ? `${Number(b.latitude).toFixed(5)}, ${Number(b.longitude).toFixed(5)}` : '-'}
+                    {a.latitude && a.longitude ? `${Number(a.latitude).toFixed(5)}, ${Number(a.longitude).toFixed(5)}` : '-'}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${b.is_active ? 'bg-success' : 'bg-muted'}`}>
-                      {b.is_active ? 'نشط' : 'غير نشط'}
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${a.is_active ? 'bg-success' : 'bg-muted'}`}>
+                      {a.is_active ? 'نشط' : 'غير نشط'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => openEdit(b)}
+                      onClick={() => openEdit(a)}
                       className="rounded-md border border-border bg-background px-3 py-1 text-xs hover:bg-surface"
                     >
                       تعديل
@@ -197,10 +208,10 @@ export default function Branches() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-bold">{editing ? 'تعديل فرع' : 'إضافة فرع'}</h2>
+            <h2 className="mb-4 text-lg font-bold">{editing ? 'تعديل عنوان' : 'إضافة عنوان'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-muted">اسم الفرع</label>
+                <label className="mb-1.5 block text-sm font-medium text-muted">اسم العنوان</label>
                 <input
                   required
                   value={form.name}
@@ -221,6 +232,15 @@ export default function Branches() {
                 <input
                   value={form.street || ''}
                   onChange={(e) => setForm({ ...form, street: e.target.value })}
+                  className="w-full rounded-lg border border-border-strong bg-background px-4 py-2 text-foreground outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-muted">أرقام التواصل (رقم في كل سطر)</label>
+                <textarea
+                  rows={3}
+                  value={form.contact_phones}
+                  onChange={(e) => setForm({ ...form, contact_phones: e.target.value })}
                   className="w-full rounded-lg border border-border-strong bg-background px-4 py-2 text-foreground outline-none focus:border-primary"
                 />
               </div>

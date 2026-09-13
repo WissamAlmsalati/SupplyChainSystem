@@ -11,21 +11,25 @@ class PermissionSeeder extends Seeder
     public function run(): void
     {
         $modules = [
-            'cafes',
+            // addresses routes check the historic CAFE_BRANCHES_* codes (see CheckPermission)
             'cafe_branches',
             'categories',
             'products',
             'product_variants',
             'product_images',
             'inventory',
+            'stock_movements',
             'orders',
+            'payments',
             'purchase_orders',
+            'purchase_order_items',
             'warehouses',
             'delivery_zones',
             'users',
             'delegates',
             'user_types',
             'permissions',
+            'promos',
             'activity_logs',
         ];
 
@@ -47,19 +51,14 @@ class PermissionSeeder extends Seeder
             Permission::firstOrCreate(['code' => $code]);
         }
 
-        $superAdmin = UserType::where('name', 'super_admin')->first();
-        $admin = UserType::where('name', 'admin')->first();
-        $cafe = UserType::where('name', 'cafe')->first();
-        $delegate = UserType::where('name', 'delegate')->first();
-
         $all = Permission::all();
-        $superAdmin?->permissions()->sync($all);
-        $admin?->permissions()->sync($all);
+        UserType::where('name', 'super_admin')->first()?->permissions()->sync($all);
+        UserType::where('name', 'admin')->first()?->permissions()->sync($all);
 
-        $cafe?->permissions()->sync(
+        UserType::where('name', 'cafe')->first()?->permissions()->sync(
             Permission::whereIn('code', [
                 'ORDERS_VIEW',
-                'ORDERS_EDIT',
+                'ORDERS_CREATE',
                 'CAFE_BRANCHES_VIEW',
                 'CAFE_BRANCHES_CREATE',
                 'CAFE_BRANCHES_EDIT',
@@ -68,7 +67,7 @@ class PermissionSeeder extends Seeder
             ])->pluck('id')
         );
 
-        $delegate?->permissions()->sync(
+        UserType::where('name', 'delegate')->first()?->permissions()->sync(
             Permission::whereIn('code', ['ORDER_ASSIGN', 'ORDERS_VIEW'])->pluck('id')
         );
     }

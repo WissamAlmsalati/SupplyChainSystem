@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import Button from '../components/ui/Button'
+import Badge from '../components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import DataTable from '../components/DataTable'
 import { StatusBadge } from '../lib/status'
@@ -42,14 +43,14 @@ export default function UserDetail() {
 
   const orderColumns = [
     { key: 'order_number', label: 'رقم الطلب', render: (r) => r.order_number ?? `#${r.id}` },
-    { key: 'branch', label: 'الفرع', render: (r) => r.branch?.name ?? '-' },
+    { key: 'address', label: 'العنوان', render: (r) => r.delivery_address_name ?? '-' },
     {
       key: 'status',
       label: 'الحالة',
       render: (r) => <StatusBadge status={r.status} />,
     },
     { key: 'total_amount', label: 'الإجمالي', render: (r) => `${formatMoney(r.total_amount)} د.ل` },
-    { key: 'order_date', label: 'التاريخ', render: (r) => r.order_date ? new Date(r.order_date).toLocaleDateString('en-US') : '-' },
+    { key: 'placed_at', label: 'التاريخ', render: (r) => r.placed_at ? new Date(r.placed_at).toLocaleDateString('en-US') : '-' },
   ]
 
   const logColumns = [
@@ -57,6 +58,22 @@ export default function UserDetail() {
     { key: 'entity_type', label: 'الكيان' },
     { key: 'action', label: 'النوع' },
     { key: 'created_at', label: 'التاريخ', render: (r) => r.created_at ? new Date(r.created_at).toLocaleString('en-US') : '-' },
+  ]
+
+  const addressColumns = [
+    { key: 'name', label: 'الاسم' },
+    { key: 'city', label: 'المدينة' },
+    { key: 'street', label: 'الشارع' },
+    {
+      key: 'contact_phones',
+      label: 'أرقام التواصل',
+      render: (r) => (r.contact_phones?.length ? r.contact_phones.join(' / ') : '-'),
+    },
+    {
+      key: 'is_active',
+      label: 'الحالة',
+      render: (r) => <Badge variant={r.is_active ? 'success' : 'default'}>{r.is_active ? 'نشط' : 'معطل'}</Badge>,
+    },
   ]
 
   if (loading) return <PageSkeleton />
@@ -87,7 +104,6 @@ export default function UserDetail() {
               <div><span className="font-medium">البريد:</span> {user.email ?? '-'}</div>
               <div><span className="font-medium">الجوال:</span> {user.mobile_number ?? '-'}</div>
               <div><span className="font-medium">النوع:</span> <Badge variant="default">{user.user_type?.name ?? user.user_type_id}</Badge></div>
-              <div><span className="font-medium">المقهى:</span> {user.cafe?.name ?? '-'}</div>
               <div>
                 <span className="font-medium">الحالة:</span>{' '}
                 <Badge variant={user.is_active ? 'success' : 'default'}>{user.is_active ? 'نشط' : 'غير نشط'}</Badge>
@@ -111,6 +127,21 @@ export default function UserDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>العناوين</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            columns={addressColumns}
+            rows={user.addresses ?? []}
+            loading={false}
+            emptyText="لا توجد عناوين مسجلة لهذا المستخدم."
+            onRowClick={(row) => navigate(`/addresses/${row.id}`)}
+          />
+        </CardContent>
+      </Card>
 
       <Card className="mt-6">
         <CardHeader>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import Button from '../components/ui/Button'
+import Badge from '../components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import DataTable from '../components/DataTable'
 import { StatusBadge } from '../lib/status'
@@ -11,10 +12,10 @@ function formatMoney(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export default function CafeBranchDetail() {
+export default function AddressDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [branch, setBranch] = useState(null)
+  const [address, setAddress] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -22,10 +23,10 @@ export default function CafeBranchDetail() {
     setLoading(true)
     setError('')
     try {
-      const res = await client.get(`/cafe-branches/${id}`)
-      setBranch(res.data?.data ?? res.data)
+      const res = await client.get(`/addresses/${id}`)
+      setAddress(res.data?.data ?? res.data)
     } catch (err) {
-      setError(err.response?.data?.message || 'فشل تحميل بيانات الفرع')
+      setError(err.response?.data?.message || 'فشل تحميل بيانات العنوان')
     } finally {
       setLoading(false)
     }
@@ -44,20 +45,20 @@ export default function CafeBranchDetail() {
       render: (r) => <StatusBadge status={r.status} />,
     },
     { key: 'total_amount', label: 'الإجمالي', render: (r) => `${formatMoney(r.total_amount)} د.ل` },
-    { key: 'order_date', label: 'التاريخ', render: (r) => r.order_date ? new Date(r.order_date).toLocaleDateString('en-US') : '-' },
+    { key: 'placed_at', label: 'التاريخ', render: (r) => r.placed_at ? new Date(r.placed_at).toLocaleDateString('en-US') : '-' },
   ]
 
   if (loading) return <PageSkeleton />
-  if (!branch) return <div className="text-danger">{error || 'الفرع غير موجود.'}</div>
+  if (!address) return <div className="text-danger">{error || 'العنوان غير موجود.'}</div>
 
-  const orders = branch.orders ?? []
+  const orders = address.orders ?? []
 
   return (
     <>
       <header className="flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-foreground">تفاصيل الفرع</h1>
-          <p className="mt-1 text-muted">{branch.name || 'فرع'}</p>
+          <h1 className="text-2xl font-extrabold text-foreground">تفاصيل العنوان</h1>
+          <p className="mt-1 text-muted">{address.name || 'عنوان'}</p>
         </div>
         <Button variant="secondary" onClick={() => navigate(-1)}>العودة</Button>
       </header>
@@ -67,18 +68,19 @@ export default function CafeBranchDetail() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>بيانات الفرع</CardTitle>
+            <CardTitle>بيانات العنوان</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm text-foreground">
-              <div><span className="font-medium">الاسم:</span> {branch.name ?? '-'}</div>
-              <div><span className="font-medium">المقهى:</span> {branch.cafe?.name ?? '-'}</div>
-              <div><span className="font-medium">المدينة:</span> {branch.city ?? '-'}</div>
-              <div><span className="font-medium">الشارع:</span> {branch.street ?? '-'}</div>
-              <div><span className="font-medium">منطقة التوصيل:</span> {branch.delivery_zone?.name ?? '-'}</div>
+              <div><span className="font-medium">الاسم:</span> {address.name ?? '-'}</div>
+              <div><span className="font-medium">المستخدم:</span> {address.user?.name ?? '-'}</div>
+              <div><span className="font-medium">المدينة:</span> {address.city ?? '-'}</div>
+              <div><span className="font-medium">الشارع:</span> {address.street ?? '-'}</div>
+              <div><span className="font-medium">أرقام التواصل:</span> {(address.contact_phones ?? []).join('، ') || '-'}</div>
+              <div><span className="font-medium">منطقة التوصيل:</span> {address.delivery_zone?.name ?? '-'}</div>
               <div>
                 <span className="font-medium">الحالة:</span>{' '}
-                <Badge variant={branch.is_active ? 'success' : 'default'}>{branch.is_active ? 'نشط' : 'غير نشط'}</Badge>
+                <Badge variant={address.is_active ? 'success' : 'default'}>{address.is_active ? 'نشط' : 'غير نشط'}</Badge>
               </div>
             </div>
           </CardContent>
@@ -102,14 +104,14 @@ export default function CafeBranchDetail() {
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>طلبيات الفرع</CardTitle>
+          <CardTitle>طلبيات العنوان</CardTitle>
         </CardHeader>
         <CardContent>
           <DataTable
             columns={orderColumns}
             rows={orders}
             loading={false}
-            emptyText="لا توجد طلبيات لهذا الفرع."
+            emptyText="لا توجد طلبيات لهذا العنوان."
             onRowClick={(row) => navigate(`/orders/${row.id}`)}
           />
         </CardContent>

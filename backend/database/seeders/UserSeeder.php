@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\AppUser;
 use App\Models\UserType;
 use Illuminate\Database\Seeder;
@@ -11,17 +12,22 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $adminType = UserType::where('name', 'admin')->first();
+        $staff = [
+            ['email' => 'superadmin@example.com', 'name' => 'Super Admin', 'mobile' => '0900000001', 'role' => UserRole::SuperAdmin],
+            ['email' => 'admin@example.com', 'name' => 'Admin', 'mobile' => '0900000002', 'role' => UserRole::Admin],
+        ];
 
-        AppUser::firstOrCreate(
-            ['email' => 'admin@example.com'],
-            [
-                'name' => 'Admin',
-                'mobile_number' => '0911111111',
-                'password_hash' => Hash::make('password'),
-                'user_type_id' => $adminType?->id,
-                'is_active' => true,
-            ]
-        );
+        foreach ($staff as $row) {
+            AppUser::firstOrCreate(
+                ['email' => $row['email']],
+                [
+                    'name' => $row['name'],
+                    'mobile_number' => $row['mobile'],
+                    'password' => Hash::make('password'),
+                    'user_type_id' => UserType::where('name', $row['role']->value)->value('id'),
+                    'is_active' => true,
+                ]
+            );
+        }
     }
 }

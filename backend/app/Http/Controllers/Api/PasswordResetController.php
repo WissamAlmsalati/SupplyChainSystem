@@ -101,7 +101,7 @@ class PasswordResetController extends BaseApiController
             return $this->jsonResponse(['message' => 'المستخدم غير موجود'], 404);
         }
 
-        $user->update(['password_hash' => Hash::make($data['password'])]);
+        $user->update(['password' => Hash::make($data['password'])]);
         $record->delete();
 
         return $this->jsonResponse([

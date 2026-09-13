@@ -15,11 +15,11 @@ export default function ProductDetail() {
   const { addItem } = useCart()
   const [product, setProduct] = useState(null)
   const [variants, setVariants] = useState([])
-  const [branches, setBranches] = useState([])
+  const [addresses, setAddresses] = useState([])
   const [selectedVariant, setSelectedVariant] = useState(null)
   const [displayImage, setDisplayImage] = useState(null)
   const [quantity, setQuantity] = useState(1)
-  const [branchId, setBranchId] = useState('')
+  const [addressId, setAddressId] = useState('')
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
@@ -30,10 +30,10 @@ export default function ProductDetail() {
       setLoading(true)
       setError('')
       try {
-        const [productRes, variantsRes, branchesRes] = await Promise.all([
+        const [productRes, variantsRes, addressesRes] = await Promise.all([
           client.get(`/cafe/products/${id}`),
           client.get(`/cafe/products/${id}/variants`),
-          client.get('/cafe/branches'),
+          client.get('/cafe/addresses'),
         ])
         const productData = productRes.data?.data ?? productRes.data
         const variantsData = variantsRes.data?.data ?? []
@@ -43,9 +43,9 @@ export default function ProductDetail() {
         setSelectedVariant(activeVariants[0] || null)
         const fallbackImage = productData.image_url || activeVariants[0]?.images?.map((img) => img.image_url).filter(Boolean)[0]
         setDisplayImage(fallbackImage || null)
-        setBranches(branchesRes.data?.data ?? [])
-        if (branchesRes.data?.data?.[0]) {
-          setBranchId(String(branchesRes.data.data[0].id))
+        setAddresses(addressesRes.data?.data?.addresses ?? [])
+        if (addressesRes.data?.data?.addresses?.[0]) {
+          setAddressId(String(addressesRes.data.data.addresses[0].id))
         }
       } catch (err) {
         setError(err.response?.data?.message || 'فشل تحميل تفاصيل المنتج')
@@ -61,15 +61,11 @@ export default function ProductDetail() {
       setError('اختر variant أولاً')
       return
     }
-    if (!branchId) {
-      setError('اختر الفرع الذي تريد التوصيل إليه')
-      return
-    }
     setAdding(true)
     setError('')
     setMessage('')
     try {
-      await addItem(Number(branchId), selectedVariant.id, Number(quantity))
+      await addItem(selectedVariant.id, Number(quantity))
       setMessage('تمت الإضافة إلى السلة')
       setTimeout(() => setMessage(''), 2000)
     } catch (err) {
@@ -184,7 +180,7 @@ export default function ProductDetail() {
                         : 'border-border bg-background text-foreground hover:bg-surface'
                     }`}
                   >
-                    {v.attribute_value}
+                    {v.name}
                     <span className="me-2 text-xs opacity-80">({formatMoney(v.price)} د.ل)</span>
                   </button>
                 ))
@@ -194,7 +190,7 @@ export default function ProductDetail() {
 
           {selectedVariant && (
             <div className="space-y-1 text-lg font-semibold text-foreground">
-              <div>السعر: {formatMoney(selectedVariant.sell_price ?? selectedVariant.price)} د.ل</div>
+              <div>السعر: {formatMoney(selectedVariant.price)} د.ل</div>
               {selectedVariant.cost_price && (
                 <div className="text-sm font-normal text-muted">
                   تكلفة: {formatMoney(selectedVariant.cost_price)} د.ل
@@ -206,36 +202,23 @@ export default function ProductDetail() {
               {selectedVariant.barcode && (
                 <div className="text-sm font-normal text-muted">Barcode: {selectedVariant.barcode}</div>
               )}
-              {selectedVariant.stock_quantity !== null && selectedVariant.stock_quantity !== undefined && (
-                <div className="text-sm font-normal text-muted">المخزون: {selectedVariant.stock_quantity}</div>
-              )}
-              {selectedVariant.status && (
-                <div className="text-sm font-normal text-muted">الحالة: {selectedVariant.status}</div>
-              )}
-              {selectedVariant.manufacturing_year && (
-                <div className="text-sm font-normal text-muted">
-                  سنة التصنيع: {selectedVariant.manufacturing_year}
-                </div>
-              )}
-              {selectedVariant.expiry_date && (
-                <div className="text-sm font-normal text-muted">
-                  ينتهي الصلاحية: {new Date(selectedVariant.expiry_date).toLocaleDateString('en-US')}
-                </div>
+              {selectedVariant.in_stock !== undefined && (
+                <div className="text-sm font-normal text-muted">المتوفر: {selectedVariant.in_stock}</div>
               )}
             </div>
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted">الفرع</label>
+              <label className="mb-1.5 block text-sm font-medium text-muted">العنوان</label>
               <select
-                value={branchId}
-                onChange={(e) => setBranchId(e.target.value)}
+                value={addressId}
+                onChange={(e) => setAddressId(e.target.value)}
                 className="w-full rounded-lg border border-border-strong bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary"
               >
-                <option value="">اختر فرع</option>
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
+                <option value="">اختر عنوان</option>
+                {addresses.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
             </div>
@@ -254,7 +237,7 @@ export default function ProductDetail() {
           <div className="flex gap-3">
             <button
               onClick={handleAddToCart}
-              disabled={adding || !selectedVariant || !branchId}
+              disabled={adding || !selectedVariant}
               className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
             >
               {adding ? 'جاري الإضافة...' : 'أضف إلى السلة'}

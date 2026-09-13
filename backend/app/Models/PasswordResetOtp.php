@@ -15,11 +15,13 @@ class PasswordResetOtp extends Model
         'mobile_number',
         'token',
         'otp',
+        'payload',
         'expires_at',
     ];
 
     protected $casts = [
         'expires_at' => 'datetime',
+        'payload' => 'array',
     ];
 
     public function isExpired(): bool

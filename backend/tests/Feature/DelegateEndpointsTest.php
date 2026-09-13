@@ -32,7 +32,7 @@ class DelegateEndpointsTest extends TestCase
             'name' => 'Admin User',
             'email' => 'admin@test.com',
             'mobile_number' => '0922222222',
-            'password_hash' => bcrypt('password'),
+            'password' => bcrypt('password'),
             'user_type_id' => $adminType->id,
             'is_active' => true,
         ]);
@@ -56,7 +56,7 @@ class DelegateEndpointsTest extends TestCase
             'name' => 'Delegate One',
             'email' => 'delegate1@test.com',
             'mobile_number' => '0933333333',
-            'password_hash' => bcrypt('password'),
+            'password' => bcrypt('password'),
             'user_type_id' => $this->delegateType->id,
             'is_active' => true,
         ]);
@@ -80,10 +80,11 @@ class DelegateEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertCreated();
-        $this->assertDatabaseHas('user', [
+        $this->assertDatabaseHas('users', [
             'email' => 'new.delegate@test.com',
             'user_type_id' => $this->delegateType->id,
         ]);
+        $this->assertDatabaseHas('delegate_profiles', ['user_id' => $res->json('data.id')]);
     }
 
     public function test_admin_can_update_delegate(): void
@@ -91,7 +92,7 @@ class DelegateEndpointsTest extends TestCase
         $delegate = AppUser::create([
             'name' => 'Delegate Old',
             'email' => 'delegate.old@test.com',
-            'password_hash' => bcrypt('password'),
+            'password' => bcrypt('password'),
             'user_type_id' => $this->delegateType->id,
             'is_active' => true,
         ]);
@@ -104,7 +105,7 @@ class DelegateEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('user', [
+        $this->assertDatabaseHas('users', [
             'id' => $delegate->id,
             'name' => 'Delegate Updated',
             'is_active' => false,
@@ -116,7 +117,7 @@ class DelegateEndpointsTest extends TestCase
         $delegate = AppUser::create([
             'name' => 'Delegate To Delete',
             'email' => 'delegate.delete@test.com',
-            'password_hash' => bcrypt('password'),
+            'password' => bcrypt('password'),
             'user_type_id' => $this->delegateType->id,
             'is_active' => true,
         ]);
@@ -125,7 +126,7 @@ class DelegateEndpointsTest extends TestCase
         $res = $this->deleteJson('/api/v1/delegates/' . $delegate->id, [], ['Authorization' => "Bearer $token"]);
 
         $res->assertNoContent();
-        $this->assertDatabaseMissing('user', ['id' => $delegate->id]);
+        $this->assertSoftDeleted('users', ['id' => $delegate->id]);
     }
 
     public function test_admin_can_toggle_delegate_active_status(): void
@@ -133,7 +134,7 @@ class DelegateEndpointsTest extends TestCase
         $delegate = AppUser::create([
             'name' => 'Delegate Toggle',
             'email' => 'delegate.toggle@test.com',
-            'password_hash' => bcrypt('password'),
+            'password' => bcrypt('password'),
             'user_type_id' => $this->delegateType->id,
             'is_active' => true,
         ]);
@@ -142,7 +143,7 @@ class DelegateEndpointsTest extends TestCase
         $res = $this->postJson('/api/v1/delegates/' . $delegate->id . '/toggle-active', [], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('user', [
+        $this->assertDatabaseHas('users', [
             'id' => $delegate->id,
             'is_active' => false,
         ]);

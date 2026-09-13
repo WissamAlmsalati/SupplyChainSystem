@@ -83,8 +83,7 @@ export default function ActivityLogs() {
           onChange={(e) => setFilters({ ...filters, entity_type: e.target.value })}
         >
           <option value="">كل الأنواع</option>
-          <option value="Cafe">مقهى</option>
-          <option value="CafeBranch">فرع مقهى</option>
+          <option value="Address">عنوان</option>
           <option value="Category">تصنيف</option>
           <option value="Product">منتج</option>
           <option value="ProductVariant">متغير منتج</option>

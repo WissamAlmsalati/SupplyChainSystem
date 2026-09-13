@@ -19,9 +19,11 @@ tests {
     expect(res.getStatus()).to.equal(200);
   });
 
-  test("returns cafe profile", function() {
+  test("returns user profile with addresses", function() {
     const json = res.getBody();
-    expect(json.cafe).to.be.an('object');
-    expect(json.cafe.name).to.be.a('string').that.is.not.empty;
+    expect(json.user).to.be.an('object');
+    expect(json.user.name).to.be.a('string').that.is.not.empty;
+    expect(json.addresses).to.be.an('array');
+    expect(json).to.not.have.property('has_cafe');
   });
 }

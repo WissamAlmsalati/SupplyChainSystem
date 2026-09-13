@@ -34,7 +34,7 @@ export default function Orders() {
     },
     { key: 'total_amount', label: 'الإجمالي' },
     { key: 'user', label: 'المستخدم', render: (r) => r.user?.name ?? '-' },
-    { key: 'branch', label: 'الفرع', render: (r) => r.branch?.name ?? '-' },
+    { key: 'address', label: 'العنوان', render: (r) => r.delivery_address_name ?? '-' },
     { key: 'delegate', label: 'المندوب', render: (r) => r.delegate?.name ?? <span className="text-muted">-</span> },
     { key: 'created_at', label: 'تاريخ الإنشاء', render: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString('en-US') : '-' },
   ]
@@ -58,10 +58,11 @@ export default function Orders() {
             options={[
               { value: 'pending', label: 'قيد الانتظار' },
               { value: 'confirmed', label: 'مؤكد' },
-              { value: 'processing', label: 'قيد التجهيز' },
-              { value: 'shipped', label: 'مشحون' },
+              { value: 'preparing', label: 'قيد التجهيز' },
+              { value: 'out_for_delivery', label: 'في الطريق' },
               { value: 'delivered', label: 'تم التوصيل' },
-              { value: 'completed', label: 'مكتمل' },
+              { value: 'received', label: 'مستلم' },
+              { value: 'cancellation_requested', label: 'طلب إلغاء' },
               { value: 'cancelled', label: 'ملغي' },
             ]}
           />

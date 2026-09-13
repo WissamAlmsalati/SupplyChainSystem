@@ -44,9 +44,9 @@ export default function Delegates() {
       ...item,
       password: '',
       mobile_number: item.mobile_number ?? '',
-      latitude: item.latitude ?? '',
-      longitude: item.longitude ?? '',
-      is_available: item.is_available ?? false,
+      latitude: item.delegate_profile?.latitude ?? '',
+      longitude: item.delegate_profile?.longitude ?? '',
+      is_available: item.delegate_profile?.is_available ?? false,
     })
     setEditing(item)
     setModal(true)
@@ -82,12 +82,12 @@ export default function Delegates() {
     {
       key: 'is_available',
       label: 'متاح',
-      render: (r) => <Badge variant={r.is_available ? 'success' : 'default'}>{r.is_available ? 'نعم' : 'لا'}</Badge>,
+      render: (r) => <Badge variant={r.delegate_profile?.is_available ? 'success' : 'default'}>{r.delegate_profile?.is_available ? 'نعم' : 'لا'}</Badge>,
     },
     {
       key: 'location',
       label: 'الموقع',
-      render: (r) => (r.latitude && r.longitude ? `${r.latitude}, ${r.longitude}` : '-'),
+      render: (r) => (r.delegate_profile?.latitude && r.delegate_profile?.longitude ? `${r.delegate_profile.latitude}, ${r.delegate_profile.longitude}` : '-'),
     },
     {
       key: 'is_active',

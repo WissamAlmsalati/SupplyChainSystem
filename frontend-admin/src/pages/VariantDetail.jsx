@@ -15,12 +15,9 @@ function formatMoney(value) {
 }
 
 const emptyForm = {
-  attribute_value: '', price: '',
-  sell_price: '', cost_price: '', barcode: '',
-  status: '', manufacturing_year: '', expiry_date: '', is_active: true,
+  name: '', price: '', cost_price: '', barcode: '', is_active: true,
 }
 
-const STATUS_OPTIONS = ['متوفر', 'منخفض', 'نفد']
 
 export default function VariantDetail() {
   const { id } = useParams()
@@ -45,14 +42,10 @@ export default function VariantDetail() {
       const data = res.data?.data ?? res.data
       setVariant(data)
       setForm({
-        attribute_value: data.attribute_value ?? '',
+        name: data.name ?? '',
         price: data.price ?? '',
-        sell_price: data.sell_price ?? '',
         cost_price: data.cost_price ?? '',
         barcode: data.barcode ?? '',
-        status: data.status ?? '',
-        manufacturing_year: data.manufacturing_year ?? '',
-        expiry_date: data.expiry_date ? String(data.expiry_date).slice(0, 10) : '',
         is_active: data.is_active !== false,
       })
     } catch (err) {
@@ -71,7 +64,7 @@ export default function VariantDetail() {
     setMessage('')
     setError('')
     try {
-      const ascii = (form.attribute_value || '')
+      const ascii = (form.name || '')
         .trim()
         .replace(/[^A-Za-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
@@ -80,14 +73,10 @@ export default function VariantDetail() {
       const res = await client.put(`/product-variants/${id}`, {
         product_id: variant.product_id,
         sku: `PRD-${pad(variant.product_id, 4)}-${ascii || pad(variant.id, 5)}`,
-        attribute_value: form.attribute_value || null,
+        name: form.name,
         price: form.price !== '' ? Number(form.price) : 0,
-        sell_price: form.sell_price !== '' ? Number(form.sell_price) : null,
         cost_price: form.cost_price !== '' ? Number(form.cost_price) : null,
         barcode: form.barcode || null,
-        status: form.status || null,
-        manufacturing_year: form.manufacturing_year !== '' ? Number(form.manufacturing_year) : null,
-        expiry_date: form.expiry_date || null,
         is_active: form.is_active,
       })
       const data = res.data?.data ?? res.data
@@ -174,7 +163,7 @@ export default function VariantDetail() {
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">تفاصيل المتغير</h1>
           <p className="mt-1 text-muted">
-            {variant.product?.name ?? 'منتج غير معروف'} — {variant.attribute_value || variant.sku || `#${variant.id}`}
+            {variant.product?.name ?? 'منتج غير معروف'} — {variant.name || variant.sku || `#${variant.id}`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -196,16 +185,15 @@ export default function VariantDetail() {
           <CardContent>
             <form onSubmit={handleSave} className="space-y-4">
               <Input
-                label="قيمة الخاصية (اكتبها بنفسك)"
-                placeholder="مثال: صغير، كبير، 250ml"
-                value={form.attribute_value}
-                onChange={(e) => setForm({ ...form, attribute_value: e.target.value })}
+                label="الحجم"
+                placeholder="مثال: 250 جم، 1 كجم"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
               />
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Input label="السعر الأساسي" type="number" min="0" step="0.01" value={form.price}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input label="سعر البيع" type="number" min="0" step="0.01" value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })} required />
-                <Input label="سعر البيع" type="number" min="0" step="0.01" value={form.sell_price}
-                  onChange={(e) => setForm({ ...form, sell_price: e.target.value })} />
                 <Input label="سعر التكلفة" type="number" min="0" step="0.01" value={form.cost_price}
                   onChange={(e) => setForm({ ...form, cost_price: e.target.value })} />
               </div>
@@ -217,29 +205,6 @@ export default function VariantDetail() {
                     {(variant.inventories || []).reduce((sum, i) => sum + (Number(i.quantity) || 0), 0)}
                     <span className="mr-2 text-xs text-muted">(تُحدَّث من سجلات المخزون)</span>
                   </div>
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-muted">الحالة</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-                  >
-                    <option value="">— بدون —</option>
-                    {STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-                <Input label="سنة التصنيع" type="number" min="1900" max="2100" value={form.manufacturing_year}
-                  onChange={(e) => setForm({ ...form, manufacturing_year: e.target.value })} />
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-muted">تاريخ انتهاء الصلاحية</label>
-                  <input type="date" value={form.expiry_date}
-                    onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
-                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" />
                 </div>
               </div>
               <label className="flex items-center gap-2 text-sm text-foreground">
@@ -330,8 +295,7 @@ export default function VariantDetail() {
             <CardContent>
               <div className="space-y-2 text-sm text-foreground">
                 <div><span className="font-medium">SKU (تلقائي):</span> <code className="rounded bg-background px-1 text-xs" dir="ltr">{variant.sku || `PRD-${String(variant.product_id).padStart(4, '0')}-${String(variant.id).padStart(5, '0')}`}</code></div>
-                <div><span className="font-medium">السعر الأساسي:</span> {formatMoney(variant.price ?? 0)} د.ل</div>
-                {variant.sell_price != null && <div><span className="font-medium">سعر البيع:</span> {formatMoney(variant.sell_price)} د.ل</div>}
+                <div><span className="font-medium">سعر البيع:</span> {formatMoney(variant.price ?? 0)} د.ل</div>
                 <div><span className="font-medium">إجمالي المخزون:</span> {totalStock}</div>
                 <div>
                   <span className="font-medium">الحالة:</span>{' '}

@@ -2,147 +2,76 @@
 
 namespace Database\Seeders;
 
+use App\Enums\OrderSource;
+use App\Enums\OrderStatus;
+use App\Enums\UserRole;
+use App\Exceptions\InsufficientStockException;
 use App\Models\AppUser;
-use App\Models\Cafe;
-use App\Models\CafeBranch;
-use App\Models\Category;
-use App\Models\DeliveryZone;
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\Product;
+use App\Models\Notification;
 use App\Models\ProductVariant;
-use App\Models\UserType;
+use App\Services\OrderPlacementService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
+// Orders across the last 6 months, placed through the real placement flow so
+// snapshots, stock movements and status logs are all consistent.
 class OrderSeeder extends Seeder
 {
     public function run(): void
     {
-        // Ensure a cafe user type exists
-        if (UserType::count() === 0) {
-            UserType::firstOrCreate(['name' => 'cafe']);
+        $placement = app(OrderPlacementService::class);
+
+        $customers = AppUser::with('addresses')
+            ->whereHas('userType', fn ($q) => $q->where('name', UserRole::Customer->value))
+            ->get()
+            ->filter(fn ($c) => $c->addresses->isNotEmpty());
+        $variants = ProductVariant::where('is_active', true)->get();
+
+        if ($customers->isEmpty() || $variants->isEmpty()) {
+            return;
         }
 
-        $cafeType = UserType::where('name', 'cafe')->firstOrFail();
+        // Status path an order walks through; the last step is where it stops.
+        $paths = [
+            [OrderStatus::Pending],
+            [OrderStatus::Confirmed],
+            [OrderStatus::Confirmed, OrderStatus::Preparing],
+            [OrderStatus::Confirmed, OrderStatus::Preparing, OrderStatus::OutForDelivery],
+            [OrderStatus::Confirmed, OrderStatus::Preparing, OrderStatus::OutForDelivery, OrderStatus::Delivered],
+            [OrderStatus::Confirmed, OrderStatus::Preparing, OrderStatus::OutForDelivery, OrderStatus::Delivered, OrderStatus::Received],
+            [OrderStatus::Cancelled],
+        ];
 
-        // Delivery zones
-        if (DeliveryZone::count() === 0) {
-            DeliveryZone::factory()->count(5)->create();
-        }
-        $zones = DeliveryZone::all();
-
-        // Cafes + branches
-        if (Cafe::count() === 0) {
-            Cafe::factory()->count(3)->create();
-        }
-
-        if (CafeBranch::count() === 0) {
-            Cafe::all()->each(function (Cafe $cafe) use ($zones) {
-                CafeBranch::factory()->count(rand(2, 3))->create([
-                    'cafe_id' => $cafe->id,
-                    'delivery_zone_id' => $zones->random()->id,
-                ]);
-            });
-        }
-        $branches = CafeBranch::all();
-
-        // Cafe users
-        if (AppUser::where('user_type_id', $cafeType->id)->count() === 0) {
-            Cafe::all()->each(function (Cafe $cafe) use ($cafeType) {
-                AppUser::factory()->count(rand(1, 2))->create([
-                    'user_type_id' => $cafeType->id,
-                    'password_hash' => Hash::make('password'),
-                ])->each(fn (AppUser $user) => $user->syncCafeUser(['cafe_id' => $cafe->id]));
-            });
-        }
-        $users = AppUser::where('user_type_id', $cafeType->id)->get();
-
-        // Products + variants
-        if (ProductVariant::count() === 0) {
-            if (Category::count() === 0) {
-                Category::factory()->count(5)->create();
-            }
-            $categories = Category::all();
-
-            Product::factory()->count(15)->create([
-                'category_id' => fn () => $categories->random()->id,
-            ])->each(function (Product $product) {
-                ProductVariant::factory()->count(rand(1, 3))->create([
-                    'product_id' => $product->id,
-                ]);
-            });
-        }
-        $variants = ProductVariant::all();
-
-        $statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
-
-        // Make this seeder rerunnable by removing previously seeded orders first
-        Order::where('source', 'seed')
-            ->where('order_date', '>=', Carbon::now()->subMonths(5)->startOfMonth())
-            ->delete();
-
-        // Seed orders across the last 6 months
         for ($i = 5; $i >= 0; $i--) {
             $month = Carbon::now()->subMonthsNoOverflow($i);
-            $daysInMonth = $month->daysInMonth;
-            // Vary order volume per month so the chart looks realistic
-            $ordersCount = match ($i) {
-                5 => rand(3, 6),   // oldest month
-                4 => rand(8, 14),
-                3 => rand(10, 18),
-                2 => rand(12, 22),
-                1 => rand(15, 25), // recent growth
-                0 => rand(5, 12),  // current month (partial)
-                default => rand(8, 15),
-            };
+            $count = [5 => 4, 4 => 8, 3 => 10, 2 => 12, 1 => 15, 0 => 6][$i];
 
-            for ($j = 0; $j < $ordersCount; $j++) {
-                $day = rand(1, $daysInMonth);
-                $orderDate = $month->copy()->day($day);
-                $status = $statuses[array_rand($statuses)];
-                $deliveryFee = (float) fake()->randomFloat(2, 0, 30);
+            for ($j = 0; $j < $count; $j++) {
+                $customer = $customers->random();
+                $items = $variants->random(rand(1, 3))
+                    ->map(fn ($v) => ['product_variant_id' => $v->id, 'quantity' => rand(1, 5)])
+                    ->all();
 
-                $items = [];
-                $itemsTotal = 0;
-                $itemCount = rand(1, 3);
-
-                for ($k = 0; $k < $itemCount; $k++) {
-                    $variant = $variants->random();
-                    $quantity = rand(1, 5);
-                    $unitPrice = (float) ($variant->price ?: fake()->randomFloat(2, 5, 100));
-
-                    $items[] = [
-                        'product_variant_id' => $variant->id,
-                        'quantity' => $quantity,
-                        'unit_price' => $unitPrice,
-                    ];
-                    $itemsTotal += $quantity * $unitPrice;
+                try {
+                    $order = $placement->place($customer, $customer->addresses->random(), $items, fake()->randomElement(OrderSource::cases()));
+                } catch (InsufficientStockException) {
+                    continue;
                 }
 
-                $order = Order::create([
-                    'user_id' => $users->random()->id,
-                    'branch_id' => $branches->random()->id,
-                    'delegate_id' => null,
-                    'delivery_zone_id' => $zones->random()->id,
-                    'delivery_fee' => $deliveryFee,
-                    'order_date' => $orderDate,
-                    'status' => $status,
-                    'source' => 'seed',
-                    'total_amount' => round($itemsTotal + $deliveryFee, 2),
-                    'order_number' => Order::generateOrderNumber(),
-                ]);
+                $placedAt = $i === 0
+                    ? Carbon::now()->subDays(rand(0, max(0, Carbon::now()->day - 1)))
+                    : $month->copy()->day(rand(1, $month->daysInMonth));
+                $order->update(['placed_at' => $placedAt->setTime(rand(8, 20), rand(0, 59))]);
 
-                foreach ($items as $item) {
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'product_variant_id' => $item['product_variant_id'],
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
-                    ]);
+                // Past months are mostly finished; the current month is mostly in progress.
+                $path = $i > 0 && rand(1, 10) <= 7 ? $paths[5] : $paths[array_rand($paths)];
+                foreach ($path as $status) {
+                    $order->update(['status' => $status]);
                 }
             }
         }
+
+        // Placement notifies admins per order; keep the seeded inbox clean.
+        Notification::query()->delete();
     }
 }

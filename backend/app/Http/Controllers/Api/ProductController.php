@@ -4,33 +4,23 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\Api\ProductRequest;
 use App\Models\Product;
+use App\Models\ProductImage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
-/**
- * @OA\Tag(name="Admin Products", description="Admin platform product management")
- */
 class ProductController extends BaseApiController
 {
-    /**
-     * @OA\Get(
-     *     path="/products",
-     *     tags={"Admin Products"},
-     *     summary="List products",
-     *     security={},
-     *     @OA\Response(response=200, description="Paginated list of products")
-     * )
-     */
     public function index(Request $request): JsonResponse
     {
-        $query = Product::with(['category']);
+        $query = Product::with(['category', 'allImages'])->withCount('variants');
 
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('brand', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
             });
         }
@@ -39,96 +29,80 @@ class ProductController extends BaseApiController
             $query->where('category_id', $request->integer('category_id'));
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        $perPage = $request->integer('per_page', 15);
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
     }
 
-    /**
-     * @OA\Post(
-     *     path="/products",
-     *     tags={"Admin Products"},
-     *     summary="Create a product",
-     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/ProductRequest")),
-     *     @OA\Response(response=201, description="Product created"),
-     *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
-     * )
-     */
     public function store(ProductRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $data['image'] = $this->storeImage($request->file('image'));
-        $product = Product::create($data);
-        return $this->jsonResponse($product->load(['category']), 201);
+        unset($data['image']);
+
+        $product = DB::transaction(function () use ($data, $request) {
+            $product = Product::create($data);
+            if ($request->hasFile('image')) {
+                $this->replacePrimaryImage($product, $request->file('image')->store('products', 'public'));
+            }
+
+            return $product;
+        });
+
+        return $this->jsonResponse($product->load(['category', 'allImages']), 201);
     }
 
-    /**
-     * @OA\Get(
-     *     path="/products/{id}",
-     *     tags={"Admin Products"},
-     *     summary="Get a product",
-     *     security={},
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Product details"),
-     *     @OA\Response(response=404, description="Not found")
-     * )
-     */
     public function show(Product $product): JsonResponse
     {
-        return $this->jsonResponse($product->load(['category', 'variants.images', 'variants.inventories.warehouse']));
+        return $this->jsonResponse($product->load([
+            'category', 'allImages', 'images',
+            'variants.images', 'variants.inventories.warehouse',
+        ]));
     }
 
-    /**
-     * @OA\Put(
-     *     path="/products/{id}",
-     *     tags={"Admin Products"},
-     *     summary="Update a product",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/ProductRequest")),
-     *     @OA\Response(response=200, description="Product updated"),
-     *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
-     * )
-     */
     public function update(ProductRequest $request, Product $product): JsonResponse
     {
         $data = $request->validated();
-        if ($request->hasFile('image')) {
-            $this->deleteImage($product->image);
-            $data['image'] = $this->storeImage($request->file('image'));
-        } else {
-            unset($data['image']);
-        }
-        $product->update($data);
-        return $this->jsonResponse($product->load(['category']));
+        unset($data['image']);
+
+        DB::transaction(function () use ($product, $data, $request) {
+            $product->update($data);
+            if ($request->hasFile('image')) {
+                $this->replacePrimaryImage($product, $request->file('image')->store('products', 'public'));
+            }
+        });
+
+        return $this->jsonResponse($product->load(['category', 'allImages']));
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/products/{id}",
-     *     tags={"Admin Products"},
-     *     summary="Delete a product",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=204, description="Product deleted")
-     * )
-     */
+    // Soft delete: the product stays referenced by past orders.
     public function destroy(Product $product): JsonResponse
     {
-        $this->deleteImage($product->image);
         $product->delete();
+
         return $this->jsonResponse(null, 204);
     }
 
-    private function storeImage(?UploadedFile $file): ?string
+    private function replacePrimaryImage(Product $product, string $path): void
     {
-        if (! $file) {
-            return null;
+        $old = $product->images()->where('is_primary', true)->first();
+        if ($old) {
+            if ($old->isStored()) {
+                Storage::disk('public')->delete($old->path);
+            }
+            $old->delete();
         }
 
-        return $file->store('products', 'public');
-    }
+        ProductImage::create([
+            'product_id' => $product->id,
+            'product_variant_id' => null,
+            'path' => $path,
+            'is_primary' => true,
+        ]);
 
-    private function deleteImage(?string $path): void
-    {
-        if ($path) {
-            Storage::disk('public')->delete($path);
-        }
+        $product->unsetRelation('allImages');
     }
 }

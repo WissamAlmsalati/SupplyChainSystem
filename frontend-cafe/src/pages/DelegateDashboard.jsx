@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 
 export default function DelegateDashboard() {
   const { user } = useAuth()
-  const [isAvailable, setIsAvailable] = useState(user?.is_available ?? false)
+  const [isAvailable, setIsAvailable] = useState(user?.delegate_profile?.is_available ?? false)
   const [tracking, setTracking] = useState(false)
   const [location, setLocation] = useState(null)
   const [error, setError] = useState('')

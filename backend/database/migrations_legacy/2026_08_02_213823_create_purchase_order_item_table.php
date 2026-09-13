@@ -1,0 +1,33 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('purchase_order_item', function (Blueprint $table) {
+            $table->increments('id');
+            $table->integer('purchase_order_id')->unsigned();
+            $table->integer('product_variant_id')->unsigned();
+            $table->integer('quantity');
+            $table->decimal('unit_cost', 10, 2);
+
+            $table->foreign('purchase_order_id')->references('id')->on('purchase_order')->onDelete('cascade');
+            $table->foreign('product_variant_id')->references('id')->on('product_variant');
+        });
+
+        // ponytail: MySQL-only syntax; quantity validation lives in the FormRequests.
+        if (Schema::getConnection()->getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE purchase_order_item ADD CONSTRAINT chk_purchase_order_item_quantity_positive CHECK (quantity > 0)');
+        }
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('purchase_order_item');
+    }
+};

@@ -23,7 +23,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn ($request) => $request->is('api/*') ? null : '/login');
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
-            'cafe.ready' => \App\Http\Middleware\EnsureCafeReady::class,
         ]);
 
         $proxies = env('TRUSTED_PROXIES');

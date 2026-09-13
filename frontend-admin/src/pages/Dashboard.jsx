@@ -109,7 +109,7 @@ export default function Dashboard() {
           value={stats.lowStock}
           tone={stats.lowStock > 0 ? 'danger' : 'default'}
         />
-        {branchesFeature && <StatCard label="فروع المقاهي" value={stats.branches} />}
+        {branchesFeature && <StatCard label="العناوين" value={stats.branches} />}
       </div>
 
       {/* Charts */}
@@ -240,7 +240,7 @@ export default function Dashboard() {
                   >
                     <span className="text-foreground">
                       {item.product_variant?.product?.name ?? 'منتج'}
-                      {item.product_variant?.attribute_value ? ` - ${item.product_variant.attribute_value}` : ''}
+                      {item.product_variant?.name ? ` - ${item.product_variant.name}` : ''}
                     </span>
                     <Badge variant="danger">{item.quantity}</Badge>
                   </li>

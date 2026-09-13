@@ -4,34 +4,27 @@ namespace App\OpenApi;
 
 /**
  * @OA\Schema(
- *     schema="CafeRequest",
+ *     schema="AddressRequest",
  *     type="object",
- *     required={"name"},
- *     @OA\Property(property="name", type="string", maxLength=150),
- *     @OA\Property(property="contact_info", type="string", nullable=true, maxLength=200),
- *     @OA\Property(property="created_by_admin_id", type="integer", nullable=true),
- *     @OA\Property(property="is_active", type="boolean"),
- * )
- *
- * @OA\Schema(
- *     schema="CafeBranchRequest",
- *     type="object",
- *     required={"cafe_id", "name", "latitude", "longitude"},
- *     @OA\Property(property="cafe_id", type="integer"),
+ *     required={"name", "latitude", "longitude"},
+ *     @OA\Property(property="user_id", type="integer", description="Required for admin requests; customers always create addresses for themselves."),
  *     @OA\Property(property="name", type="string", maxLength=100),
  *     @OA\Property(property="city", type="string", nullable=true, maxLength=100),
  *     @OA\Property(property="street", type="string", nullable=true, maxLength=200),
  *     @OA\Property(property="latitude", type="number", format="float"),
  *     @OA\Property(property="longitude", type="number", format="float"),
  *     @OA\Property(property="delivery_zone_id", type="integer", nullable=true),
+ *     @OA\Property(property="is_default", type="boolean"),
  *     @OA\Property(property="is_active", type="boolean"),
+ *     @OA\Property(property="contact_phones", type="array", nullable=true, @OA\Items(type="string", maxLength=20)),
  * )
  *
  * @OA\Schema(
  *     schema="DeliveryZoneRequest",
  *     type="object",
  *     required={"hex_id", "delivery_price"},
- *     @OA\Property(property="hex_id", type="string", maxLength=30),
+ *     @OA\Property(property="warehouse_id", type="integer", nullable=true),
+ *     @OA\Property(property="hex_id", type="string", maxLength=40),
  *     @OA\Property(property="name", type="string", nullable=true, maxLength=100),
  *     @OA\Property(property="delivery_price", type="number", format="float"),
  *     @OA\Property(property="is_active", type="boolean"),
@@ -51,18 +44,24 @@ namespace App\OpenApi;
  *     required={"category_id", "name"},
  *     @OA\Property(property="category_id", type="integer"),
  *     @OA\Property(property="name", type="string", maxLength=150),
+ *     @OA\Property(property="brand", type="string", nullable=true, maxLength=100),
  *     @OA\Property(property="description", type="string", nullable=true),
+ *     @OA\Property(property="tags", type="array", nullable=true, @OA\Items(type="string")),
+ *     @OA\Property(property="is_active", type="boolean"),
+ *     @OA\Property(property="image", type="string", format="binary", nullable=true, description="Stored as the product's primary image"),
  * )
  *
  * @OA\Schema(
  *     schema="ProductVariantRequest",
  *     type="object",
- *     required={"product_id", "sku", "price"},
+ *     required={"product_id", "name", "price"},
+ *     description="A sellable size of a product. Stock lives in inventories; expiry dates on purchase order items.",
  *     @OA\Property(property="product_id", type="integer"),
- *     @OA\Property(property="sku", type="string", maxLength=50),
- *     @OA\Property(property="attribute_name", type="string", nullable=true, maxLength=50),
- *     @OA\Property(property="attribute_value", type="string", nullable=true, maxLength=50),
+ *     @OA\Property(property="name", type="string", maxLength=100, example="500 جم"),
+ *     @OA\Property(property="sku", type="string", nullable=true, maxLength=50, description="Generated when empty"),
+ *     @OA\Property(property="barcode", type="string", nullable=true, maxLength=100),
  *     @OA\Property(property="price", type="number", format="float"),
+ *     @OA\Property(property="cost_price", type="number", format="float", nullable=true),
  *     @OA\Property(property="is_active", type="boolean"),
  * )
  *
@@ -80,9 +79,11 @@ namespace App\OpenApi;
  *     schema="InventoryRequest",
  *     type="object",
  *     required={"warehouse_id", "product_variant_id", "quantity"},
- *     @OA\Property(property="warehouse_id", type="integer"),
- *     @OA\Property(property="product_variant_id", type="integer"),
+ *     description="POST adds quantity to stock; PUT sets the counted on-hand quantity. Both write a stock movement.",
+ *     @OA\Property(property="warehouse_id", type="integer", description="POST only"),
+ *     @OA\Property(property="product_variant_id", type="integer", description="POST only"),
  *     @OA\Property(property="quantity", type="integer"),
+ *     @OA\Property(property="note", type="string", nullable=true, maxLength=255),
  * )
  *
  * @OA\Schema(
@@ -103,7 +104,6 @@ namespace App\OpenApi;
  *     @OA\Property(property="email", type="string", format="email", maxLength=150),
  *     @OA\Property(property="password", type="string", format="password", minLength=6),
  *     @OA\Property(property="mobile_number", type="string", nullable=true, maxLength=20),
- *     @OA\Property(property="cafe_id", type="integer", nullable=true),
  * )
  *
  * @OA\Schema(
@@ -133,7 +133,6 @@ namespace App\OpenApi;
  *     @OA\Property(property="mobile_number", type="string", nullable=true, maxLength=20),
  *     @OA\Property(property="password", type="string", format="password"),
  *     @OA\Property(property="user_type_id", type="integer"),
- *     @OA\Property(property="cafe_id", type="integer", nullable=true),
  *     @OA\Property(property="is_active", type="boolean"),
  * )
  *
@@ -145,31 +144,29 @@ namespace App\OpenApi;
  *     @OA\Property(property="email", type="string", format="email", maxLength=150),
  *     @OA\Property(property="mobile_number", type="string", nullable=true, maxLength=20),
  *     @OA\Property(property="password", type="string", format="password", minLength=6),
- *     @OA\Property(property="cafe_id", type="integer", nullable=true),
  *     @OA\Property(property="is_active", type="boolean"),
+ *     @OA\Property(property="latitude", type="number", nullable=true, description="Stored on delegate_profiles"),
+ *     @OA\Property(property="longitude", type="number", nullable=true, description="Stored on delegate_profiles"),
+ *     @OA\Property(property="is_available", type="boolean", description="Stored on delegate_profiles"),
  * )
  *
  * @OA\Schema(
  *     schema="OrderItemRequest",
  *     type="object",
- *     required={"product_variant_id", "quantity", "unit_price"},
+ *     required={"product_variant_id", "quantity"},
+ *     description="Unit price is always taken from the variant on the server.",
  *     @OA\Property(property="product_variant_id", type="integer"),
- *     @OA\Property(property="quantity", type="integer"),
- *     @OA\Property(property="unit_price", type="number", format="float"),
+ *     @OA\Property(property="quantity", type="integer", minimum=1),
  * )
  *
  * @OA\Schema(
  *     schema="OrderRequest",
  *     type="object",
- *     required={"user_id", "branch_id", "status", "total_amount"},
- *     @OA\Property(property="user_id", type="integer"),
- *     @OA\Property(property="branch_id", type="integer"),
+ *     required={"user_id", "address_id", "items"},
+ *     description="Totals, delivery fee and the delivery address snapshot are computed on the server.",
+ *     @OA\Property(property="user_id", type="integer", description="The customer the order is for"),
+ *     @OA\Property(property="address_id", type="integer", description="Must belong to the customer"),
  *     @OA\Property(property="delegate_id", type="integer", nullable=true),
- *     @OA\Property(property="delivery_zone_id", type="integer", nullable=true),
- *     @OA\Property(property="delivery_fee", type="number", format="float"),
- *     @OA\Property(property="order_date", type="string", format="date-time"),
- *     @OA\Property(property="status", type="string", maxLength=30),
- *     @OA\Property(property="total_amount", type="number", format="float"),
  *     @OA\Property(
  *         property="items",
  *         type="array",
@@ -180,8 +177,8 @@ namespace App\OpenApi;
  * @OA\Schema(
  *     schema="CafeOrderRequest",
  *     type="object",
- *     required={"branch_id", "items"},
- *     @OA\Property(property="branch_id", type="integer"),
+ *     required={"address_id", "items"},
+ *     @OA\Property(property="address_id", type="integer"),
  *     @OA\Property(
  *         property="items",
  *         type="array",
@@ -190,21 +187,39 @@ namespace App\OpenApi;
  * )
  *
  * @OA\Schema(
- *     schema="CartRequest",
+ *     schema="RecurringCartRequest",
  *     type="object",
- *     required={"user_id", "branch_id"},
- *     @OA\Property(property="user_id", type="integer"),
- *     @OA\Property(property="branch_id", type="integer"),
- *     @OA\Property(property="status", type="string", maxLength=20),
+ *     required={"name", "items"},
+ *     @OA\Property(property="name", type="string", maxLength=100, example="الطلبية الأسبوعية"),
+ *     @OA\Property(
+ *         property="items",
+ *         type="array",
+ *         description="On update, replaces all items",
+ *         @OA\Items(ref="#/components/schemas/OrderItemRequest")
+ *     ),
  * )
  *
  * @OA\Schema(
  *     schema="PurchaseOrderRequest",
  *     type="object",
- *     required={"warehouse_id", "status"},
+ *     required={"warehouse_id"},
+ *     description="Created as draft. POST /purchase-orders/{id}/receive adds the items to stock.",
  *     @OA\Property(property="warehouse_id", type="integer"),
- *     @OA\Property(property="order_date", type="string", format="date-time"),
- *     @OA\Property(property="status", type="string", maxLength=20),
+ *     @OA\Property(property="note", type="string", nullable=true, maxLength=255),
+ *     @OA\Property(
+ *         property="items",
+ *         type="array",
+ *         description="On update, replaces all items",
+ *         @OA\Items(
+ *             type="object",
+ *             required={"product_variant_id", "quantity", "unit_cost"},
+ *             @OA\Property(property="product_variant_id", type="integer"),
+ *             @OA\Property(property="quantity", type="integer"),
+ *             @OA\Property(property="unit_cost", type="number", format="float"),
+ *             @OA\Property(property="manufacturing_year", type="integer", nullable=true),
+ *             @OA\Property(property="expiry_date", type="string", format="date", nullable=true)
+ *         )
+ *     ),
  * )
  *
  * @OA\Schema(

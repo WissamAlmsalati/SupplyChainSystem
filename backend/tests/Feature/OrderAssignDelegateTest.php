@@ -2,9 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Address;
 use App\Models\AppUser;
-use App\Models\Cafe;
-use App\Models\CafeBranch;
 use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\Permission;
@@ -36,7 +35,7 @@ class OrderAssignDelegateTest extends TestCase
             'name' => 'Admin User',
             'email' => 'admin@test.com',
             'mobile_number' => '0922222222',
-            'password_hash' => bcrypt('password'),
+            'password' => bcrypt('password'),
             'user_type_id' => $adminType->id,
             'is_active' => true,
         ]);
@@ -45,12 +44,11 @@ class OrderAssignDelegateTest extends TestCase
             'name' => 'Delegate One',
             'email' => 'delegate1@test.com',
             'mobile_number' => '0933333333',
-            'password_hash' => bcrypt('password'),
+            'password' => bcrypt('password'),
             'user_type_id' => $delegateType->id,
             'is_active' => true,
         ]);
 
-        $cafe = Cafe::create(['name' => 'مقهى اختبار', 'contact_info' => '0911111111', 'is_active' => true]);
         $zone = DeliveryZone::create([
             'hex_id' => '842da29ffffffff',
             'name' => 'منطقة اختبار',
@@ -59,8 +57,8 @@ class OrderAssignDelegateTest extends TestCase
             'longitude' => 17.0,
             'is_active' => true,
         ]);
-        $branch = CafeBranch::create([
-            'cafe_id' => $cafe->id,
+        $address = Address::create([
+            'user_id' => $this->adminUser->id,
             'name' => 'فرع رئيسي',
             'city' => 'طرابلس',
             'street' => 'الشارع الرئيسي',
@@ -72,12 +70,13 @@ class OrderAssignDelegateTest extends TestCase
 
         $this->order = Order::create([
             'user_id' => $this->adminUser->id,
-            'branch_id' => $branch->id,
+            'address_id' => $address->id,
             'delivery_zone_id' => $zone->id,
             'delivery_fee' => 5,
-            'order_date' => now(),
+            'subtotal' => 10,
+            'placed_at' => now(),
             'status' => 'pending',
-            'source' => 'admin',
+            'source' => 'dashboard',
             'total_amount' => 15,
         ]);
     }
@@ -102,7 +101,7 @@ class OrderAssignDelegateTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('order', [
+        $this->assertDatabaseHas('orders', [
             'id' => $this->order->id,
             'delegate_id' => $this->delegate->id,
         ]);

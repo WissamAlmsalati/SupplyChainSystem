@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css'
 import Button from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import DataTable from '../components/DataTable'
+import Badge from '../components/ui/Badge'
 import { StatusBadge } from '../lib/status'
 import { PageSkeleton } from '../components/ui/Skeleton'
 
@@ -43,7 +44,16 @@ export default function DelegateDetail() {
     setError('')
     try {
       const res = await client.get(`/delegates/${id}`)
-      setDelegate(res.data?.data ?? res.data)
+      const data = res.data?.data ?? res.data
+      const profile = data?.delegate_profile ?? {}
+      // Location fields live on delegate_profile; flatten to match the live broadcast shape.
+      setDelegate({
+        ...data,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
+        is_available: profile.is_available,
+        location_updated_at: profile.location_updated_at,
+      })
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تحميل بيانات المندوب')
     } finally {
@@ -118,7 +128,7 @@ export default function DelegateDetail() {
   const orderColumns = [
     { key: 'order_number', label: 'رقم الطلب', render: (r) => r.order_number ?? `#${r.id}` },
     { key: 'id', label: '#' },
-    { key: 'branch', label: 'الفرع', render: (r) => r.branch?.name ?? '-' },
+    { key: 'address', label: 'العنوان', render: (r) => r.delivery_address_name ?? '-' },
     {
       key: 'status',
       label: 'الحالة',

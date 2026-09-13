@@ -2,40 +2,26 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\OrderStatusLogRequest;
 use App\Models\OrderStatusLog;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
-/**
- * @OA\Tag(name="Admin Orders", description="Admin platform order management")
- */
+// Read-only; logs are written automatically when an order's status changes.
 class OrderStatusLogController extends BaseApiController
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return $this->jsonResponse(OrderStatusLog::with(['order', 'changedBy'])->orderByDesc('id')->paginate(15));
-    }
+        $query = OrderStatusLog::with(['order', 'changedBy']);
 
-    public function store(OrderStatusLogRequest $request): JsonResponse
-    {
-        $log = OrderStatusLog::create($request->validated());
-        return $this->jsonResponse($log->load(['order', 'changedBy']), 201);
+        if ($request->filled('order_id')) {
+            $query->where('order_id', $request->integer('order_id'));
+        }
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
     }
 
     public function show(OrderStatusLog $orderStatusLog): JsonResponse
     {
         return $this->jsonResponse($orderStatusLog->load(['order', 'changedBy']));
-    }
-
-    public function update(OrderStatusLogRequest $request, OrderStatusLog $orderStatusLog): JsonResponse
-    {
-        $orderStatusLog->update($request->validated());
-        return $this->jsonResponse($orderStatusLog->load(['order', 'changedBy']));
-    }
-
-    public function destroy(OrderStatusLog $orderStatusLog): JsonResponse
-    {
-        $orderStatusLog->delete();
-        return $this->jsonResponse(null, 204);
     }
 }

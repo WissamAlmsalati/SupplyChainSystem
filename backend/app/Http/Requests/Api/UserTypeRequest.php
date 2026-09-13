@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UserTypeRequest extends FormRequest
 {
@@ -13,12 +14,10 @@ class UserTypeRequest extends FormRequest
 
     public function rules(): array
     {
-        $userTypeId = $this->route('user_type')?->id;
-
         return [
-            'name' => ['required', 'string', 'max:50', 'unique:user_type,name' . ($userTypeId ? ",$userTypeId" : '')],
+            'name' => ['required', 'string', 'max:50', Rule::unique('user_types', 'name')->ignore($this->route('user_type')?->id)],
             'permission_ids' => ['nullable', 'array'],
-            'permission_ids.*' => ['integer', 'exists:permission,id'],
+            'permission_ids.*' => ['integer', 'exists:permissions,id'],
         ];
     }
 }

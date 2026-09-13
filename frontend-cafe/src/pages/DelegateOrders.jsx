@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import client from '../api/client'
 
 const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
+  pending: 'قيد الانتظار',
+  confirmed: 'مؤكد',
+  preparing: 'قيد التجهيز',
+  out_for_delivery: 'في الطريق',
   delivered: 'تم التوصيل',
+  received: 'تم الاستلام',
+  cancellation_requested: 'طلب إلغاء',
   cancelled: 'ملغي',
-  failed: 'فاشل',
 }
 
 const statusColors = {
@@ -20,7 +22,7 @@ const statusColors = {
   failed: '#dc2626',
 }
 
-const availableStatuses = ['pending', 'processing', 'completed', 'delivered', 'cancelled', 'failed']
+const availableStatuses = Object.keys(statusLabels)
 
 function formatMoney(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -93,7 +95,7 @@ export default function DelegateOrders() {
             <tr>
               <th className="px-4 py-3 text-start">#</th>
               <th className="px-4 py-3 text-start">العميل</th>
-              <th className="px-4 py-3 text-start">الفرع</th>
+              <th className="px-4 py-3 text-start">العنوان</th>
               <th className="px-4 py-3 text-start">الحالة</th>
               <th className="px-4 py-3 text-end">الإجمالي</th>
               <th className="px-4 py-3 text-start">التاريخ</th>
@@ -120,7 +122,7 @@ export default function DelegateOrders() {
                 <tr key={o.id} className="hover:bg-background/50">
                   <td className="px-4 py-3">#{o.id}</td>
                   <td className="px-4 py-3">{o.user?.name ?? '-'}</td>
-                  <td className="px-4 py-3">{o.branch?.name ?? '-'}</td>
+                  <td className="px-4 py-3">{o.delivery_address_name ?? '-'}</td>
                   <td className="px-4 py-3">
                     <select
                       value={o.status}
@@ -135,7 +137,7 @@ export default function DelegateOrders() {
                   </td>
                   <td className="px-4 py-3 text-end font-medium">{formatMoney(o.total_amount)} د.ل</td>
                   <td className="px-4 py-3 text-muted">
-                    {o.order_date ? new Date(o.order_date).toLocaleDateString('en-US') : '-'}
+                    {o.placed_at ? new Date(o.placed_at).toLocaleDateString('en-US') : '-'}
                   </td>
                   <td className="px-4 py-3">
                     <button

@@ -10,11 +10,12 @@ import Orders from './pages/Orders'
 import DelegateOrders from './pages/DelegateOrders'
 import DelegateOrderDetail from './pages/DelegateOrderDetail'
 import CafeOrderDetail from './pages/CafeOrderDetail'
-import Branches from './pages/Branches'
+import Addresses from './pages/Addresses'
 import Profile from './pages/Profile'
 import Products from './pages/Products'
 import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
+import RecurringCarts from './pages/RecurringCarts'
 import { useAuth } from './context/AuthContext'
 
 function HomeRedirect() {
@@ -43,10 +44,11 @@ function App() {
         <Route path="/delegate" element={isDelegate ? <DelegateDashboard /> : <Navigate to="/" replace />} />
         <Route path="/orders" element={isDelegate ? <DelegateOrders /> : <Orders />} />
         <Route path="/orders/:id" element={isDelegate ? <DelegateOrderDetail /> : <CafeOrderDetail />} />
-        <Route path="/branches" element={isDelegate ? <Navigate to="/" replace /> : <Branches />} />
+        <Route path="/addresses" element={isDelegate ? <Navigate to="/" replace /> : <Addresses />} />
         <Route path="/products" element={isDelegate ? <Navigate to="/" replace /> : <Products />} />
         <Route path="/products/:id" element={isDelegate ? <Navigate to="/" replace /> : <ProductDetail />} />
         <Route path="/cart" element={<Cart />} />
+        <Route path="/recurring-carts" element={isDelegate ? <Navigate to="/" replace /> : <RecurringCarts />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

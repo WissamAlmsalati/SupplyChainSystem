@@ -2,9 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Address;
 use App\Models\AppUser;
-use App\Models\Cafe;
-use App\Models\CafeBranch;
 use App\Models\Category;
 use App\Models\DeliveryZone;
 use App\Models\Inventory;
@@ -22,8 +21,7 @@ class CafeMobileEndpointsTest extends TestCase
     use RefreshDatabase;
 
     protected AppUser $cafeUser;
-    protected Cafe $cafe;
-    protected CafeBranch $branch;
+    protected Address $address;
     protected ProductVariant $variant;
     protected Warehouse $warehouse;
 
@@ -45,21 +43,14 @@ class CafeMobileEndpointsTest extends TestCase
 
         PremiumFeature::create(['code' => 'cafe_branches', 'name' => 'فروع المقاهي', 'is_active' => true]);
 
-        $this->cafe = Cafe::create([
-            'name' => 'مقهى اختبار',
-            'contact_info' => '0911111111',
-            'is_active' => true,
-        ]);
-
         $this->cafeUser = AppUser::create([
             'name' => 'Cafe Owner',
             'email' => 'cafe@test.com',
             'mobile_number' => '0911111111',
-            'password_hash' => bcrypt('password'),
+            'password' => bcrypt('password'),
             'user_type_id' => $cafeType->id,
             'is_active' => true,
         ]);
-        $this->cafeUser->syncCafeUser(['cafe_id' => $this->cafe->id]);
 
         $zone = DeliveryZone::create([
             'hex_id' => '842da29ffffffff',
@@ -70,8 +61,8 @@ class CafeMobileEndpointsTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->branch = CafeBranch::create([
-            'cafe_id' => $this->cafe->id,
+        $this->address = Address::create([
+            'user_id' => $this->cafeUser->id,
             'name' => 'فرع رئيسي',
             'city' => 'طرابلس',
             'street' => 'الشارع الرئيسي',
@@ -100,9 +91,15 @@ class CafeMobileEndpointsTest extends TestCase
         $this->variant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'TEST-001',
-            'attribute_value' => 'افتراضي',
+            'name' => 'افتراضي',
             'price' => 10,
             'is_active' => true,
+        ]);
+
+        Inventory::create([
+            'warehouse_id' => $this->warehouse->id,
+            'product_variant_id' => $this->variant->id,
+            'quantity' => 100,
         ]);
     }
 
@@ -153,39 +150,43 @@ class CafeMobileEndpointsTest extends TestCase
     public function test_cafe_profile(): void
     {
         $token = $this->token();
-        $this->getJson('/api/v1/cafe/profile', ['Authorization' => "Bearer $token"])
-            ->assertOk()
-            ->assertJsonPath('cafe.name', 'مقهى اختبار');
+        $res = $this->getJson('/api/v1/cafe/profile', ['Authorization' => "Bearer $token"]);
+        $res->assertOk()
+            ->assertJsonPath('user.email', 'cafe@test.com')
+            ->assertJsonMissingPath('has_cafe');
+        $this->assertCount(1, $res->json('addresses'));
     }
 
-    public function test_cafe_branches_list(): void
+    public function test_cafe_addresses_list(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/v1/cafe/branches', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/cafe/addresses', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
-        $this->assertCount(1, $res->json('data'));
+        $this->assertCount(1, $res->json('data.addresses'));
+        $this->assertArrayHasKey('delivery_price', $res->json('data'));
     }
 
-    public function test_cafe_branch_create(): void
+    public function test_cafe_address_create(): void
     {
         $token = $this->token();
-        $res = $this->postJson('/api/v1/cafe/branches', [
-            'name' => 'فرع جديد',
+        $res = $this->postJson('/api/v1/cafe/addresses', [
+            'name' => 'عنوان جديد',
             'city' => 'بنغازي',
             'street' => 'شارع جمال',
             'latitude' => 27.1,
             'longitude' => 17.1,
+            'contact_phones' => ['0912345678'],
             'is_active' => true,
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertCreated();
-        $this->assertDatabaseHas('cafe_branch', ['name' => 'فرع جديد']);
+        $this->assertDatabaseHas('addresses', ['name' => 'عنوان جديد']);
     }
 
-    public function test_cafe_branch_orders(): void
+    public function test_cafe_address_orders(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/v1/cafe/branches/' . $this->branch->id . '/orders', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/cafe/addresses/' . $this->address->id . '/orders', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
         $this->assertIsArray($res->json('data'));
     }
@@ -202,7 +203,7 @@ class CafeMobileEndpointsTest extends TestCase
     {
         $token = $this->token();
         $res = $this->postJson('/api/v1/cafe/orders', [
-            'branch_id' => $this->branch->id,
+            'address_id' => $this->address->id,
             'items' => [
                 [
                     'product_variant_id' => $this->variant->id,
@@ -213,8 +214,8 @@ class CafeMobileEndpointsTest extends TestCase
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertCreated();
-        $this->assertDatabaseHas('order', [
-            'branch_id' => $this->branch->id,
+        $this->assertDatabaseHas('orders', [
+            'address_id' => $this->address->id,
             'user_id' => $this->cafeUser->id,
             'status' => 'pending',
         ]);
@@ -246,12 +247,6 @@ class CafeMobileEndpointsTest extends TestCase
 
     public function test_cafe_inventory_list(): void
     {
-        Inventory::create([
-            'warehouse_id' => $this->warehouse->id,
-            'product_variant_id' => $this->variant->id,
-            'quantity' => 100,
-        ]);
-
         $token = $this->token();
         $res = $this->getJson('/api/v1/inventory', ['Authorization' => "Bearer $token"]);
         $res->assertOk();

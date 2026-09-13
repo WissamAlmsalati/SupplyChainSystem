@@ -3,16 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 
 const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
+  pending: 'قيد الانتظار',
+  confirmed: 'مؤكد',
+  preparing: 'قيد التجهيز',
+  out_for_delivery: 'في الطريق',
   delivered: 'تم التوصيل',
   received: 'تم الاستلام',
   cancellation_requested: 'طلب إلغاء',
   cancelled: 'ملغي',
-  failed: 'فاشل',
-  confirmed: 'مؤكد',
-  shipped: 'تم الشحن',
 }
 
 const statusColors = {
@@ -132,15 +130,15 @@ export default function CafeOrderDetail() {
         </div>
 
         <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-          <div className="text-sm text-muted">الفرع</div>
-          <div className="mt-2 font-semibold text-foreground">{order.branch?.name ?? '-'}</div>
-          <div className="text-sm text-muted">{order.branch?.city ?? ''}</div>
+          <div className="text-sm text-muted">العنوان</div>
+          <div className="mt-2 font-semibold text-foreground">{order.delivery_address_name ?? '-'}</div>
+          <div className="text-sm text-muted">{order.delivery_city ?? ''}</div>
         </div>
 
         <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
           <div className="text-sm text-muted">التاريخ</div>
           <div className="mt-2 font-semibold text-foreground">
-            {order.order_date ? new Date(order.order_date).toLocaleString('en-US') : '-'}
+            {order.placed_at ? new Date(order.placed_at).toLocaleString('en-US') : '-'}
           </div>
           <div className="mt-2 text-sm text-muted">الإجمالي: {formatMoney(order.total_amount)} د.ل</div>
         </div>
@@ -165,8 +163,8 @@ export default function CafeOrderDetail() {
               const lineTotal = (Number(item.quantity) || 0) * (Number(item.unit_price) || 0)
               return (
                 <tr key={item.id}>
-                  <td className="py-3 text-foreground">{product?.name ?? 'منتج'}</td>
-                  <td className="py-3 text-muted">{variant?.attribute_value ?? '-'}</td>
+                  <td className="py-3 text-foreground">{item.product_name ?? product?.name ?? 'منتج'}</td>
+                  <td className="py-3 text-muted">{item.variant_name ?? '-'}</td>
                   <td className="py-3 text-center">{item.quantity}</td>
                   <td className="py-3 text-end">{formatMoney(item.unit_price)} د.ل</td>
                   <td className="py-3 text-end font-medium">{formatMoney(lineTotal)} د.ل</td>

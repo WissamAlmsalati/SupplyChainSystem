@@ -10,15 +10,20 @@ class OrderItem extends Model
 {
     use HasFactory;
 
-    protected $table = 'order_item';
-
     public $timestamps = false;
 
     protected $fillable = [
         'order_id',
         'product_variant_id',
+        'product_name',
+        'variant_name',
         'quantity',
         'unit_price',
+    ];
+
+    protected $casts = [
+        'quantity' => 'integer',
+        'unit_price' => 'decimal:2',
     ];
 
     public function order(): BelongsTo
@@ -28,6 +33,6 @@ class OrderItem extends Model
 
     public function productVariant(): BelongsTo
     {
-        return $this->belongsTo(ProductVariant::class);
+        return $this->belongsTo(ProductVariant::class)->withTrashed();
     }
 }

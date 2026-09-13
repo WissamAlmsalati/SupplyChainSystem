@@ -23,7 +23,7 @@ export default function Dashboard() {
   const { addItem, cart } = useCart()
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
-  const [branches, setBranches] = useState([])
+  const [addresses, setAddresses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [adding, setAdding] = useState(null)
@@ -32,14 +32,14 @@ export default function Dashboard() {
     async function load() {
       setLoading(true)
       try {
-        const [categoriesRes, productsRes, branchesRes] = await Promise.all([
+        const [categoriesRes, productsRes, addressesRes] = await Promise.all([
           client.get('/cafe/categories'),
           client.get('/cafe/products'),
-          client.get('/cafe/branches'),
+          client.get('/cafe/addresses'),
         ])
         setCategories(categoriesRes.data?.data ?? [])
         setProducts(productsRes.data?.data ?? [])
-        setBranches(branchesRes.data?.data ?? [])
+        setAddresses(addressesRes.data?.data?.addresses ?? [])
       } catch (err) {
         setError(err.response?.data?.message || 'فشل التحميل')
       } finally {
@@ -50,19 +50,12 @@ export default function Dashboard() {
   }, [])
 
   const featured = products.slice(0, 8)
-  const cartBranchId = cart?.branch_id
-
   const handleAdd = async (product, e) => {
     e.stopPropagation()
-    const branchId = cartBranchId || branches[0]?.id
-    if (!branchId) {
-      setError('لا يوجد فرع، أضف فرعًا أولاً.')
-      return
-    }
     if (!product.default_variant_id) return
     setAdding(product.id)
     try {
-      await addItem(branchId, product.default_variant_id, 1)
+      await addItem(product.default_variant_id, 1)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل الإضافة إلى السلة')
     } finally {
@@ -77,7 +70,7 @@ export default function Dashboard() {
         <div className="relative z-10 max-w-xl">
           <h1 className="text-3xl font-extrabold sm:text-4xl">كل مستلزمات مقهاك في مكان واحد</h1>
           <p className="mt-3 text-primary-foreground/90">
-            اطلب المنتجات بسهولة، تابع طلباتك، ودير فروعك من تطبيق الساحل.
+            اطلب المنتجات بسهولة، تابع طلباتك، ودير عناوينك من تطبيق الساحل.
           </p>
           <button
             onClick={() => navigate('/products')}

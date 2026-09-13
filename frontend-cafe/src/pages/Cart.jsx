@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import client from '../api/client'
 import { useCart } from '../context/CartContext'
 
 function formatMoney(value) {
@@ -11,15 +12,31 @@ function formatMoney(value) {
 export default function Cart() {
   const navigate = useNavigate()
   const { cart, updateItem, removeItem, clearCart, checkout } = useCart()
+  const [addresses, setAddresses] = useState([])
+  const [addressId, setAddressId] = useState('')
   const [updating, setUpdating] = useState(null)
   const [checkingOut, setCheckingOut] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [recurringName, setRecurringName] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  useEffect(() => {
+    client.get('/cafe/addresses')
+      .then((res) => {
+        const list = res.data?.data?.addresses ?? []
+        setAddresses(list)
+        const preferred = list.find((a) => a.is_default) ?? list[0]
+        if (preferred) setAddressId(String(preferred.id))
+      })
+      .catch(() => setAddresses([]))
+  }, [])
+
   const items = cart?.items ?? []
-  const branch = cart?.branch
-  const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.price_at_add) || 0), 0)
-  const deliveryFee = Number(branch?.delivery_zone?.delivery_price) || 0
+  const address = addresses.find((a) => String(a.id) === addressId)
+  const unitPrice = (item) => Number(item.product_variant?.price) || 0
+  const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * unitPrice(item), 0)
+  const deliveryFee = Number(address?.delivery_zone?.delivery_price) || 0
   const total = subtotal + deliveryFee
 
   const handleUpdate = async (item, quantity) => {
@@ -49,18 +66,41 @@ export default function Cart() {
 
   const handleCheckout = async () => {
     if (items.length === 0) return
+    if (!addressId) {
+      setError('اختر عنوان التوصيل أولاً')
+      return
+    }
     setCheckingOut(true)
     setError('')
     setSuccess('')
     try {
-      const res = await checkout()
-      const orderId = res.data?.id ?? res.id
-      setSuccess(`${res.message || 'تم إنشاء الطلب بنجاح'} — رقم الطلب: ${orderId}`)
+      const res = await checkout(Number(addressId))
+      const orderNumber = res.data?.order_number ?? res.data?.id
+      setSuccess(`${res.message || 'تم إنشاء الطلب بنجاح'} — رقم الطلب: ${orderNumber}`)
       setTimeout(() => navigate('/orders'), 2000)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل إتمام الطلب')
     } finally {
       setCheckingOut(false)
+    }
+  }
+
+  // Saves the current items as a named recurring cart the customer can re-order later.
+  const handleSaveRecurring = async () => {
+    if (!recurringName.trim() || items.length === 0) return
+    setSaving(true)
+    setError('')
+    try {
+      await client.post('/cafe/recurring-carts', {
+        name: recurringName.trim(),
+        items: items.map((i) => ({ product_variant_id: i.product_variant_id, quantity: Number(i.quantity) })),
+      })
+      setRecurringName('')
+      setSuccess('تم حفظ السلة كطلبية متكررة')
+    } catch (err) {
+      setError(err.response?.data?.message || 'فشل حفظ الطلبية المتكررة')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -93,15 +133,23 @@ export default function Cart() {
         </div>
       )}
 
-      {items.length === 0 && !success ? (
+      {items.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface p-8 text-center text-muted">
           السلة فارغة.
-          <button
-            onClick={() => navigate('/products')}
-            className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-          >
-            تسوق الآن
-          </button>
+          <div className="mt-4 flex justify-center gap-2">
+            <button
+              onClick={() => navigate('/products')}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              تسوق الآن
+            </button>
+            <button
+              onClick={() => navigate('/recurring-carts')}
+              className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
+            >
+              طلبياتي المتكررة
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
@@ -109,7 +157,7 @@ export default function Cart() {
             {items.map((item) => {
               const variant = item.product_variant
               const product = variant?.product
-              const lineTotal = (Number(item.quantity) || 0) * (Number(item.price_at_add) || 0)
+              const lineTotal = (Number(item.quantity) || 0) * unitPrice(item)
               return (
                 <div
                   key={item.id}
@@ -117,10 +165,8 @@ export default function Cart() {
                 >
                   <div className="flex-1">
                     <div className="font-semibold text-foreground">{product?.name || 'منتج'}</div>
-                    <div className="text-sm text-muted">
-                      {variant?.attribute_value ? `الحجم: ${variant.attribute_value}` : ''}
-                    </div>
-                    <div className="text-sm text-muted">{formatMoney(item.price_at_add)} د.ل / وحدة</div>
+                    <div className="text-sm text-muted">{variant?.name ? `الحجم: ${variant.name}` : ''}</div>
+                    <div className="text-sm text-muted">{formatMoney(unitPrice(item))} د.ل / وحدة</div>
                   </div>
                   <div className="flex items-center gap-3">
                     <button
@@ -154,40 +200,69 @@ export default function Cart() {
             })}
           </div>
 
-          <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-            <h2 className="mb-4 font-semibold text-foreground">ملخص الطلب</h2>
-            {branch && (
-              <div className="mb-4 text-sm text-muted">
-                الفرع: <span className="text-foreground">{branch.name}</span>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+              <h2 className="mb-4 font-semibold text-foreground">ملخص الطلب</h2>
+              <label className="mb-1.5 block text-sm font-medium text-muted">عنوان التوصيل</label>
+              {addresses.length === 0 ? (
+                <div className="mb-4 text-sm text-danger">لا يوجد عنوان، أضف عنوانًا أولاً.</div>
+              ) : (
+                <select
+                  value={addressId}
+                  onChange={(e) => setAddressId(e.target.value)}
+                  className="mb-4 w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                >
+                  {addresses.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}{a.city ? ` — ${a.city}` : ''}</option>
+                  ))}
+                </select>
+              )}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-muted">
+                  <span>المجموع</span>
+                  <span>{formatMoney(subtotal)} د.ل</span>
+                </div>
+                <div className="flex justify-between text-muted">
+                  <span>التوصيل</span>
+                  <span>{formatMoney(deliveryFee)} د.ل</span>
+                </div>
+                <div className="flex justify-between border-t border-border pt-2 text-lg font-bold text-foreground">
+                  <span>الإجمالي</span>
+                  <span>{formatMoney(total)} د.ل</span>
+                </div>
               </div>
-            )}
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-muted">
-                <span>المجموع</span>
-                <span>{formatMoney(subtotal)} د.ل</span>
-              </div>
-              <div className="flex justify-between text-muted">
-                <span>التوصيل</span>
-                <span>{formatMoney(deliveryFee)} د.ل</span>
-              </div>
-              <div className="flex justify-between border-t border-border pt-2 text-lg font-bold text-foreground">
-                <span>الإجمالي</span>
-                <span>{formatMoney(total)} د.ل</span>
-              </div>
+              <button
+                onClick={handleCheckout}
+                disabled={checkingOut || items.length === 0 || !addressId}
+                className="mt-5 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+              >
+                {checkingOut ? 'جاري إتمام الطلب...' : 'إتمام الطلب'}
+              </button>
+              <button
+                onClick={() => navigate('/products')}
+                className="mt-2 w-full rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
+              >
+                مواصلة التسوق
+              </button>
             </div>
-            <button
-              onClick={handleCheckout}
-              disabled={checkingOut || items.length === 0}
-              className="mt-5 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-            >
-              {checkingOut ? 'جاري إتمام الطلب...' : 'إتمام الطلب'}
-            </button>
-            <button
-              onClick={() => navigate('/products')}
-              className="mt-2 w-full rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
-            >
-              مواصلة التسوق
-            </button>
+
+            <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+              <h2 className="mb-2 font-semibold text-foreground">حفظ كطلبية متكررة</h2>
+              <p className="mb-3 text-sm text-muted">احفظ هذه السلة باسم لتطلبها مرة أخرى بضغطة واحدة.</p>
+              <input
+                value={recurringName}
+                onChange={(e) => setRecurringName(e.target.value)}
+                placeholder="مثال: الطلبية الأسبوعية"
+                className="mb-2 w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              />
+              <button
+                onClick={handleSaveRecurring}
+                disabled={saving || !recurringName.trim()}
+                className="w-full rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5 disabled:opacity-60"
+              >
+                {saving ? 'جاري الحفظ...' : 'حفظ'}
+              </button>
+            </div>
           </div>
         </div>
       )}

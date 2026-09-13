@@ -17,8 +17,7 @@ const operationLabels = {
 }
 
 const moduleLabels = {
-  cafes: 'المقاهي',
-  cafe_branches: 'فروع المقاهي',
+  cafe_branches: 'العناوين',
   categories: 'التصنيفات',
   products: 'المنتجات',
   inventory: 'المخزون',
@@ -83,7 +82,13 @@ export default function UserTypeDetail() {
     { key: 'name', label: 'الاسم' },
     { key: 'email', label: 'البريد الإلكتروني' },
     { key: 'mobile_number', label: 'الجوال' },
-    { key: 'cafe', label: 'المقهى', render: (r) => r.cafe?.name ?? '-' },
+    {
+      key: 'addresses',
+      label: 'العناوين',
+      render: (r) => (
+        <Button variant="secondary" size="sm" onClick={() => navigate(`/addresses?user_id=${r.id}`)}>العناوين</Button>
+      ),
+    },
     {
       key: 'is_active',
       label: 'الحالة',

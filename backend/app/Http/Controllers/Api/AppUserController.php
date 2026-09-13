@@ -8,22 +8,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
-/**
- * @OA\Tag(name="Admin Users", description="Admin platform user management")
- */
 class AppUserController extends BaseApiController
 {
-    /**
-     * @OA\Get(
-     *     path="/users",
-     *     tags={"Admin Users"},
-     *     summary="List app users",
-     *     @OA\Response(response=200, description="Paginated list of app users")
-     * )
-     */
+    private const PROFILES = ['adminProfile', 'customerProfile', 'delegateProfile'];
+
     public function index(Request $request): JsonResponse
     {
-        $query = AppUser::with(['userType', 'cafe', 'cafeUser']);
+        $query = AppUser::with('userType');
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -35,88 +26,58 @@ class AppUserController extends BaseApiController
         }
 
         if ($request->filled('user_type_id')) {
-            $query->where('user_type_id', $request->integer('user_type_id'));
+            $ids = array_filter(array_map('intval', explode(',', $request->input('user_type_id'))));
+            $query->whereIn('user_type_id', $ids);
+        }
+
+        if ($request->filled('user_type')) {
+            $names = array_filter(array_map('trim', explode(',', $request->input('user_type'))));
+            $query->whereHas('userType', fn ($q) => $q->whereIn('name', $names));
         }
 
         if ($request->filled('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
+        $perPage = $request->integer('per_page', 15);
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
     }
 
-    /**
-     * @OA\Post(
-     *     path="/users",
-     *     tags={"Admin Users"},
-     *     summary="Create an app user",
-     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AppUserRequest")),
-     *     @OA\Response(response=201, description="App user created"),
-     *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
-     * )
-     */
     public function store(AppUserRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $data['password_hash'] = Hash::make($data['password']);
-        unset($data['password']);
+        $data['password'] = Hash::make($data['password']);
 
-        $user = AppUser::create(collect($data)->except(['cafe_id', 'latitude', 'longitude', 'is_available'])->all());
-        $user->syncCafeUser($data);
-        return $this->jsonResponse($user->load(['userType', 'cafe', 'cafeUser']), 201);
+        $user = AppUser::create($data);
+
+        return $this->jsonResponse($user->load(['userType', ...self::PROFILES]), 201);
     }
 
-    /**
-     * @OA\Get(
-     *     path="/users/{id}",
-     *     tags={"Admin Users"},
-     *     summary="Get an app user",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="App user details"),
-     *     @OA\Response(response=404, description="Not found")
-     * )
-     */
     public function show(AppUser $user): JsonResponse
     {
-        return $this->jsonResponse($user->load(['userType', 'cafe', 'cafeUser', 'orders']));
+        return $this->jsonResponse($user->load(['userType', 'addresses', 'orders', ...self::PROFILES]));
     }
 
-    /**
-     * @OA\Put(
-     *     path="/users/{id}",
-     *     tags={"Admin Users"},
-     *     summary="Update an app user",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AppUserRequest")),
-     *     @OA\Response(response=200, description="App user updated"),
-     *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
-     * )
-     */
     public function update(AppUserRequest $request, AppUser $user): JsonResponse
     {
         $data = $request->validated();
         if (! empty($data['password'])) {
-            $data['password_hash'] = Hash::make($data['password']);
+            $data['password'] = Hash::make($data['password']);
+        } else {
+            unset($data['password']);
         }
-        unset($data['password']);
 
-        $user->update(collect($data)->except(['cafe_id', 'latitude', 'longitude', 'is_available'])->all());
-        $user->syncCafeUser($data);
-        return $this->jsonResponse($user->load(['userType', 'cafe', 'cafeUser']));
+        $user->update($data);
+
+        return $this->jsonResponse($user->load(['userType', 'addresses', ...self::PROFILES]));
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/users/{id}",
-     *     tags={"Admin Users"},
-     *     summary="Delete an app user",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=204, description="App user deleted")
-     * )
-     */
     public function destroy(AppUser $user): JsonResponse
     {
+        $user->tokens()->delete();
         $user->delete();
+
         return $this->jsonResponse(null, 204);
     }
 }

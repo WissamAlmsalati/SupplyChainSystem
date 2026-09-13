@@ -14,10 +14,12 @@ class PurchaseOrderItemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'purchase_order_id' => ['required', 'integer', 'exists:purchase_order,id'],
-            'product_variant_id' => ['required', 'integer', 'exists:product_variant,id'],
+            'purchase_order_id' => ['required', 'integer', 'exists:purchase_orders,id'],
+            'product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
             'quantity' => ['required', 'integer', 'min:1'],
             'unit_cost' => ['required', 'numeric', 'min:0'],
+            'manufacturing_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
+            'expiry_date' => ['nullable', 'date'],
         ];
     }
 }

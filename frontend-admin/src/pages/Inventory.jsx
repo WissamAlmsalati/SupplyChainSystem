@@ -13,12 +13,12 @@ import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = {
   warehouse_id: '', product_variant_id: '', product_id: '', variant_name: '', quantity: '',
-  cost_price: '', sell_price: '', barcode: '', manufacturing_year: '', expiry_date: '',
+  cost_price: '', price: '', barcode: '',
 }
 
 function variantLabel(v) {
   const productName = v.product?.name ?? 'منتج غير معروف'
-  const variantInfo = v.attribute_value || v.sku || `#${v.id}`
+  const variantInfo = v.name || v.sku || `#${v.id}`
   return `${productName} — ${variantInfo}`
 }
 
@@ -45,11 +45,11 @@ export default function Inventory() {
 
   const variantById = (id) => variants.find((v) => String(v.id) === String(id))
 
-  // ponytail: matching by (product, attribute_value) — the pair is the natural
+  // ponytail: matching by (product, variant name) — the pair is the natural
   // key here; a real unique index would be the upgrade path.
   const findVariantByName = (productId, name) =>
     [...variants, ...createdVariants].find(
-      (v) => String(v.product_id) === String(productId) && (v.attribute_value ?? '') === name.trim()
+      (v) => String(v.product_id) === String(productId) && (v.name ?? '') === name.trim()
     )
 
   const handleImageFiles = (files) => {
@@ -64,10 +64,8 @@ export default function Inventory() {
     return {
       ...base,
       cost_price: v.cost_price ?? '',
-      sell_price: v.sell_price ?? '',
+      price: v.price ?? '',
       barcode: v.barcode ?? '',
-      manufacturing_year: v.manufacturing_year ?? '',
-      expiry_date: v.expiry_date ?? '',
     }
   }
 
@@ -120,24 +118,18 @@ export default function Inventory() {
           await client.put(`/product-variants/${existing.id}`, {
             product_id: existing.product_id,
             sku: existing.sku,
-            attribute_value: existing.attribute_value,
-            price: existing.price,
+            name: existing.name,
+            price: form.price !== '' ? Number(form.price) : existing.price,
             cost_price: form.cost_price ? Number(form.cost_price) : null,
-            sell_price: form.sell_price ? Number(form.sell_price) : null,
             barcode: form.barcode || null,
-            manufacturing_year: form.manufacturing_year ? Number(form.manufacturing_year) : null,
-            expiry_date: form.expiry_date || null,
           })
         } else {
           const res = await client.post('/product-variants', {
             product_id: Number(form.product_id),
-            attribute_value: name,
-            price: form.sell_price ? Number(form.sell_price) : 0,
+            name,
+            price: form.price ? Number(form.price) : 0,
             cost_price: form.cost_price ? Number(form.cost_price) : null,
-            sell_price: form.sell_price ? Number(form.sell_price) : null,
             barcode: form.barcode || null,
-            manufacturing_year: form.manufacturing_year ? Number(form.manufacturing_year) : null,
-            expiry_date: form.expiry_date || null,
             is_active: true,
           })
           variantId = String(res.data?.data?.id ?? res.data?.id)
@@ -149,23 +141,20 @@ export default function Inventory() {
           await client.put(`/product-variants/${v.id}`, {
             product_id: v.product_id,
             sku: v.sku,
-            attribute_value: v.attribute_value,
-            price: v.price,
+            name: v.name,
+            price: form.price !== '' ? Number(form.price) : v.price,
             cost_price: form.cost_price ? Number(form.cost_price) : null,
-            sell_price: form.sell_price ? Number(form.sell_price) : null,
             barcode: form.barcode || null,
-            manufacturing_year: form.manufacturing_year ? Number(form.manufacturing_year) : null,
-            expiry_date: form.expiry_date || null,
           })
         }
       }
-      const data = {
+      // POST adds stock; PUT sets the counted on-hand quantity (both recorded as stock movements).
+      if (editing) await update(editing.id, { quantity: Number(form.quantity) })
+      else await create({
         warehouse_id: Number(form.warehouse_id),
         product_variant_id: Number(variantId),
         quantity: Number(form.quantity),
-      }
-      if (editing) await update(editing.id, data)
-      else await create(data)
+      })
       for (const file of imageFiles) {
         const fd = new FormData()
         fd.append('product_variant_id', variantId)
@@ -319,8 +308,8 @@ export default function Inventory() {
               type="number"
               min="0"
               step="0.01"
-              value={form.sell_price}
-              onChange={(e) => setForm({ ...form, sell_price: e.target.value })}
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
             />
           </div>
           <Input
@@ -328,25 +317,6 @@ export default function Inventory() {
             value={form.barcode}
             onChange={(e) => setForm({ ...form, barcode: e.target.value })}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="سنة التصنيع"
-              type="number"
-              min="1900"
-              max="2100"
-              value={form.manufacturing_year}
-              onChange={(e) => setForm({ ...form, manufacturing_year: e.target.value })}
-            />
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted">تاريخ انتهاء الصلاحية</label>
-              <input
-                type="date"
-                value={form.expiry_date}
-                onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
-                className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-              />
-            </div>
-          </div>
           {modalError && <div className="text-sm text-danger">{modalError}</div>}
           <div className="flex items-center justify-end gap-2 mt-6">
             <Button type="button" variant="secondary" onClick={close}>إلغاء</Button>

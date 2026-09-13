@@ -21,13 +21,12 @@ export function CartProvider({ children }) {
     if (token) refresh()
   }, [refresh])
 
-  const addItem = async (branchId, productVariantId, quantity) => {
+  const addItem = async (productVariantId, quantity) => {
     const res = await client.post('/cafe/cart/items', {
-      branch_id: branchId,
       product_variant_id: productVariantId,
       quantity,
     })
-    setCart(res.data?.cart ?? null)
+    setCart(res.data?.data?.cart ?? res.data?.cart ?? null)
     return res.data
   }
 
@@ -45,12 +44,12 @@ export function CartProvider({ children }) {
 
   const clearCart = async () => {
     await client.delete('/cafe/cart')
-    setCart(null)
+    setCart((prev) => (prev ? { ...prev, items: [], subtotal: 0 } : prev))
   }
 
-  const checkout = async () => {
-    const res = await client.post('/cafe/cart/checkout')
-    setCart(null)
+  const checkout = async (addressId) => {
+    const res = await client.post('/cafe/cart/checkout', { address_id: addressId })
+    await refresh()
     return res.data
   }
 

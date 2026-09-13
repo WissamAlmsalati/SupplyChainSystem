@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Enums\PaymentMethod;
+use App\Enums\PaymentStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class PaymentRequest extends FormRequest
 {
@@ -14,10 +17,10 @@ class PaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'order_id' => ['required', 'integer', 'exists:order,id'],
+            'order_id' => ['required', 'integer', 'exists:orders,id'],
             'amount' => ['required', 'numeric', 'min:0'],
-            'method' => ['required', 'string', 'max:30'],
-            'status' => ['required', 'string', 'max:20'],
+            'method' => ['required', Rule::enum(PaymentMethod::class)],
+            'status' => ['required', Rule::enum(PaymentStatus::class)],
             'paid_at' => ['nullable', 'date'],
         ];
     }

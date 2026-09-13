@@ -6,13 +6,13 @@ import Input from './ui/Input'
 
 export default function QuickOrderModal({ open, onClose, onCreated }) {
   const [users, setUsers] = useState([])
-  const [branches, setBranches] = useState([])
+  const [addresses, setAddresses] = useState([])
   const [variants, setVariants] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const [userId, setUserId] = useState('')
-  const [branchId, setBranchId] = useState('')
+  const [addressId, setAddressId] = useState('')
   const [deliveryZoneId, setDeliveryZoneId] = useState('')
   const [deliveryFee, setDeliveryFee] = useState('0')
   const [items, setItems] = useState([{ product_variant_id: '', quantity: 1, unit_price: '' }])
@@ -21,13 +21,13 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
     if (!open) return
     async function load() {
       try {
-        const [uRes, bRes, vRes] = await Promise.all([
+        const [uRes, aRes, vRes] = await Promise.all([
           client.get('/users?per_page=10000'),
-          client.get('/cafe-branches?per_page=10000'),
+          client.get('/addresses?per_page=10000'),
           client.get('/product-variants?per_page=10000'),
         ])
         setUsers((uRes.data?.data ?? uRes.data ?? []).filter((u) => u.user_type?.name === 'cafe'))
-        setBranches(bRes.data?.data ?? bRes.data ?? [])
+        setAddresses(aRes.data?.data ?? aRes.data ?? [])
         setVariants(vRes.data?.data ?? vRes.data ?? [])
       } catch (err) {
         setError(err.response?.data?.message || 'فشل تحميل البيانات')
@@ -37,13 +37,13 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
   }, [open])
 
   const selectedUser = useMemo(() => users.find((u) => String(u.id) === userId), [users, userId])
-  const availableBranches = useMemo(
-    () => branches.filter((b) => b.cafe_id === selectedUser?.cafe_id),
-    [branches, selectedUser]
+  const availableAddresses = useMemo(
+    () => addresses.filter((a) => a.user_id === selectedUser?.id),
+    [addresses, selectedUser]
   )
-  const selectedBranch = useMemo(
-    () => availableBranches.find((b) => String(b.id) === branchId),
-    [availableBranches, branchId]
+  const selectedAddress = useMemo(
+    () => availableAddresses.find((a) => String(a.id) === addressId),
+    [availableAddresses, addressId]
   )
 
   const updateItem = (i, field, value) => {
@@ -71,8 +71,8 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    if (!userId || !branchId) {
-      setError('يرجى اختيار المقهى والفرع.')
+    if (!userId || !addressId) {
+      setError('يرجى اختيار المقهى والعنوان.')
       return
     }
     if (items.length === 0 || items.some((it) => !it.product_variant_id || !it.quantity || !it.unit_price)) {
@@ -84,12 +84,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
     try {
       const payload = {
         user_id: Number(userId),
-        branch_id: Number(branchId),
-        delivery_zone_id: deliveryZoneId ? Number(deliveryZoneId) : null,
-        delivery_fee: Number(deliveryFee) || 0,
-        status: 'pending',
-        source: 'add order from dashboard',
-        total_amount: totalAmount,
+        address_id: Number(addressId),
         items: items.map((it) => ({
           product_variant_id: Number(it.product_variant_id),
           quantity: Number(it.quantity),
@@ -108,7 +103,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
 
   const handleClose = () => {
     setUserId('')
-    setBranchId('')
+    setAddressId('')
     setDeliveryZoneId('')
     setDeliveryFee('0')
     setItems([{ product_variant_id: '', quantity: 1, unit_price: '' }])
@@ -118,7 +113,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
 
   const variantName = (v) => {
     const product = v.product?.name ?? 'منتج'
-    return v.attribute_value ? `${product} - ${v.attribute_value}` : product
+    return v.name ? `${product} - ${v.name}` : product
   }
 
   return (
@@ -135,7 +130,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
             value={userId}
             onChange={(e) => {
               setUserId(e.target.value)
-              setBranchId('')
+              setAddressId('')
             }}
             required
           >
@@ -149,25 +144,25 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-muted">الفرع</label>
+          <label className="mb-1.5 block text-sm font-medium text-muted">العنوان</label>
           <select
             className="w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
-            value={branchId}
+            value={addressId}
             onChange={(e) => {
               const id = e.target.value
-              setBranchId(id)
-              const branch = availableBranches.find((b) => String(b.id) === id)
-              const zoneId = branch?.delivery_zone_id ?? ''
+              setAddressId(id)
+              const address = availableAddresses.find((a) => String(a.id) === id)
+              const zoneId = address?.delivery_zone_id ?? ''
               setDeliveryZoneId(zoneId)
-              setDeliveryFee(branch?.delivery_zone?.delivery_price ?? '0')
+              setDeliveryFee(address?.delivery_zone?.delivery_price ?? '0')
             }}
             required
             disabled={!userId}
           >
-            <option value="">{userId ? 'اختر فرع' : 'اختر المقهى أولاً'}</option>
-            {availableBranches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name} - {b.city ?? 'بدون مدينة'}
+            <option value="">{userId ? 'اختر عنوان' : 'اختر المقهى أولاً'}</option>
+            {availableAddresses.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} - {a.city ?? 'بدون مدينة'}
               </option>
             ))}
           </select>
@@ -177,7 +172,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
           <div>
             <label className="mb-1.5 block text-sm font-medium text-muted">منطقة التوصيل</label>
             <div className="rounded-md border border-border bg-background px-3.5 py-2 text-sm text-foreground">
-              {selectedBranch?.delivery_zone?.name ?? 'بدون منطقة توصيل'}
+              {selectedAddress?.delivery_zone?.name ?? 'بدون منطقة توصيل'}
             </div>
           </div>
           <Input

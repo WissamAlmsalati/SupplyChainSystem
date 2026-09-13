@@ -11,9 +11,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserTypeSeeder::class,
             PermissionSeeder::class,
-            LibyanDataSeeder::class,
             UserSeeder::class,
             PremiumFeatureSeeder::class,
+            LibyanDataSeeder::class,
             OrderSeeder::class,
         ]);
     }

@@ -2,57 +2,38 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\CafeBranch;
+use App\Enums\OrderStatus;
+use App\Models\Address;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
-/**
- * @OA\Tag(name="Cafe Mobile Dashboard", description="Cafe mobile app dashboard")
- */
 class CafeDashboardController extends BaseApiController
 {
-    /**
-     * @OA\Get(
-     *     path="/cafe/dashboard",
-     *     tags={"Cafe Mobile Dashboard"},
-     *     summary="Get cafe dashboard analytics",
-     *     @OA\Response(response=200, description="Dashboard data")
-     * )
-     */
     public function index(): JsonResponse
     {
         $user = auth()->user();
-        $cafeId = $user?->cafe_id;
 
-        if (! $cafeId) {
-            return $this->jsonResponse(['message' => 'غير مصرح'], 403);
-        }
-
-        $orderQuery = Order::whereHas('branch', fn ($q) => $q->where('cafe_id', $cafeId));
+        $orderQuery = Order::where('user_id', $user->id);
         $orders = (clone $orderQuery)->get();
-        $branchesCount = $user->cafe?->branches()->count() ?? 0;
+        $addressesCount = Address::where('user_id', $user->id)->count();
         $purchases = $orders->sum(fn ($o) => (float) $o->total_amount);
 
-        $today = Carbon::now()->startOfDay();
-        $weekStart = Carbon::now()->startOfWeek();
-        $monthStart = Carbon::now()->startOfMonth();
-
         $periodStats = [
-            'today' => $this->periodStats($orderQuery, $today, Carbon::now()->endOfDay()),
-            'this_week' => $this->periodStats($orderQuery, $weekStart, Carbon::now()->endOfWeek()),
-            'this_month' => $this->periodStats($orderQuery, $monthStart, Carbon::now()->endOfMonth()),
+            'today' => $this->periodStats($orderQuery, Carbon::now()->startOfDay(), Carbon::now()->endOfDay()),
+            'this_week' => $this->periodStats($orderQuery, Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()),
+            'this_month' => $this->periodStats($orderQuery, Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()),
         ];
 
-        $ordersByStatus = $orders->groupBy('status')
+        $ordersByStatus = $orders->groupBy(fn (Order $o) => $o->status->value)
             ->map(fn ($group) => $group->count())
             ->sortDesc();
 
         $recentOrders = (clone $orderQuery)
             ->with('user')
-            ->orderByDesc('order_date')
+            ->orderByDesc('placed_at')
             ->limit(5)
             ->get();
 
@@ -66,62 +47,58 @@ class CafeDashboardController extends BaseApiController
         }
 
         foreach ($orders as $order) {
-            if (! $order->order_date) {
-                continue;
-            }
-            $month = Carbon::parse($order->order_date)->format('Y-m');
+            $month = $order->placed_at->format('Y-m');
             if (isset($monthlyPurchases[$month])) {
                 $monthlyPurchases[$month]['purchases'] += (float) $order->total_amount;
             }
         }
 
         $topProducts = OrderItem::query()
-            ->select('product_variant_id', DB::raw('SUM(quantity) as total_quantity'))
-            ->whereHas('order.branch', fn ($q) => $q->where('cafe_id', $cafeId))
-            ->with('productVariant.product')
+            ->select('product_variant_id', DB::raw('MAX(product_name) as product_name'), DB::raw('MAX(variant_name) as variant_name'), DB::raw('SUM(quantity) as total_quantity'))
+            ->whereHas('order', fn ($q) => $q->where('user_id', $user->id))
             ->groupBy('product_variant_id')
             ->orderByDesc('total_quantity')
             ->limit(5)
             ->get()
             ->map(fn ($item) => [
                 'product_variant_id' => $item->product_variant_id,
-                'product_name' => $item->productVariant?->product?->name,
-                'variant_value' => $item->productVariant?->attribute_value,
+                'product_name' => $item->product_name,
+                'variant_name' => $item->variant_name,
                 'total_quantity' => (int) $item->total_quantity,
             ]);
 
-        $branchesComparison = CafeBranch::where('cafe_id', $cafeId)
+        $addressesComparison = Address::where('user_id', $user->id)
             ->withCount('orders')
             ->withSum('orders', 'total_amount')
             ->get()
-            ->map(fn ($branch) => [
-                'id' => $branch->id,
-                'name' => $branch->name,
-                'orders_count' => $branch->orders_count,
-                'purchases' => round((float) $branch->orders_sum_total_amount, 2),
+            ->map(fn ($address) => [
+                'id' => $address->id,
+                'name' => $address->name,
+                'orders_count' => $address->orders_count,
+                'purchases' => round((float) $address->orders_sum_total_amount, 2),
             ]);
 
         return $this->jsonResponse([
-            'cafe' => $user->cafe?->only(['id', 'name', 'contact_info']),
+            'user' => $user->only(['id', 'name', 'mobile_number']),
             'stats' => [
                 'orders' => $orders->count(),
-                'branches' => $branchesCount,
+                'branches' => $addressesCount,
                 'purchases' => round($purchases, 2),
-                'pending_orders' => $orders->where('status', 'pending')->count(),
+                'pending_orders' => $orders->where('status', OrderStatus::Pending)->count(),
             ],
             'periodStats' => $periodStats,
             'ordersByStatus' => $ordersByStatus,
             'recentOrders' => $recentOrders,
             'monthlyPurchases' => array_values($monthlyPurchases),
             'topProducts' => $topProducts,
-            'branchesComparison' => $branchesComparison,
+            'branchesComparison' => $addressesComparison,
         ]);
     }
 
     private function periodStats($orderQuery, Carbon $from, Carbon $to): array
     {
         $orders = (clone $orderQuery)
-            ->whereBetween('order_date', [$from->toDateTimeString(), $to->toDateTimeString()])
+            ->whereBetween('placed_at', [$from, $to])
             ->get();
 
         return [

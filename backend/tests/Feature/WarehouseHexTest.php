@@ -56,7 +56,7 @@ class WarehouseHexTest extends TestCase
 
         $res->assertCreated();
         $this->assertCount(7, $res->json('data'));
-        $this->assertDatabaseHas('delivery_zone', [
+        $this->assertDatabaseHas('delivery_zones', [
             'warehouse_id' => $warehouse->id,
             'delivery_price' => 5,
         ]);

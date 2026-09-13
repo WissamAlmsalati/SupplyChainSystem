@@ -6,7 +6,6 @@ use App\Http\Requests\Api\Auth\CafeRegisterRequest;
 use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Http\Requests\Api\Auth\RegisterRequest;
 use App\Models\AppUser;
-use App\Models\Cafe;
 use App\Models\Notification;
 use App\Models\PasswordResetOtp;
 use App\Models\PremiumFeature;
@@ -58,7 +57,7 @@ class AuthController extends BaseApiController
             )
             ->first();
 
-        if (! $user || ! Hash::check($request->validated('password'), $user->password_hash)) {
+        if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
             return $this->jsonResponse(['message' => 'بيانات الدخول غير صحيحة'], 401);
         }
 
@@ -80,8 +79,6 @@ class AuthController extends BaseApiController
         // ponytail: hide permissions for cafe users for now without deleting the loading code
         if ($user->userType?->name !== 'cafe') {
             $response['permissions'] = $codes;
-        } else {
-            $response['has_cafe'] = $user->cafeUser()->exists();
         }
 
         return $this->jsonResponse($response);
@@ -107,30 +104,18 @@ class AuthController extends BaseApiController
 
         $cafeType = UserType::where('name', 'cafe')->firstOrFail();
 
-        $cafeId = $request->validated('cafe_id');
-        if (! $cafeId) {
-            $cafe = Cafe::create([
-                'name' => $request->validated('name'),
-                'contact_info' => $request->validated('mobile_number'),
-                'created_by_admin_id' => auth()->id(),
-                'is_active' => true,
-            ]);
-            $cafeId = $cafe->id;
-        }
-
         $user = AppUser::create([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'mobile_number' => $request->validated('mobile_number'),
-            'password_hash' => Hash::make($request->validated('password')),
+            'password' => Hash::make($request->validated('password')),
             'user_type_id' => $cafeType->id,
             'is_active' => true,
         ]);
-        $user->syncCafeUser(['cafe_id' => $cafeId]);
 
         return $this->jsonResponse([
             'token' => $user->createToken('api')->plainTextToken,
-            'user' => $user->load('cafe'),
+            'user' => $user->load('userType'),
         ], 201);
     }
 
@@ -158,20 +143,20 @@ class AuthController extends BaseApiController
      */
     public function registerCafe(CafeRegisterRequest $request): JsonResponse
     {
-        $cafeType = UserType::where('name', 'cafe')->firstOrFail();
+        $validated = $request->validated();
 
-        // inactive until the OTP is verified; the cafe_auto_approve feature
-        // then decides between an instant token and a pending-approval message
-        $user = AppUser::create([
-            'name' => $request->validated('name'),
-            'email' => $request->validated('email'),
-            'mobile_number' => $request->validated('phone_number'),
-            'password_hash' => Hash::make($request->validated('password')),
-            'user_type_id' => $cafeType->id,
-            'is_active' => false,
-        ]);
+        // ponytail: do not create the user row until the OTP is verified.
+        // Store the registration data inside the OTP record payload.
+        $payload = [
+            'name' => $validated['name'],
+            'email' => $validated['email'] ?? null,
+            'phone_number' => $validated['phone_number'],
+            'password' => $validated['password'],
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+        ];
 
-        $otp = $this->issueOtp($user->mobile_number);
+        $otp = $this->issueOtp($validated['phone_number'], $payload);
 
         return $this->jsonResponse([
             'message' => 'تم إرسال رمز التحقق إلى رقم هاتفك',
@@ -179,8 +164,8 @@ class AuthController extends BaseApiController
             'token' => $otp['token'],
             'otp' => $otp['otp'], // ponytail: exposed for demo/testing only; remove in production SMS flow
             'user' => [
-                'name' => $user->name,
-                'phone_number' => $user->mobile_number,
+                'name' => $payload['name'],
+                'phone_number' => $payload['phone_number'],
             ],
         ], 201);
     }
@@ -214,9 +199,26 @@ class AuthController extends BaseApiController
             return $this->jsonResponse(['message' => 'رمز التحقق غير صالح أو منتهي الصلاحية'], 422);
         }
 
-        $user = AppUser::where('mobile_number', $record->mobile_number)
-            ->whereHas('userType', fn ($q) => $q->where('name', 'cafe'))
-            ->firstOrFail();
+        if (empty($record->payload)) {
+            return $this->jsonResponse(['message' => 'طلب التسجيل غير مكتمل'], 422);
+        }
+
+        $cafeType = UserType::where('name', 'cafe')->firstOrFail();
+
+        $user = AppUser::create([
+            'name' => $record->payload['name'],
+            'email' => $record->payload['email'] ?? null,
+            'mobile_number' => $record->payload['phone_number'],
+            'password' => Hash::make($record->payload['password']),
+            'user_type_id' => $cafeType->id,
+            'is_active' => false,
+        ]);
+
+        $user->customerProfile?->update([
+            'business_name' => $record->payload['name'],
+            'latitude' => $record->payload['latitude'] ?? null,
+            'longitude' => $record->payload['longitude'] ?? null,
+        ]);
 
         $record->delete();
 
@@ -258,6 +260,22 @@ class AuthController extends BaseApiController
     {
         $data = $request->validate(['mobile_number' => ['required', 'string', 'max:20']]);
 
+        // Pending registration that has not been verified yet.
+        $pending = PasswordResetOtp::where('mobile_number', $data['mobile_number'])
+            ->whereNotNull('payload')
+            ->first();
+
+        if ($pending) {
+            $otp = $this->issueOtp($data['mobile_number'], $pending->payload);
+
+            return $this->jsonResponse([
+                'message' => 'تم إرسال رمز التحقق',
+                'status' => 'otp_sent',
+                'token' => $otp['token'],
+                'otp' => $otp['otp'], // ponytail: demo only
+            ]);
+        }
+
         $user = AppUser::where('mobile_number', $data['mobile_number'])
             ->whereHas('userType', fn ($q) => $q->where('name', 'cafe'))
             ->first();
@@ -270,18 +288,14 @@ class AuthController extends BaseApiController
             return $this->jsonResponse(['message' => 'الحساب مفعل بالفعل'], 409);
         }
 
-        $otp = $this->issueOtp($user->mobile_number);
-
         return $this->jsonResponse([
-            'message' => 'تم إرسال رمز التحقق',
-            'status' => 'otp_sent',
-            'token' => $otp['token'],
-            'otp' => $otp['otp'], // ponytail: demo only
+            'message' => 'تم التحقق من رقمك مسبقاً، حسابك قيد مراجعة الإدارة',
+            'status' => 'pending_approval',
         ]);
     }
 
     // Replaces any previous OTP for the number; 6 digits, 15 minutes to verify.
-    private function issueOtp(string $mobileNumber): array
+    private function issueOtp(string $mobileNumber, ?array $payload = null): array
     {
         PasswordResetOtp::where('mobile_number', $mobileNumber)->delete();
 
@@ -292,6 +306,7 @@ class AuthController extends BaseApiController
             'mobile_number' => $mobileNumber,
             'token' => hash('sha256', $token),
             'otp' => $otp,
+            'payload' => $payload,
             'expires_at' => now()->addMinutes(15),
         ]);
 
@@ -317,6 +332,6 @@ class AuthController extends BaseApiController
      */
     public function me(Request $request): JsonResponse
     {
-        return $this->jsonResponse($request->user()->load(['userType.permissions', 'cafe']));
+        return $this->jsonResponse($request->user()->load(['userType.permissions', 'addresses', 'adminProfile', 'customerProfile', 'delegateProfile']));
     }
 }

@@ -13,7 +13,7 @@ function formatMoney(value) {
 
 function variantLabel(v) {
   const productName = v?.product?.name ?? 'منتج غير معروف'
-  const variantInfo = v?.attribute_value || v?.sku || `#${v?.id}`
+  const variantInfo = v?.name || v?.sku || `#${v?.id}`
   return `${productName} — ${variantInfo}`
 }
 

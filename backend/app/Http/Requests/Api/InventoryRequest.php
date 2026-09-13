@@ -11,12 +11,16 @@ class InventoryRequest extends FormRequest
         return true;
     }
 
+    // store: quantity is added to stock. update: quantity is the counted on-hand value.
     public function rules(): array
     {
+        $isStore = $this->isMethod('post');
+
         return [
-            'warehouse_id' => ['required', 'integer', 'exists:warehouse,id'],
-            'product_variant_id' => ['required', 'integer', 'exists:product_variant,id'],
-            'quantity' => ['required', 'integer', 'min:0'],
+            'warehouse_id' => [$isStore ? 'required' : 'prohibited', 'integer', 'exists:warehouses,id'],
+            'product_variant_id' => [$isStore ? 'required' : 'prohibited', 'integer', 'exists:product_variants,id'],
+            'quantity' => ['required', 'integer', $isStore ? 'min:1' : 'min:0'],
+            'note' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

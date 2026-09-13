@@ -427,19 +427,12 @@ A branch that has orders cannot be deleted.
 }
 ```
 
-**Response (branch has orders):** `409`
-
-```json
-{
-    "success": false,
-    "message": "لا يمكن حذف فرع لديه طلبات"
-}
-```
+> Addresses are soft-deleted. Orders keep their own copy of the delivery address, so deleting an address that has orders is allowed.
 
 ## Step 8: GET /api/v1/cafe/orders — List cafe orders
 **Request:** `GET /api/v1/cafe/orders`
 
-**Query params (optional):** `status`, `branch_id`, `from` (YYYY-MM-DD), `to` (YYYY-MM-DD), `page`, `per_page`
+**Query params (optional):** `status`, `address_id`, `from` (YYYY-MM-DD), `to` (YYYY-MM-DD), `page`, `per_page`
 
 **Response:** `200` (paginated)
 
@@ -459,7 +452,7 @@ A branch that has orders cannot be deleted.
 
 ```json
 {
-    "branch_id": 13,
+    "address_id": 13,
     "items": [
         {
             "product_variant_id": 12,
@@ -543,7 +536,30 @@ Only `pending` orders can be requested for cancellation.
 }
 ```
 
-## Step 10: GET /api/v1/cafe/categories — List categories
+## Step 10: GET /api/v1/cafe/promos — List active promos
+**Request:** `GET /api/v1/cafe/promos`
+
+**Response:** `200`
+
+```json
+[
+    {
+        "id": 1,
+        "image": "promos/banner-1.png",
+        "description": "خصم 20% على جميع المشروبات",
+        "link": "/products",
+        "show_description": true,
+        "is_active": true,
+        "image_url": "/storage/promos/banner-1.png",
+        "created_at": "2026-09-12T10:00:00.000000Z",
+        "updated_at": "2026-09-12T10:00:00.000000Z"
+    }
+]
+```
+
+> `link` can be an internal deep-link path (e.g. `/products`) or a full external URL. `show_description` tells the mobile app whether to display the promo description text.
+
+## Step 11: GET /api/v1/cafe/categories — List categories
 **Request:** `GET /api/v1/cafe/categories`
 
 **Response:** `200`
@@ -552,8 +568,14 @@ Only `pending` orders can be requested for cancellation.
 {
     "data": [
         {
-            "id": 12,
-            "name": "تصنيف اختبار",
+            "id": 1,
+            "name": "مشروبات ساخنة",
+            "parent_category_id": null,
+            "parent_category": null
+        },
+        {
+            "id": 2,
+            "name": "مشروبات باردة",
             "parent_category_id": null,
             "parent_category": null
         }
@@ -561,46 +583,69 @@ Only `pending` orders can be requested for cancellation.
 }
 ```
 
-## Step 11: GET /api/v1/cafe/products — List products
+## Step 12: GET /api/v1/cafe/products — List products
 **Request:** `GET /api/v1/cafe/products`
 
+**Query params (optional):** `category_id`, `search`
+
 **Response:** `200`
 
 ```json
 {
     "data": [
         {
-            "id": 12,
-            "name": "منتج اختبار",
-            "description": "وصف المنتج",
-            "image": null,
-            "image_url": null
+            "id": 1,
+            "name": "قهوة تركية",
+            "image_url": null,
+            "min_price": "4.00",
+            "category_id": 1,
+            "default_variant_id": 1
+        },
+        {
+            "id": 2,
+            "name": "كابتشينو",
+            "image_url": null,
+            "min_price": "5.50",
+            "category_id": 1,
+            "default_variant_id": 3
         }
     ]
 }
 ```
 
-## Step 12: GET /api/v1/cafe/products?category_id=12 — List products by category
-**Request:** `GET /api/v1/cafe/products?category_id=12`
+## Step 12b: GET /api/v1/cafe/products?category_id=1 — List products by category
+**Request:** `GET /api/v1/cafe/products?category_id=1`
+
+**Response:** `200` — same shape as Step 12, filtered by category.
+
+## Step 12c: GET /api/v1/cafe/products?search=قهوة — Search products
+**Request:** `GET /api/v1/cafe/products?search=قهوة`
+
+Searches by product name, tag, or variant name.
+
+**Response:** `200` — same shape as Step 12.
+
+## Step 13: GET /api/v1/cafe/products/{id} — Get product details
+**Request:** `GET /api/v1/cafe/products/1`
 
 **Response:** `200`
 
 ```json
 {
-    "data": [
-        {
-            "id": 12,
-            "name": "منتج اختبار",
-            "description": "وصف المنتج",
-            "image": null,
-            "image_url": null
-        }
-    ]
+    "id": 1,
+    "name": "قهوة تركية",
+    "description": "قهوة تركية من أفضل المنتجات",
+    "image_url": null,
+    "category": {
+        "id": 1,
+        "name": "مشروبات ساخنة",
+        "parent_category_id": null
+    }
 }
 ```
 
-## Step 13: GET /api/v1/cafe/products/12/variants — Get product variants
-**Request:** `GET /api/v1/cafe/products/12/variants`
+## Step 13b: GET /api/v1/cafe/products/{id}/variants — Get product variants
+**Request:** `GET /api/v1/cafe/products/1/variants`
 
 **Response:** `200`
 
@@ -608,13 +653,16 @@ Only `pending` orders can be requested for cancellation.
 {
     "data": [
         {
-            "id": 12,
-            "product_id": 12,
-            "sku": "DEMO-001",
-            "attribute_name": null,
-            "attribute_value": "افتراضي",
-            "price": "10.00",
-            "is_active": true
+            "id": 1,
+            "product_id": 1,
+            "name": "250 جم",
+            "sku": "PRD-0001-01",
+            "barcode": null,
+            "price": "12.00",
+            "cost_price": "8.40",
+            "is_active": true,
+            "in_stock": 320,
+            "images": []
         }
     ]
 }
@@ -813,22 +861,18 @@ These endpoints require an admin or super_admin bearer token.
     "data": {
         "id": 1,
         "user_id": 15,
-        "branch_id": 13,
-        "status": "active",
-        "branch": {
-            "id": 13,
-            "name": "فرع رئيسي"
-        },
+        "type": "shopping",
+        "name": null,
+        "subtotal": 20,
         "items": [
             {
                 "id": 1,
                 "product_variant_id": 12,
                 "quantity": 2,
-                "price_at_add": "10.00",
                 "product_variant": {
                     "id": 12,
                     "sku": "DEMO-001",
-                    "attribute_value": "افتراضي",
+                    "name": "افتراضي",
                     "price": "10.00",
                     "product": {
                         "id": 12,
@@ -848,11 +892,23 @@ These endpoints require an admin or super_admin bearer token.
 
 ```json
 {
-    "branch_id": 13,
     "product_variant_id": 12,
     "quantity": 2
 }
 ```
+
+The cart is not tied to an address. The address is chosen at checkout:
+`POST /api/v1/cafe/cart/checkout` with `{ "address_id": 13 }`.
+
+## Recurring carts — `/api/v1/cafe/recurring-carts`
+
+Named carts the customer re-orders from (the order that always repeats).
+
+- `GET /cafe/recurring-carts` — list with items and current subtotal
+- `POST /cafe/recurring-carts` — `{ "name": "الطلبية الأسبوعية", "items": [{ "product_variant_id": 12, "quantity": 2 }] }`
+- `PUT /cafe/recurring-carts/{id}` — rename and/or replace items
+- `DELETE /cafe/recurring-carts/{id}`
+- `POST /cafe/recurring-carts/{id}/order` — `{ "address_id": 13 }`; creates an order at current prices, the cart is kept
 
 **Response:** `201`
 

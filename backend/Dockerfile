@@ -7,9 +7,11 @@ FROM php:8.3-fpm AS base
 LABEL maintainer="Cafe Supply Chain"
 
 # Install system dependencies
+# nodejs is required by app/Services/H3Service.php (scripts/h3.cjs)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
+    nodejs \
     libpng-dev \
     libonig-dev \
     libxml2-dev \

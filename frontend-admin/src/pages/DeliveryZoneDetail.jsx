@@ -18,11 +18,11 @@ export default function DeliveryZoneDetail() {
   const [error, setError] = useState('')
   const [form, setForm] = useState({ name: '', delivery_price: '', is_active: true })
   const { canEdit: canEditZone } = useModulePermission('DELIVERY_ZONES')
-  const { canEdit: canEditBranch } = useModulePermission('CAFE_BRANCHES')
-  const [addingBranch, setAddingBranch] = useState(false)
-  const [availableBranches, setAvailableBranches] = useState([])
+  const { canEdit: canEditAddress } = useModulePermission('CAFE_BRANCHES')
+  const [addingAddress, setAddingAddress] = useState(false)
+  const [availableAddresses, setAvailableAddresses] = useState([])
   const [branchesLoading, setBranchesLoading] = useState(false)
-  const [selectedBranchId, setSelectedBranchId] = useState('')
+  const [selectedAddressId, setSelectedAddressId] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -64,55 +64,55 @@ export default function DeliveryZoneDetail() {
     }
   }
 
-  const loadAvailableBranches = async () => {
+  const loadAvailableAddresses = async () => {
     if (!zone) return
     setBranchesLoading(true)
     try {
-      const res = await client.get('/cafe-branches?per_page=1000')
+      const res = await client.get('/addresses?per_page=1000')
       const list = res.data?.data ?? res.data ?? []
-      setAvailableBranches(
-        list.filter((b) => Number(b.delivery_zone_id) !== Number(zone.id))
+      setAvailableAddresses(
+        list.filter((a) => Number(a.delivery_zone_id) !== Number(zone.id))
       )
     } catch (err) {
-      setError(err.response?.data?.message || 'فشل تحميل الفروع')
+      setError(err.response?.data?.message || 'فشل تحميل العناوين')
     } finally {
       setBranchesLoading(false)
     }
   }
 
-  const startAddingBranch = () => {
-    setAddingBranch(true)
-    setSelectedBranchId('')
-    loadAvailableBranches()
+  const startAddingAddress = () => {
+    setAddingAddress(true)
+    setSelectedAddressId('')
+    loadAvailableAddresses()
   }
 
-  const cancelAddingBranch = () => {
-    setAddingBranch(false)
-    setSelectedBranchId('')
+  const cancelAddingAddress = () => {
+    setAddingAddress(false)
+    setSelectedAddressId('')
   }
 
-  const handleAddBranch = async () => {
-    if (!selectedBranchId) return
+  const handleAddAddress = async () => {
+    if (!selectedAddressId) return
     setSaving(true)
     setError('')
     try {
-      await client.put(`/cafe-branches/${selectedBranchId}`, {
+      await client.put(`/addresses/${selectedAddressId}`, {
         delivery_zone_id: zone.id,
       })
       const res = await client.get(`/delivery-zones/${id}`)
       setZone(res.data?.data ?? res.data)
-      setAddingBranch(false)
-      setSelectedBranchId('')
+      setAddingAddress(false)
+      setSelectedAddressId('')
     } catch (err) {
-      setError(err.response?.data?.message || 'فشل إضافة الفرع للمنطقة')
+      setError(err.response?.data?.message || 'فشل إضافة العنوان للمنطقة')
     } finally {
       setSaving(false)
     }
   }
 
-  const branchColumns = [
+  const addressColumns = [
     { key: 'name', label: 'الاسم' },
-    { key: 'cafe', label: 'المقهى', render: (r) => r.cafe?.name ?? '-' },
+    { key: 'user', label: 'المستخدم', render: (r) => r.user?.name ?? '-' },
     { key: 'city', label: 'المدينة' },
     { key: 'street', label: 'الشارع' },
     {
@@ -196,49 +196,49 @@ export default function DeliveryZoneDetail() {
       <Card className="mt-6">
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>فروع المقاهي داخل المنطقة</CardTitle>
-            {!addingBranch && canEditBranch && (
-              <Button variant="primary" onClick={startAddingBranch}>
-                إضافة فرع يدوياً
+            <CardTitle>العناوين داخل المنطقة</CardTitle>
+            {!addingAddress && canEditAddress && (
+              <Button variant="primary" onClick={startAddingAddress}>
+                إضافة عنوان يدوياً
               </Button>
             )}
           </div>
         </CardHeader>
         <CardContent>
-          {addingBranch && (
+          {addingAddress && (
             <div className="mb-4 grid gap-3 rounded-lg border border-border bg-surface p-4 sm:grid-cols-[1fr_auto_auto]">
               <select
                 className="w-full rounded-md border border-border-strong bg-background px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
-                value={selectedBranchId}
+                value={selectedAddressId}
                 disabled={branchesLoading || saving}
-                onChange={(e) => setSelectedBranchId(e.target.value)}
+                onChange={(e) => setSelectedAddressId(e.target.value)}
               >
                 <option value="">
-                  {branchesLoading ? 'جاري التحميل...' : 'اختر فرعاً'}
+                  {branchesLoading ? 'جاري التحميل...' : 'اختر عنواناً'}
                 </option>
-                {availableBranches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} - {b.cafe?.name ?? '-'} ({b.city ?? 'بدون مدينة'})
+                {availableAddresses.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} - {a.user?.name ?? '-'} ({a.city ?? 'بدون مدينة'})
                   </option>
                 ))}
               </select>
               <Button
                 variant="primary"
-                disabled={!selectedBranchId || saving}
-                onClick={handleAddBranch}
+                disabled={!selectedAddressId || saving}
+                onClick={handleAddAddress}
               >
                 {saving ? 'جاري الحفظ...' : 'إضافة'}
               </Button>
-              <Button variant="secondary" onClick={cancelAddingBranch}>
+              <Button variant="secondary" onClick={cancelAddingAddress}>
                 إلغاء
               </Button>
             </div>
           )}
           <DataTable
-            columns={branchColumns}
-            rows={zone.cafe_branches || []}
+            columns={addressColumns}
+            rows={zone.addresses || []}
             loading={false}
-            emptyText="لا توجد فروع في هذه المنطقة."
+            emptyText="لا توجد عناوين في هذه المنطقة."
           />
         </CardContent>
       </Card>

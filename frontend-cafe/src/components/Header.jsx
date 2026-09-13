@@ -113,7 +113,7 @@ export default function Header({ onMenuClick }) {
             >
               <UserIcon className="h-5 w-5" />
               <span className="hidden max-w-[8rem] truncate text-sm font-medium sm:block">
-                {user?.cafe?.name ?? user?.name}
+                {user?.name}
               </span>
             </button>
 
@@ -135,11 +135,11 @@ export default function Header({ onMenuClick }) {
                 </Link>
                 {branchesFeature && (
                   <Link
-                    to="/branches"
+                    to="/addresses"
                     onClick={() => setProfileOpen(false)}
                     className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-background"
                   >
-                    فروعي
+                    عناويني
                   </Link>
                 )}
                 <hr className="my-1 border-border" />

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class AppUserRequest extends FormRequest
 {
@@ -17,11 +18,10 @@ class AppUserRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'string', 'email', 'max:150', 'unique:user,email' . ($userId ? ",$userId" : '')],
-            'mobile_number' => ['nullable', 'string', 'max:20', 'unique:user,mobile_number' . ($userId ? ",$userId" : '')],
+            'email' => ['nullable', 'string', 'email', 'max:150', Rule::unique('users', 'email')->ignore($userId)],
+            'mobile_number' => ['nullable', 'string', 'max:20', Rule::unique('users', 'mobile_number')->ignore($userId)],
             'password' => [$userId ? 'nullable' : 'required', 'string', 'min:6'],
-            'user_type_id' => ['required', 'integer', 'exists:user_type,id'],
-            'cafe_id' => ['nullable', 'integer', 'exists:cafe,id'],
+            'user_type_id' => ['required', 'integer', 'exists:user_types,id'],
             'is_active' => ['boolean'],
         ];
     }

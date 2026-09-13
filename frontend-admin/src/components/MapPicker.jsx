@@ -245,7 +245,7 @@ export default function MapPicker({ open, onClose, onSelect, initial, zones = []
     }
   }
 
-  const title = mode === 'warehouse' ? 'نطاق عمل المستودع' : 'اختيار موقع الفرع ومنطقة التوصيل'
+  const title = mode === 'warehouse' ? 'نطاق عمل المستودع' : 'اختيار موقع العنوان ومنطقة التوصيل'
 
   return (
     <Modal title={title} open={open} onClose={onClose}>
@@ -274,7 +274,7 @@ export default function MapPicker({ open, onClose, onSelect, initial, zones = []
       <div className="mb-4 rounded-lg border border-primary/20 bg-primary-soft px-4 py-3 text-sm text-primary">
         {mode === 'warehouse'
           ? 'الشكل الأزرق الكبير = نطاق المستودع. الخلايا الداخلية = مناطق التوصيل المسعّرة. انقر داخل النطاق لتحديد مركز المستودع.'
-          : 'انقر أي خلية لاختيار موقع الفرع ومنطقة التوصيل. مرّر الماوس فوق الخلايا الخضراء لرؤية السعر.'}
+          : 'انقر أي خلية لاختيار موقع العنوان ومنطقة التوصيل. مرّر الماوس فوق الخلايا الخضراء لرؤية السعر.'}
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">

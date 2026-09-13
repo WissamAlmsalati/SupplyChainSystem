@@ -8,12 +8,10 @@ import {
   MapPin,
   Map,
   Tags,
-  Coffee,
   Users,
   Truck,
   ShieldCheck,
   ClipboardList,
-  UserPlus,
   Bell,
   Star,
   Megaphone,
@@ -22,7 +20,6 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { usePremiumFeatureActive } from '../hooks/useApiResource'
 import Button from './ui/Button'
 
 const icons = {
@@ -33,12 +30,10 @@ const icons = {
   MapPin,
   Map,
   Tags,
-  Coffee,
   Users,
   Truck,
   ShieldCheck,
   ClipboardList,
-  UserPlus,
   Bell,
   Star,
   Megaphone,
@@ -52,13 +47,14 @@ const groups = [
       { to: '/orders', label: 'الطلبات', icon: 'ShoppingCart', permission: 'ORDERS_VIEW' },
       { to: '/products', label: 'المنتجات', icon: 'Package', permission: 'PRODUCTS_VIEW' },
       { to: '/inventory', label: 'المخزون', icon: 'Warehouse', permission: 'INVENTORY_VIEW' },
+      { to: '/purchase-orders', label: 'طلبات الشراء', icon: 'Warehouse', permission: 'PURCHASE_ORDERS_VIEW' },
     ],
   },
   {
     title: 'اللوجستيات',
     links: [
       { to: '/warehouses', label: 'المستودعات', icon: 'Warehouse', permission: 'WAREHOUSES_VIEW' },
-      { to: '/cafe-branches', label: 'فروع المقاهي', icon: 'MapPin', permission: 'CAFE_BRANCHES_VIEW' },
+      { to: '/addresses', label: 'العناوين', icon: 'MapPin', permission: 'CAFE_BRANCHES_VIEW' },
       { to: '/delivery-zones', label: 'مناطق التوصيل', icon: 'Map', permission: 'DELIVERY_ZONES_VIEW' },
       { to: '/map', label: 'الخريطة', icon: 'Map' },
     ],
@@ -72,9 +68,18 @@ const groups = [
   {
     title: 'الإدارة',
     links: [
-      { to: '/cafes', label: 'المقاهي', icon: 'Coffee', permission: 'CAFES_VIEW' },
-      { to: '/cafe-registrations', label: 'طلبات تسجيل المقاهي', icon: 'UserPlus', permission: 'CAFES_VIEW' },
-      { to: '/users', label: 'المستخدمين', icon: 'Users', permission: 'USERS_VIEW' },
+      {
+        to: '/users',
+        label: 'الإدارة',
+        icon: 'Users',
+        permission: 'USERS_VIEW',
+      },
+      {
+        to: '/cafes',
+        label: 'المقاهي',
+        icon: 'Users',
+        permission: 'USERS_VIEW',
+      },
       { to: '/delegates', label: 'المناديب', icon: 'Truck', permission: 'DELEGATES_VIEW' },
       { to: '/user-types', label: 'الأدوار والصلاحيات', icon: 'ShieldCheck', permission: 'USER_TYPES_VIEW' },
     ],
@@ -92,7 +97,6 @@ const groups = [
 
 export default function Nav() {
   const { user, logout, hasAnyPermission } = useAuth()
-  const cafeAutoApprove = usePremiumFeatureActive('cafe_auto_approve')
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem('nav-collapsed') === 'true'
@@ -106,7 +110,6 @@ export default function Nav() {
     .map((group) => ({
       ...group,
       links: group.links.filter((link) => {
-        if (cafeAutoApprove && link.to === '/cafe-registrations') return false
         if (link.superAdminOnly) return user?.user_type?.name === 'super_admin'
         if (link.permission) return hasAnyPermission([link.permission])
         return true
@@ -156,11 +159,17 @@ export default function Nav() {
               <ul className="space-y-1">
                 {group.links.map((link) => {
                   const Icon = link.icon ? icons[link.icon] : null
+                  const [linkPath] = link.to.split('?')
                   return (
                     <li key={link.to}>
                       <NavLink
                         to={link.to}
                         title={collapsed ? link.label : undefined}
+                        end={false}
+                        isActive={(_, location) => {
+                          if (link.isActive) return link.isActive(location)
+                          return location.pathname === linkPath
+                        }}
                         className={({ isActive }) =>
                           `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                             collapsed ? 'lg:justify-center' : ''

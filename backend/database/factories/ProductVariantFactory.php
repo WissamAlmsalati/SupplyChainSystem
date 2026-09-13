@@ -14,10 +14,10 @@ class ProductVariantFactory extends Factory
     {
         return [
             'product_id' => Product::factory(),
+            'name' => $this->faker->randomElement(['صغير', 'وسط', 'كبير', '250 جم', '500 جم', '1 كجم']),
             'sku' => $this->faker->unique()->regexify('[A-Z]{3}[0-9]{6}'),
-            'attribute_name' => $this->faker->randomElement(['Size', 'Weight', 'Color', null]),
-            'attribute_value' => $this->faker->word(),
             'price' => $this->faker->randomFloat(2, 1, 500),
+            'cost_price' => null,
             'is_active' => true,
         ];
     }

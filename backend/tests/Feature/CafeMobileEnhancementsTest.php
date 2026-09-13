@@ -2,19 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CartType;
+use App\Models\Address;
 use App\Models\AppUser;
-use App\Models\Cafe;
-use App\Models\CafeBranch;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\DeliveryZone;
+use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Permission;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\UserType;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -24,8 +26,7 @@ class CafeMobileEnhancementsTest extends TestCase
     use RefreshDatabase;
 
     protected AppUser $cafeUser;
-    protected Cafe $cafe;
-    protected CafeBranch $branch;
+    protected Address $address;
     protected ProductVariant $variant;
     protected DeliveryZone $zone;
 
@@ -45,21 +46,14 @@ class CafeMobileEnhancementsTest extends TestCase
         ])->map(fn ($code) => Permission::create(['code' => $code]));
         $cafeType->permissions()->sync($permissions->pluck('id'));
 
-        $this->cafe = Cafe::create([
-            'name' => 'مقهى اختبار',
-            'contact_info' => '0911111111',
-            'is_active' => true,
-        ]);
-
         $this->cafeUser = AppUser::create([
             'name' => 'Cafe Owner',
             'email' => 'cafe@test.com',
             'mobile_number' => '0911111111',
-            'password_hash' => Hash::make('password'),
+            'password' => Hash::make('password'),
             'user_type_id' => $cafeType->id,
             'is_active' => true,
         ]);
-        $this->cafeUser->syncCafeUser(['cafe_id' => $this->cafe->id]);
 
         $this->zone = DeliveryZone::create([
             'hex_id' => '842da29ffffffff',
@@ -70,8 +64,8 @@ class CafeMobileEnhancementsTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->branch = CafeBranch::create([
-            'cafe_id' => $this->cafe->id,
+        $this->address = Address::create([
+            'user_id' => $this->cafeUser->id,
             'name' => 'فرع رئيسي',
             'city' => 'طرابلس',
             'street' => 'الشارع الرئيسي',
@@ -82,7 +76,6 @@ class CafeMobileEnhancementsTest extends TestCase
         ]);
 
         $category = Category::create(['name' => 'تصنيف اختبار']);
-
         $product = Product::create([
             'category_id' => $category->id,
             'name' => 'منتج اختبار',
@@ -93,9 +86,16 @@ class CafeMobileEnhancementsTest extends TestCase
         $this->variant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'TEST-001',
-            'attribute_value' => 'افتراضي',
+            'name' => 'افتراضي',
             'price' => 10,
             'is_active' => true,
+        ]);
+
+        $warehouse = Warehouse::create(['name' => 'مستودع اختبار', 'city' => 'طرابلس']);
+        Inventory::create([
+            'warehouse_id' => $warehouse->id,
+            'product_variant_id' => $this->variant->id,
+            'quantity' => 100,
         ]);
     }
 
@@ -105,10 +105,21 @@ class CafeMobileEnhancementsTest extends TestCase
             'phone_number' => '0911111111',
             'password' => 'password',
         ]);
-
         $res->assertOk();
 
         return $res->json('token');
+    }
+
+    protected function shoppingCartWith(int $quantity): Cart
+    {
+        $cart = Cart::create(['user_id' => $this->cafeUser->id, 'type' => CartType::Shopping]);
+        CartItem::create([
+            'cart_id' => $cart->id,
+            'product_variant_id' => $this->variant->id,
+            'quantity' => $quantity,
+        ]);
+
+        return $cart;
     }
 
     public function test_cafe_can_get_empty_cart(): void
@@ -124,160 +135,131 @@ class CafeMobileEnhancementsTest extends TestCase
     {
         $token = $this->token();
         $res = $this->postJson('/api/v1/cafe/cart/items', [
-            'branch_id' => $this->branch->id,
             'product_variant_id' => $this->variant->id,
             'quantity' => 3,
         ], ['Authorization' => "Bearer $token"]);
 
-        $res->assertCreated();
-        $this->assertDatabaseHas('cart_item', [
+        $res->assertCreated()
+            ->assertJsonPath('data.cart.type', 'shopping')
+            ->assertJsonPath('data.cart.subtotal', 30);
+        $this->assertDatabaseHas('cart_items', [
             'product_variant_id' => $this->variant->id,
             'quantity' => 3,
-            'price_at_add' => 10.00,
         ]);
     }
 
     public function test_cafe_can_update_cart_item_quantity(): void
     {
-        $token = $this->token();
-        $cart = Cart::create(['user_id' => $this->cafeUser->id, 'branch_id' => $this->branch->id]);
-        $item = CartItem::create([
-            'cart_id' => $cart->id,
-            'product_variant_id' => $this->variant->id,
-            'quantity' => 1,
-            'price_at_add' => 10,
-        ]);
+        $item = $this->shoppingCartWith(1)->items()->first();
 
+        $token = $this->token();
         $res = $this->putJson('/api/v1/cafe/cart/items/' . $item->id, [
             'quantity' => 5,
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('cart_item', ['id' => $item->id, 'quantity' => 5]);
+        $this->assertDatabaseHas('cart_items', ['id' => $item->id, 'quantity' => 5]);
     }
 
     public function test_cafe_can_remove_cart_item(): void
     {
-        $token = $this->token();
-        $cart = Cart::create(['user_id' => $this->cafeUser->id, 'branch_id' => $this->branch->id]);
-        $item = CartItem::create([
-            'cart_id' => $cart->id,
-            'product_variant_id' => $this->variant->id,
-            'quantity' => 1,
-            'price_at_add' => 10,
-        ]);
+        $item = $this->shoppingCartWith(1)->items()->first();
 
+        $token = $this->token();
         $res = $this->deleteJson('/api/v1/cafe/cart/items/' . $item->id, [], [
             'Authorization' => "Bearer $token",
         ]);
 
         $res->assertOk();
-        $this->assertDatabaseMissing('cart_item', ['id' => $item->id]);
+        $this->assertDatabaseMissing('cart_items', ['id' => $item->id]);
     }
 
     public function test_cafe_can_clear_cart(): void
     {
-        $token = $this->token();
-        $cart = Cart::create(['user_id' => $this->cafeUser->id, 'branch_id' => $this->branch->id]);
-        CartItem::create([
-            'cart_id' => $cart->id,
-            'product_variant_id' => $this->variant->id,
-            'quantity' => 2,
-            'price_at_add' => 10,
-        ]);
+        $cart = $this->shoppingCartWith(2);
 
+        $token = $this->token();
         $res = $this->deleteJson('/api/v1/cafe/cart', [], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseMissing('cart', ['id' => $cart->id]);
-        $this->assertDatabaseMissing('cart_item', ['cart_id' => $cart->id]);
+        // The shopping cart row is kept (one per user); only its items go.
+        $this->assertDatabaseHas('carts', ['id' => $cart->id]);
+        $this->assertDatabaseMissing('cart_items', ['cart_id' => $cart->id]);
     }
 
     public function test_cafe_can_checkout_cart(): void
     {
-        $token = $this->token();
-        $cart = Cart::create(['user_id' => $this->cafeUser->id, 'branch_id' => $this->branch->id]);
-        CartItem::create([
-            'cart_id' => $cart->id,
-            'product_variant_id' => $this->variant->id,
-            'quantity' => 2,
-            'price_at_add' => 10,
-        ]);
+        $cart = $this->shoppingCartWith(2);
 
-        $res = $this->postJson('/api/v1/cafe/cart/checkout', [], ['Authorization' => "Bearer $token"]);
+        $token = $this->token();
+        $res = $this->postJson('/api/v1/cafe/cart/checkout', [
+            'address_id' => $this->address->id,
+        ], ['Authorization' => "Bearer $token"]);
 
         $res->assertCreated()
             ->assertJsonPath('data.total_amount', '25.00')
             ->assertJsonPath('data.status', 'pending');
 
-        $this->assertDatabaseHas('order', [
+        $this->assertDatabaseHas('orders', [
             'user_id' => $this->cafeUser->id,
-            'branch_id' => $this->branch->id,
+            'address_id' => $this->address->id,
+            'cart_id' => $cart->id,
+            'delivery_address_name' => 'فرع رئيسي',
+            'subtotal' => 20.00,
             'total_amount' => 25.00,
         ]);
-
-        $this->assertDatabaseMissing('cart', ['id' => $cart->id]);
+        $this->assertDatabaseMissing('cart_items', ['cart_id' => $cart->id]);
     }
 
     public function test_checkout_empty_cart_fails(): void
     {
-        $token = $this->token();
-        Cart::create(['user_id' => $this->cafeUser->id, 'branch_id' => $this->branch->id]);
+        Cart::create(['user_id' => $this->cafeUser->id, 'type' => CartType::Shopping]);
 
-        $res = $this->postJson('/api/v1/cafe/cart/checkout', [], ['Authorization' => "Bearer $token"]);
+        $token = $this->token();
+        $res = $this->postJson('/api/v1/cafe/cart/checkout', [
+            'address_id' => $this->address->id,
+        ], ['Authorization' => "Bearer $token"]);
 
         $res->assertStatus(400)
             ->assertJsonPath('message', 'السلة فارغة');
     }
 
-    public function test_cafe_cannot_add_item_to_foreign_branch(): void
+    public function test_cafe_cannot_checkout_to_foreign_address(): void
     {
-        $otherCafe = Cafe::create(['name' => 'مقهى آخر', 'is_active' => true]);
-        $foreignBranch = CafeBranch::create([
-            'cafe_id' => $otherCafe->id,
-            'name' => 'فرع آخر',
+        $foreignAddress = Address::create([
+            'user_id' => AppUser::factory()->customer()->create()->id,
+            'name' => 'عنوان آخر',
             'latitude' => 27.0,
             'longitude' => 17.0,
-            'is_active' => true,
         ]);
+        $this->shoppingCartWith(1);
 
         $token = $this->token();
-        $res = $this->postJson('/api/v1/cafe/cart/items', [
-            'branch_id' => $foreignBranch->id,
-            'product_variant_id' => $this->variant->id,
-            'quantity' => 1,
+        $res = $this->postJson('/api/v1/cafe/cart/checkout', [
+            'address_id' => $foreignAddress->id,
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertNotFound();
+        $this->assertDatabaseCount('orders', 0);
     }
 
     public function test_cafe_can_see_delegate_location_for_own_order(): void
     {
-        $delegateType = UserType::where('name', 'delegate')->first();
         $delegate = AppUser::create([
             'name' => 'Delegate',
             'email' => 'delegate@test.com',
             'mobile_number' => '0999999999',
-            'password_hash' => Hash::make('password'),
-            'user_type_id' => $delegateType->id,
+            'password' => Hash::make('password'),
+            'user_type_id' => UserType::where('name', 'delegate')->value('id'),
             'is_active' => true,
         ]);
-        $delegate->syncCafeUser([
+        $delegate->delegateProfile->update([
             'latitude' => 27.1,
             'longitude' => 17.1,
             'location_updated_at' => now(),
         ]);
 
-        $order = Order::create([
-            'user_id' => $this->cafeUser->id,
-            'branch_id' => $this->branch->id,
-            'delegate_id' => $delegate->id,
-            'delivery_zone_id' => $this->zone->id,
-            'delivery_fee' => 5,
-            'order_date' => now(),
-            'status' => 'out_for_delivery',
-            'total_amount' => 25,
-        ]);
+        $order = $this->makeOrder('out_for_delivery', ['delegate_id' => $delegate->id]);
 
         $token = $this->token();
         $res = $this->getJson('/api/v1/cafe/orders/' . $order->id . '/delegate', [
@@ -292,32 +274,15 @@ class CafeMobileEnhancementsTest extends TestCase
 
     public function test_cafe_cannot_see_delegate_for_other_cafe_order(): void
     {
-        $otherCafe = Cafe::create(['name' => 'مقهى آخر', 'is_active' => true]);
-        $otherBranch = CafeBranch::create([
-            'cafe_id' => $otherCafe->id,
-            'name' => 'فرع آخر',
-            'latitude' => 27.0,
-            'longitude' => 17.0,
-            'is_active' => true,
-        ]);
-
-        $delegateType = UserType::where('name', 'delegate')->first();
-        $delegate = AppUser::create([
-            'name' => 'Delegate',
-            'email' => 'delegate@test.com',
-            'mobile_number' => '0999999999',
-            'password_hash' => Hash::make('password'),
-            'user_type_id' => $delegateType->id,
-            'is_active' => true,
-        ]);
+        $delegate = AppUser::factory()->delegate()->create();
+        $otherUser = AppUser::factory()->customer()->create();
 
         $order = Order::create([
-            'user_id' => $this->cafeUser->id,
-            'branch_id' => $otherBranch->id,
+            'user_id' => $otherUser->id,
             'delegate_id' => $delegate->id,
-            'delivery_fee' => 5,
-            'order_date' => now(),
             'status' => 'out_for_delivery',
+            'subtotal' => 20,
+            'delivery_fee' => 5,
             'total_amount' => 25,
         ]);
 
@@ -331,19 +296,12 @@ class CafeMobileEnhancementsTest extends TestCase
 
     public function test_cafe_dashboard_returns_enhanced_stats(): void
     {
-        $order = Order::create([
-            'user_id' => $this->cafeUser->id,
-            'branch_id' => $this->branch->id,
-            'delivery_zone_id' => $this->zone->id,
-            'delivery_fee' => 5,
-            'order_date' => now(),
-            'status' => 'pending',
-            'total_amount' => 25,
-        ]);
-
+        $order = $this->makeOrder('pending');
         OrderItem::create([
             'order_id' => $order->id,
             'product_variant_id' => $this->variant->id,
+            'product_name' => 'منتج اختبار',
+            'variant_name' => 'افتراضي',
             'quantity' => 2,
             'unit_price' => 10,
         ]);
@@ -352,11 +310,12 @@ class CafeMobileEnhancementsTest extends TestCase
         $res = $this->getJson('/api/v1/cafe/dashboard', ['Authorization' => "Bearer $token"]);
 
         $res->assertOk()
-            ->assertJsonPath('stats.orders', 1)
-            ->assertJsonPath('stats.revenue', '25.00')
-            ->assertJsonPath('stats.pending_orders', 1)
+            ->assertJsonPath('stats.orders', 1);
+        $this->assertEquals(25, $res->json('stats.purchases'));
+        $res->assertJsonPath('stats.pending_orders', 1)
             ->assertJsonPath('periodStats.today.orders', 1)
             ->assertJsonPath('topProducts.0.total_quantity', 2)
+            ->assertJsonPath('topProducts.0.variant_name', 'افتراضي')
             ->assertJsonPath('branchesComparison.0.orders_count', 1);
     }
 
@@ -364,7 +323,7 @@ class CafeMobileEnhancementsTest extends TestCase
     {
         $token = $this->token();
         $res = $this->postJson('/api/v1/cafe/orders', [
-            'branch_id' => $this->branch->id,
+            'address_id' => $this->address->id,
             'items' => [
                 [
                     'product_variant_id' => $this->variant->id,
@@ -377,8 +336,10 @@ class CafeMobileEnhancementsTest extends TestCase
         $res->assertCreated()
             ->assertJsonPath('data.total_amount', '25.00');
 
-        $this->assertDatabaseHas('order_item', [
+        $this->assertDatabaseHas('order_items', [
             'product_variant_id' => $this->variant->id,
+            'product_name' => 'منتج اختبار',
+            'variant_name' => 'افتراضي',
             'unit_price' => 10.00,
         ]);
     }
@@ -386,30 +347,31 @@ class CafeMobileEnhancementsTest extends TestCase
     public function test_cafe_cannot_set_arbitrary_order_status(): void
     {
         $order = $this->makeOrder('pending');
-        $token = $this->token();
 
+        $token = $this->token();
         $res = $this->putJson('/api/v1/cafe/orders/' . $order->id . '/status', [
             'status' => 'cancelled',
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertUnprocessable();
-        $this->assertDatabaseHas('order', ['id' => $order->id, 'status' => 'pending']);
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'pending']);
     }
 
     public function test_cafe_can_confirm_receipt_after_delivery(): void
     {
         $order = $this->makeOrder('delivered');
-        $token = $this->token();
 
+        $token = $this->token();
         $res = $this->putJson('/api/v1/cafe/orders/' . $order->id . '/status', [
             'status' => 'received',
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertOk();
-        $this->assertDatabaseHas('order', ['id' => $order->id, 'status' => 'received']);
-        $this->assertDatabaseHas('order_status_log', [
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'received']);
+        $this->assertDatabaseHas('order_status_logs', [
             'order_id' => $order->id,
-            'status' => 'received',
+            'from_status' => 'delivered',
+            'to_status' => 'received',
             'changed_by' => $this->cafeUser->id,
         ]);
     }
@@ -417,107 +379,111 @@ class CafeMobileEnhancementsTest extends TestCase
     public function test_cafe_cannot_confirm_receipt_before_delivery(): void
     {
         $order = $this->makeOrder('pending');
-        $token = $this->token();
 
+        $token = $this->token();
         $res = $this->putJson('/api/v1/cafe/orders/' . $order->id . '/status', [
             'status' => 'received',
         ], ['Authorization' => "Bearer $token"]);
 
         $res->assertUnprocessable();
-        $this->assertDatabaseHas('order', ['id' => $order->id, 'status' => 'pending']);
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'pending']);
     }
 
     public function test_cafe_can_request_cancellation_for_pending_order(): void
     {
         $order = $this->makeOrder('pending');
-        $token = $this->token();
 
+        $token = $this->token();
         $res = $this->postJson('/api/v1/cafe/orders/' . $order->id . '/cancel-request', [], [
             'Authorization' => "Bearer $token",
         ]);
 
         $res->assertOk()
             ->assertJsonPath('status', 'cancellation_requested');
-        $this->assertDatabaseHas('order_status_log', [
+        $this->assertDatabaseHas('order_status_logs', [
             'order_id' => $order->id,
-            'status' => 'cancellation_requested',
+            'from_status' => 'pending',
+            'to_status' => 'cancellation_requested',
         ]);
     }
 
     public function test_cafe_cannot_request_cancellation_for_delivered_order(): void
     {
         $order = $this->makeOrder('delivered');
-        $token = $this->token();
 
+        $token = $this->token();
         $res = $this->postJson('/api/v1/cafe/orders/' . $order->id . '/cancel-request', [], [
             'Authorization' => "Bearer $token",
         ]);
 
         $res->assertUnprocessable();
-        $this->assertDatabaseHas('order', ['id' => $order->id, 'status' => 'delivered']);
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'delivered']);
     }
 
-    public function test_cafe_can_delete_branch_without_orders(): void
+    public function test_cafe_can_delete_address_without_orders(): void
     {
-        $branch = CafeBranch::create([
-            'cafe_id' => $this->cafe->id,
-            'name' => 'فرع للحذف',
+        $address = Address::create([
+            'user_id' => $this->cafeUser->id,
+            'name' => 'عنوان للحذف',
             'latitude' => 27.0,
             'longitude' => 17.0,
-            'is_active' => true,
         ]);
 
         $token = $this->token();
-        $res = $this->deleteJson('/api/v1/cafe/branches/' . $branch->id, [], [
+        $res = $this->deleteJson('/api/v1/cafe/addresses/' . $address->id, [], [
             'Authorization' => "Bearer $token",
         ]);
 
         $res->assertOk();
-        $this->assertDatabaseMissing('cafe_branch', ['id' => $branch->id]);
+        $this->assertSoftDeleted('addresses', ['id' => $address->id]);
     }
 
-    public function test_cafe_cannot_delete_branch_with_orders(): void
+    public function test_deleting_address_with_orders_keeps_order_delivery_snapshot(): void
     {
         $order = $this->makeOrder('pending');
-        $token = $this->token();
 
-        $res = $this->deleteJson('/api/v1/cafe/branches/' . $this->branch->id, [], [
+        $token = $this->token();
+        $res = $this->deleteJson('/api/v1/cafe/addresses/' . $this->address->id, [], [
             'Authorization' => "Bearer $token",
         ]);
 
-        $res->assertStatus(409);
-        $this->assertDatabaseHas('cafe_branch', ['id' => $this->branch->id]);
+        $res->assertOk();
+        $this->assertSoftDeleted('addresses', ['id' => $this->address->id]);
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'address_id' => $this->address->id,
+            'delivery_address_name' => 'فرع رئيسي',
+        ]);
     }
 
-    public function test_cafe_cannot_delete_foreign_branch(): void
+    public function test_cafe_cannot_delete_foreign_address(): void
     {
-        $otherCafe = Cafe::create(['name' => 'مقهى آخر', 'is_active' => true]);
-        $foreignBranch = CafeBranch::create([
-            'cafe_id' => $otherCafe->id,
-            'name' => 'فرع آخر',
+        $foreignAddress = Address::create([
+            'user_id' => AppUser::factory()->customer()->create()->id,
+            'name' => 'عنوان آخر',
             'latitude' => 27.0,
             'longitude' => 17.0,
-            'is_active' => true,
         ]);
 
         $token = $this->token();
-        $res = $this->deleteJson('/api/v1/cafe/branches/' . $foreignBranch->id, [], [
+        $res = $this->deleteJson('/api/v1/cafe/addresses/' . $foreignAddress->id, [], [
             'Authorization' => "Bearer $token",
         ]);
 
         $res->assertNotFound();
     }
 
-    private function makeOrder(string $status): Order
+    private function makeOrder(string $status, array $overrides = []): Order
     {
-        return Order::create([
+        $order = new Order(array_merge([
             'user_id' => $this->cafeUser->id,
-            'branch_id' => $this->branch->id,
-            'delivery_zone_id' => $this->zone->id,
-            'delivery_fee' => 5,
-            'order_date' => now(),
             'status' => $status,
+            'subtotal' => 20,
+            'delivery_fee' => 5,
             'total_amount' => 25,
-        ]);
+        ], $overrides));
+        $order->fillDeliveryAddress($this->address)->save();
+
+        return $order;
     }
 }

@@ -23,7 +23,7 @@ export default function Products() {
   const { addItem, cart } = useCart()
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
-  const [branches, setBranches] = useState([])
+  const [addresses, setAddresses] = useState([])
   const [categoryId, setCategoryId] = useState(searchParams.get('category') || '')
   const [search, setSearch] = useState(searchParams.get('search') || '')
   const [loading, setLoading] = useState(true)
@@ -38,14 +38,14 @@ export default function Products() {
         const params = new URLSearchParams()
         if (categoryId) params.set('category_id', categoryId)
         if (search.trim()) params.set('search', search.trim())
-        const [productsRes, categoriesRes, branchesRes] = await Promise.all([
+        const [productsRes, categoriesRes, addressesRes] = await Promise.all([
           client.get(`/cafe/products?${params.toString()}`),
           client.get('/cafe/categories'),
-          client.get('/cafe/branches'),
+          client.get('/cafe/addresses'),
         ])
         setProducts(productsRes.data?.data ?? [])
         setCategories(categoriesRes.data?.data ?? [])
-        setBranches(branchesRes.data?.data ?? [])
+        setAddresses(addressesRes.data?.data?.addresses ?? [])
       } catch (err) {
         setError(err.response?.data?.message || 'فشل تحميل المنتجات')
       } finally {
@@ -56,22 +56,15 @@ export default function Products() {
   }, [categoryId, search])
 
   const activeCategory = categories.find((c) => String(c.id) === categoryId)
-  const cartBranchId = cart?.branch_id
-
   const handleAdd = async (product, e) => {
     e.stopPropagation()
-    const branchId = cartBranchId || branches[0]?.id
-    if (!branchId) {
-      setError('لا يوجد فرع، أضف فرعًا أولاً.')
-      return
-    }
     if (!product.default_variant_id) {
       setError('المنتج لا يحتوي على variant متاح.')
       return
     }
     setAdding(product.id)
     try {
-      await addItem(branchId, product.default_variant_id, 1)
+      await addItem(product.default_variant_id, 1)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل الإضافة إلى السلة')
     } finally {

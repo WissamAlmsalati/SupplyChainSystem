@@ -2,18 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use HasFactory, \App\Traits\LogsActivity;
-
-    protected $table = 'product';
-
-    public $timestamps = false;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'category_id',
@@ -21,20 +19,30 @@ class Product extends Model
         'brand',
         'description',
         'tags',
-        'image',
+        'is_active',
     ];
 
     protected $casts = [
         'tags' => 'array',
+        'is_active' => 'boolean',
     ];
 
     protected $appends = [
         'image_url',
     ];
 
+    // Primary product-level image, falling back to the first variant image.
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? '/storage/' . ltrim($this->image, '/') : null;
+        $images = $this->relationLoaded('allImages')
+            ? $this->allImages
+            : $this->allImages()->get();
+
+        $own = $images->whereNull('product_variant_id');
+        $image = $own->firstWhere('is_primary', true) ?? $own->first()
+            ?? $images->firstWhere('is_primary', true) ?? $images->first();
+
+        return $image?->image_url;
     }
 
     public function category(): BelongsTo
@@ -45,5 +53,16 @@ class Product extends Model
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
+    }
+
+    // Images of the product itself (not of a specific variant).
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->whereNull('product_variant_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function allImages(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order')->orderBy('id');
     }
 }

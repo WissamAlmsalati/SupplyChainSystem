@@ -2,23 +2,22 @@
 
 namespace App\Models;
 
+use App\Enums\CartType;
+use App\Enums\UserRole;
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
-use App\Traits\LogsActivity;
 
 class AppUser extends Authenticatable
 {
-    use HasApiTokens, HasFactory, LogsActivity;
+    use HasApiTokens, HasFactory, LogsActivity, SoftDeletes;
 
-    protected $table = 'user';
-
-    public $timestamps = true;
+    protected $table = 'users';
 
     protected $rememberTokenName = null;
 
@@ -26,88 +25,55 @@ class AppUser extends Authenticatable
         'name',
         'email',
         'mobile_number',
-        'password_hash',
+        'password',
         'user_type_id',
         'is_active',
     ];
 
     protected $hidden = [
-        'password_hash',
-    ];
-
-    protected $appends = [
-        'cafe_id',
-        'latitude',
-        'longitude',
-        'is_available',
-        'location_updated_at',
+        'password',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
     ];
 
-    public function getAuthPasswordName(): string
+    protected static function booted(): void
     {
-        return 'password_hash';
+        static::created(fn (AppUser $user) => $user->ensureProfile());
+        static::updated(function (AppUser $user) {
+            if ($user->wasChanged('user_type_id')) {
+                $user->ensureProfile();
+            }
+        });
     }
 
-    // ponytail: cafe_id / location / availability live on the cafe_user pivot
-    // and are exposed as virtual attributes so API responses keep their shape.
-    // Ceiling: every serialized user lazy-loads the pivot unless eager loaded.
-
-    public function getCafeIdAttribute(): ?int
+    public function roleName(): ?string
     {
-        return $this->cafeUser?->cafe_id;
+        return $this->userType?->name;
     }
 
-    public function getLatitudeAttribute(): ?string
+    public function hasRole(UserRole ...$roles): bool
     {
-        return $this->cafeUser?->latitude;
+        return in_array($this->roleName(), array_map(fn (UserRole $r) => $r->value, $roles), true);
     }
 
-    public function getLongitudeAttribute(): ?string
+    // Creates the profile row that matches the user's type, if missing.
+    public function ensureProfile(): void
     {
-        return $this->cafeUser?->longitude;
-    }
+        $this->unsetRelation('userType');
 
-    public function getIsAvailableAttribute(): ?bool
-    {
-        return $this->cafeUser?->is_available;
-    }
+        $relation = match ($this->roleName()) {
+            UserRole::Customer->value => 'customerProfile',
+            UserRole::Delegate->value => 'delegateProfile',
+            UserRole::Admin->value, UserRole::SuperAdmin->value => 'adminProfile',
+            default => null,
+        };
 
-    public function getLocationUpdatedAtAttribute(): ?\Illuminate\Support\Carbon
-    {
-        return $this->cafeUser?->location_updated_at;
-    }
-
-    /**
-     * Update the cafe link (cafe_user pivot) from request-style data.
-     * Keys: cafe_id, latitude, longitude, is_available, location_updated_at. Null values are
-     * ignored; an explicit null cafe_id removes the link.
-     */
-    public function syncCafeUser(array $data): void
-    {
-        $fields = collect($data)->only(['cafe_id', 'latitude', 'longitude', 'is_available', 'location_updated_at'])->all();
-
-        if (array_key_exists('cafe_id', $fields) && is_null($fields['cafe_id'])) {
-            $this->cafeUser?->delete();
-            $this->unsetRelation('cafeUser');
-
-            return;
+        if ($relation && ! $this->{$relation}()->exists()) {
+            $this->{$relation}()->create();
+            $this->unsetRelation($relation);
         }
-
-        $update = collect($fields)->filter(fn ($v) => ! is_null($v))->all();
-
-        if (empty($update)) {
-            return;
-        }
-
-        // ponytail: updateOrCreate also creates a cafe-less link so location
-        // and availability are not lost for unassigned delegates.
-        $this->cafeUser()->updateOrCreate([], $update);
-
-        $this->unsetRelation('cafeUser');
     }
 
     public function userType(): BelongsTo
@@ -115,30 +81,39 @@ class AppUser extends Authenticatable
         return $this->belongsTo(UserType::class);
     }
 
-    public function cafeUser(): HasOne
+    public function adminProfile(): HasOne
     {
-        return $this->hasOne(CafeUser::class, 'user_id');
+        return $this->hasOne(AdminProfile::class, 'user_id');
     }
 
-    public function cafes(): BelongsToMany
+    public function customerProfile(): HasOne
     {
-        return $this->belongsToMany(Cafe::class, 'cafe_user', 'user_id', 'cafe_id')
-            ->withPivot(['latitude', 'longitude', 'is_available', 'location_updated_at']);
+        return $this->hasOne(CustomerProfile::class, 'user_id');
     }
 
-    public function cafe(): HasOneThrough
+    public function delegateProfile(): HasOne
     {
-        return $this->hasOneThrough(Cafe::class, CafeUser::class, 'user_id', 'id', 'id', 'cafe_id');
+        return $this->hasOne(DelegateProfile::class, 'user_id');
     }
 
-    public function createdCafes(): HasMany
+    public function addresses(): HasMany
     {
-        return $this->hasMany(Cafe::class, 'created_by_admin_id');
+        return $this->hasMany(Address::class, 'user_id');
     }
 
     public function carts(): HasMany
     {
-        return $this->hasMany(Cart::class);
+        return $this->hasMany(Cart::class, 'user_id');
+    }
+
+    public function shoppingCart(): HasOne
+    {
+        return $this->hasOne(Cart::class, 'user_id')->where('type', CartType::Shopping->value);
+    }
+
+    public function recurringCarts(): HasMany
+    {
+        return $this->hasMany(Cart::class, 'user_id')->where('type', CartType::Recurring->value);
     }
 
     public function orders(): HasMany

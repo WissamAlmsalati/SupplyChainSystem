@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\ActivityLog;
-use App\Models\CafeBranch;
+use App\Models\Address;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -12,11 +12,10 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
-/**
- * @OA\Tag(name="Admin Dashboard", description="Admin platform analytics")
- */
 class DashboardController extends BaseApiController
 {
+    private const LOW_STOCK_THRESHOLD = 10;
+
     public function monthlyStats(string $year, string $month): JsonResponse
     {
         $year = (int) $year;
@@ -28,37 +27,21 @@ class DashboardController extends BaseApiController
         $start = Carbon::create($year, $month, 1)->startOfMonth();
         $end = $start->copy()->endOfMonth();
 
-        $orders = Order::whereBetween('order_date', [$start, $end])->get();
+        $orders = Order::whereBetween('placed_at', [$start, $end])->get();
         $revenue = round($orders->sum(fn ($o) => (float) $o->total_amount), 2);
 
-        $ordersByStatus = $orders->groupBy('status')
+        $ordersByStatus = $orders->groupBy(fn (Order $o) => $o->status->value)
             ->map(fn ($group) => $group->count())
             ->sortDesc();
 
-        $topProducts = OrderItem::whereHas('order', fn ($q) => $q->whereBetween('order_date', [$start, $end]))
-            ->select('product_variant_id', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(quantity * unit_price) as total_revenue'))
-            ->with('productVariant.product')
-            ->groupBy('product_variant_id')
-            ->orderByDesc('total_qty')
-            ->limit(10)
-            ->get()
-            ->map(function ($item) {
-                $variant = $item->productVariant;
-                $name = $variant?->product?->name ?? 'منتج';
-                $label = $variant?->attribute_value ? "{$name} - {$variant->attribute_value}" : $name;
-
-                return [
-                    'id' => $variant?->id,
-                    'product_id' => $variant?->product?->id,
-                    'name' => $label,
-                    'quantity' => (int) $item->total_qty,
-                    'revenue' => round((float) $item->total_revenue, 2),
-                ];
-            });
+        $topProducts = $this->topProducts(
+            OrderItem::whereHas('order', fn ($q) => $q->whereBetween('placed_at', [$start, $end])),
+            10
+        );
 
         $recentOrders = Order::with('user')
-            ->whereBetween('order_date', [$start, $end])
-            ->orderByDesc('order_date')
+            ->whereBetween('placed_at', [$start, $end])
+            ->orderByDesc('placed_at')
             ->limit(10)
             ->get();
 
@@ -75,74 +58,24 @@ class DashboardController extends BaseApiController
         ]);
     }
 
-    /**
-     * @OA\Get(
-     *     path="/dashboard",
-     *     tags={"Admin Dashboard"},
-     *     summary="Get admin dashboard analytics",
-     *     description="Returns overview statistics, recent orders, monthly revenue, low stock alerts, and activity logs.",
-     *     security={{"bearerAuth": {}}},
-     *     @OA\Response(
-     *         response=200,
-     *         description="Dashboard data",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="stats", type="object",
-     *                 @OA\Property(property="orders", type="integer", example=188),
-     *                 @OA\Property(property="products", type="integer", example=12),
-     *                 @OA\Property(property="branches", type="integer", example=10),
-     *                 @OA\Property(property="revenue", type="number", format="float", example=9903.31),
-     *                 @OA\Property(property="lowStock", type="integer", example=3)
-     *             ),
-     *             @OA\Property(property="ordersByStatus", type="object", additionalProperties={"type": "integer"}),
-     *             @OA\Property(property="recentOrders", type="array", @OA\Items(type="object")),
-     *             @OA\Property(property="topProducts", type="array", @OA\Items(type="object")),
-     *             @OA\Property(property="monthlyRevenue", type="array", @OA\Items(
-     *                 @OA\Property(property="month", type="string", example="2026-08"),
-     *                 @OA\Property(property="revenue", type="number", format="float", example=1071.75)
-     *             )),
-     *             @OA\Property(property="recentLogs", type="array", @OA\Items(type="object")),
-     *             @OA\Property(property="lowStockItems", type="array", @OA\Items(type="object"))
-     *         )
-     *     )
-     * )
-     */
     public function index(): JsonResponse
     {
         $orders = Order::all();
-        $products = Product::count();
-        $branches = CafeBranch::count();
-        $inventory = Inventory::with('productVariant.product')->get();
+        $lowStock = Inventory::with('productVariant.product', 'warehouse:id,name')
+            ->where('quantity', '<', self::LOW_STOCK_THRESHOLD)
+            ->orderBy('quantity')
+            ->get();
 
         $revenue = $orders->sum(fn ($o) => (float) $o->total_amount);
-        $lowStock = $inventory->filter(fn ($i) => (float) $i->quantity < 10);
 
-        $ordersByStatus = $orders->groupBy('status')
+        $ordersByStatus = $orders->groupBy(fn (Order $o) => $o->status->value)
             ->map(fn ($group) => $group->count())
             ->sortDesc();
 
         $recentOrders = Order::with('user')
-            ->orderByDesc('order_date')
+            ->orderByDesc('placed_at')
             ->limit(5)
             ->get();
-
-        $topProducts = OrderItem::select('product_variant_id', DB::raw('SUM(quantity) as total_qty'))
-            ->with('productVariant.product')
-            ->groupBy('product_variant_id')
-            ->orderByDesc('total_qty')
-            ->limit(5)
-            ->get()
-            ->map(function ($item) {
-                $variant = $item->productVariant;
-                $name = $variant?->product?->name ?? 'منتج';
-                $label = $variant?->attribute_value ? "{$name} - {$variant->attribute_value}" : $name;
-
-                return [
-                    'id' => $variant?->id,
-                    'product_id' => $variant?->product?->id,
-                    'name' => $label,
-                    'quantity' => (int) $item->total_qty,
-                ];
-            });
 
         $monthlyRevenue = [];
         for ($i = 5; $i >= 0; $i--) {
@@ -154,31 +87,51 @@ class DashboardController extends BaseApiController
         }
 
         foreach ($orders as $order) {
-            if (! $order->order_date) {
-                continue;
-            }
-            $month = Carbon::parse($order->order_date)->format('Y-m');
+            $month = $order->placed_at->format('Y-m');
             if (isset($monthlyRevenue[$month])) {
                 $monthlyRevenue[$month]['revenue'] = round($monthlyRevenue[$month]['revenue'] + (float) $order->total_amount, 2);
             }
         }
 
-        $recentLogs = ActivityLog::latest('created_at')->limit(5)->get();
-
         return $this->jsonResponse([
             'stats' => [
                 'orders' => $orders->count(),
-                'products' => $products,
-                'branches' => $branches,
+                'products' => Product::count(),
+                'branches' => Address::count(),
                 'revenue' => round($revenue, 2),
                 'lowStock' => $lowStock->count(),
             ],
             'ordersByStatus' => $ordersByStatus,
             'recentOrders' => $recentOrders,
-            'topProducts' => $topProducts,
+            'topProducts' => $this->topProducts(OrderItem::query(), 5),
             'monthlyRevenue' => array_values($monthlyRevenue),
-            'recentLogs' => $recentLogs,
+            'recentLogs' => ActivityLog::latest('created_at')->limit(5)->get(),
             'lowStockItems' => $lowStock->take(5)->values(),
         ]);
+    }
+
+    // Best sellers grouped by variant, labelled from the order-time snapshot.
+    private function topProducts($itemsQuery, int $limit)
+    {
+        return $itemsQuery
+            ->select(
+                'product_variant_id',
+                DB::raw('MAX(product_name) as product_name'),
+                DB::raw('MAX(variant_name) as variant_name'),
+                DB::raw('SUM(quantity) as total_qty'),
+                DB::raw('SUM(quantity * unit_price) as total_revenue')
+            )
+            ->with('productVariant:id,product_id')
+            ->groupBy('product_variant_id')
+            ->orderByDesc('total_qty')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($item) => [
+                'id' => $item->product_variant_id,
+                'product_id' => $item->productVariant?->product_id,
+                'name' => $item->variant_name ? "{$item->product_name} - {$item->variant_name}" : $item->product_name,
+                'quantity' => (int) $item->total_qty,
+                'revenue' => round((float) $item->total_revenue, 2),
+            ]);
     }
 }

@@ -31,8 +31,9 @@ export default function Nav({ mobileOpen, onMobileClose, showDesktop = true }) {
         { to: '/', label: 'الرئيسية' },
         { to: '/products', label: 'كل المنتجات' },
         { to: '/cart', label: 'السلة', badge: itemCount },
+        { to: '/recurring-carts', label: 'الطلبيات المتكررة' },
         { to: '/orders', label: 'طلباتي' },
-        ...(branchesFeature ? [{ to: '/branches', label: 'فروعي' }] : []),
+        ...(branchesFeature ? [{ to: '/addresses', label: 'عناويني' }] : []),
         { to: '/profile', label: 'الملف الشخصي' },
       ]
 

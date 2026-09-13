@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\UserRole;
 use App\Models\AppUser;
-use App\Models\CafeBranch;
 use App\Models\Order;
 use Illuminate\Support\Carbon;
 
@@ -15,12 +15,11 @@ class DelegateAssignmentService
      */
     public function assignNearest(Order $order): ?AppUser
     {
-        $branch = $order->branch;
-        if (! $branch || ! $this->hasCoordinates($branch)) {
+        if ($order->delivery_latitude === null || $order->delivery_longitude === null) {
             return null;
         }
 
-        $delegate = $this->nearestAvailableDelegate($branch->latitude, $branch->longitude);
+        $delegate = $this->nearestAvailableDelegate((float) $order->delivery_latitude, (float) $order->delivery_longitude);
 
         if ($delegate) {
             $order->update(['delegate_id' => $delegate->id]);
@@ -35,10 +34,10 @@ class DelegateAssignmentService
     public function nearestAvailableDelegate(float $latitude, float $longitude, ?int $excludeDelegateId = null): ?AppUser
     {
         $query = AppUser::query()
-            ->with('cafeUser')
-            ->where('user_type_id', $this->delegateTypeId())
+            ->with('delegateProfile')
+            ->whereHas('userType', fn ($q) => $q->where('name', UserRole::Delegate->value))
             ->where('is_active', true)
-            ->whereHas('cafeUser', fn ($q) => $q
+            ->whereHas('delegateProfile', fn ($q) => $q
                 ->where('is_available', true)
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
@@ -50,7 +49,12 @@ class DelegateAssignmentService
 
         return $query
             ->get()
-            ->sortBy(fn (AppUser $d) => $this->distance($latitude, $longitude, (float) $d->cafeUser->latitude, (float) $d->cafeUser->longitude))
+            ->sortBy(fn (AppUser $d) => $this->distance(
+                $latitude,
+                $longitude,
+                (float) $d->delegateProfile->latitude,
+                (float) $d->delegateProfile->longitude,
+            ))
             ->first();
     }
 
@@ -68,16 +72,5 @@ class DelegateAssignmentService
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
 
         return $earthRadius * $c;
-    }
-
-    protected function hasCoordinates(CafeBranch $branch): bool
-    {
-        return ! is_null($branch->latitude) && ! is_null($branch->longitude);
-    }
-
-    protected function delegateTypeId(): int
-    {
-        return \App\Models\UserType::where('name', 'delegate')->value('id')
-            ?? throw new \RuntimeException('Delegate user type not found');
     }
 }

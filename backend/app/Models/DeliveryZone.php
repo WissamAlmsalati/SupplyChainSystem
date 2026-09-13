@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,11 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DeliveryZone extends Model
 {
-    use HasFactory, \App\Traits\LogsActivity;
-
-    protected $table = 'delivery_zone';
-
-    public $timestamps = true;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'warehouse_id',
@@ -37,9 +34,9 @@ class DeliveryZone extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
-    public function cafeBranches(): HasMany
+    public function addresses(): HasMany
     {
-        return $this->hasMany(CafeBranch::class);
+        return $this->hasMany(Address::class);
     }
 
     public function orders(): HasMany

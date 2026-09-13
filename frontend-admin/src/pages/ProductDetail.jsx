@@ -156,7 +156,7 @@ export default function ProductDetail() {
     (sum, v) => sum + (v.inventories || []).reduce((a, i) => a + (Number(i.quantity) || 0), 0),
     0
   )
-  const prices = variants.map((v) => Number(v.sell_price ?? v.price)).filter((p) => !Number.isNaN(p))
+  const prices = variants.map((v) => Number(v.price)).filter((p) => !Number.isNaN(p))
   const minPrice = prices.length ? Math.min(...prices) : null
   const maxPrice = prices.length ? Math.max(...prices) : null
 
@@ -265,7 +265,7 @@ export default function ProductDetail() {
           <Card key={variant.id} className={variant.is_active === false ? 'opacity-70' : ''}>
             <CardHeader className="pb-3">
               <CardTitle className="flex flex-wrap items-center gap-2">
-                <span className="text-base">{variant.attribute_value || variant.sku || `#${variant.id}`}</span>
+                <span className="text-base">{variant.name || variant.sku || `#${variant.id}`}</span>
                 <code className="rounded bg-background px-1.5 py-0.5 text-xs text-muted" dir="ltr">
                   {variant.sku || '-'}
                 </code>
@@ -282,7 +282,7 @@ export default function ProductDetail() {
                       <div>
                         <span className="mb-0.5 block text-xs text-muted">السعر</span>
                         <span className="text-lg font-bold text-primary">
-                          {formatMoney(variant.sell_price ?? variant.price ?? 0)} د.ل
+                          {formatMoney(variant.price ?? 0)} د.ل
                         </span>
                       </div>
                       <div className="text-end">
@@ -305,9 +305,7 @@ export default function ProductDetail() {
               <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-foreground lg:grid-cols-3">
                 <div><span className="text-muted">Barcode:</span> {variant.barcode ?? '-'}</div>
                 <div><span className="text-muted">التكلفة:</span> {variant.cost_price != null ? `${formatMoney(variant.cost_price)} د.ل` : '-'}</div>
-                <div><span className="text-muted">الحالة:</span> {variant.status ?? '-'}</div>
-                <div><span className="text-muted">التصنيع:</span> {variant.manufacturing_year ?? '-'}</div>
-                <div className="col-span-2"><span className="text-muted">الانتهاء:</span> {variant.expiry_date ? String(variant.expiry_date).slice(0, 10) : '-'}</div>
+                <div><span className="text-muted">الحالة:</span> {variant.is_active ? 'نشط' : 'غير نشط'}</div>
               </div>
               <div className="mb-4 flex justify-end gap-2">
                 <Button
@@ -405,7 +403,7 @@ export default function ProductDetail() {
         <div className="space-y-4">
           <div className="rounded-md bg-surface px-3 py-2 text-sm text-foreground">
             <span className="text-muted">المتغير:</span>{' '}
-            {product.variants.find((v) => v.id === inventoryModal)?.attribute_value ||
+            {product.variants.find((v) => v.id === inventoryModal)?.name ||
               product.variants.find((v) => v.id === inventoryModal)?.sku ||
               `#${inventoryModal}`}
           </div>

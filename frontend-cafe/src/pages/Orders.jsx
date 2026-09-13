@@ -3,16 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import client from '../api/client'
 
 const statusLabels = {
-  pending: 'معلّق',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
+  pending: 'قيد الانتظار',
+  confirmed: 'مؤكد',
+  preparing: 'قيد التجهيز',
+  out_for_delivery: 'في الطريق',
   delivered: 'تم التوصيل',
   received: 'تم الاستلام',
   cancellation_requested: 'طلب إلغاء',
   cancelled: 'ملغي',
-  failed: 'فاشل',
-  confirmed: 'مؤكد',
-  shipped: 'تم الشحن',
 }
 
 const statusColors = {
@@ -90,7 +88,7 @@ export default function Orders() {
             <tr>
               <th className="px-4 py-3 text-start">#</th>
               <th className="px-4 py-3 text-start">رقم الطلب</th>
-              <th className="px-4 py-3 text-start">الفرع</th>
+              <th className="px-4 py-3 text-start">العنوان</th>
               <th className="px-4 py-3 text-start">الحالة</th>
               <th className="px-4 py-3 text-end">الإجمالي</th>
               <th className="px-4 py-3 text-start">التاريخ</th>
@@ -121,7 +119,7 @@ export default function Orders() {
                 >
                   <td className="px-4 py-3">{o.id}</td>
                   <td className="px-4 py-3 font-medium">{o.order_number ?? `#${o.id}`}</td>
-                  <td className="px-4 py-3">{o.branch?.name ?? '-'}</td>
+                  <td className="px-4 py-3">{o.delivery_address_name ?? '-'}</td>
                   <td className="px-4 py-3">
                     <span
                       className="rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
@@ -132,7 +130,7 @@ export default function Orders() {
                   </td>
                   <td className="px-4 py-3 text-end font-medium">{formatMoney(o.total_amount)} د.ل</td>
                   <td className="px-4 py-3 text-muted">
-                    {o.order_date ? new Date(o.order_date).toLocaleDateString('en-US') : '-'}
+                    {o.placed_at ? new Date(o.placed_at).toLocaleDateString('en-US') : '-'}
                   </td>
                   <td className="px-4 py-3">
                     {o.status === 'delivered' && (

@@ -1,11 +1,11 @@
 meta {
-  name: Create Branch
+  name: Create Address
   type: http
   seq: 5
 }
 
 post {
-  url: {{baseUrl}}/cafe/branches
+  url: {{baseUrl}}/cafe/addresses
   body: json
   auth: bearer
 }
@@ -16,19 +16,20 @@ auth:bearer {
 
 body:json {
   {
-    "name": "فرع اختبار",
+    "name": "عنوان اختبار",
     "city": "طرابلس",
     "street": "شارع الاختبار",
     "latitude": 27.1,
     "longitude": 17.1,
-    "is_active": true
+    "is_active": true,
+    "contact_phones": ["0910000001", "0920000002"]
   }
 }
 
 script:post-response {
   const json = res.getBody();
   if (json.data && json.data.id) {
-    bru.setVar("createdBranchId", json.data.id);
+    bru.setVar("createdAddressId", json.data.id);
   }
 }
 
@@ -37,7 +38,7 @@ tests {
     expect(res.getStatus()).to.equal(201);
   });
 
-  test("returns created branch", function() {
+  test("returns created address", function() {
     const json = res.getBody();
     expect(json.data.id).to.be.a('number');
     expect(json.data.name).to.be.a('string');

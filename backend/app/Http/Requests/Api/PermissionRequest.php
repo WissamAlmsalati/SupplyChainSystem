@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class PermissionRequest extends FormRequest
 {
@@ -13,10 +14,8 @@ class PermissionRequest extends FormRequest
 
     public function rules(): array
     {
-        $permissionId = $this->route('permission')?->id;
-
         return [
-            'code' => ['required', 'string', 'max:50', 'unique:permission,code' . ($permissionId ? ",$permissionId" : '')],
+            'code' => ['required', 'string', 'max:50', Rule::unique('permissions', 'code')->ignore($this->route('permission')?->id)],
         ];
     }
 }

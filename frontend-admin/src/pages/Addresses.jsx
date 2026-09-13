@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useApiResource, useApiList } from '../hooks/useApiResource'
 import { useModulePermission } from '../hooks/usePermission'
 import { useAuth } from '../context/AuthContext'
@@ -13,7 +13,7 @@ import Badge from '../components/ui/Badge'
 import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = {
-  cafe_id: '',
+  user_id: '',
   name: '',
   city: '',
   street: '',
@@ -21,18 +21,20 @@ const initial = {
   longitude: '',
   hex_id: '',
   delivery_zone_id: '',
+  contact_phones: '',
   is_active: true,
 }
 
-export default function CafeBranches() {
+export default function Addresses() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isCafe = user?.user_type?.name === 'cafe'
+  const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
-  const [filterCafe, setFilterCafe] = useState('')
+  const [filterUser, setFilterUser] = useState(searchParams.get('user_id') || '')
   const [filterActive, setFilterActive] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/cafe-branches', { search, cafe_id: filterCafe, is_active: filterActive })
-  const cafes = useApiList('/cafes?per_page=10000')
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/addresses', { search, user_id: filterUser, is_active: filterActive })
+  const users = useApiList('/users?per_page=10000')
   const zones = useApiList('/delivery-zones?per_page=10000')
   const [modal, setModal] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -42,7 +44,7 @@ export default function CafeBranches() {
   const { canCreate, canEdit, canDelete } = useModulePermission('CAFE_BRANCHES')
 
   const openCreate = () => {
-    setForm({ ...initial, cafe_id: isCafe ? user?.cafe_id ?? '' : '' })
+    setForm({ ...initial, user_id: isCafe ? user?.id ?? '' : '' })
     setEditing(null)
     setModal(true)
   }
@@ -51,11 +53,12 @@ export default function CafeBranches() {
     setForm({
       ...initial,
       ...item,
-      cafe_id: item.cafe_id ?? '',
+      user_id: item.user_id ?? '',
       latitude: item.latitude ?? '',
       longitude: item.longitude ?? '',
       hex_id: item.delivery_zone?.hex_id ?? '',
       delivery_zone_id: item.delivery_zone_id ?? '',
+      contact_phones: (item.contact_phones ?? []).join('\n'),
     })
     setEditing(item)
     setModal(true)
@@ -99,6 +102,7 @@ export default function CafeBranches() {
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
         delivery_zone_id: deliveryZoneId,
+        contact_phones: form.contact_phones.split('\n').map((p) => p.trim()).filter(Boolean),
         is_active: Boolean(form.is_active),
       }
       if (!data.street) data.street = null
@@ -114,9 +118,10 @@ export default function CafeBranches() {
 
   const columns = [
     { key: 'name', label: 'الاسم' },
-    { key: 'cafe', label: 'المقهى', render: (r) => r.cafe?.name ?? '-' },
+    { key: 'user', label: 'المستخدم', render: (r) => r.user?.name ?? '-' },
     { key: 'city', label: 'المدينة' },
     { key: 'street', label: 'الشارع' },
+    { key: 'contact_phones', label: 'أرقام التواصل', render: (r) => (r.contact_phones ?? []).join('، ') || '-' },
     { key: 'delivery_zone', label: 'المنطقة', render: (r) => r.delivery_zone?.name || '-' },
     {
       key: 'is_active',
@@ -128,7 +133,7 @@ export default function CafeBranches() {
   return (
     <>
       <header className="flex flex-col gap-4 rounded-lg border-b border-black bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-extrabold text-foreground">فروع المقاهي</h1>
+        <h1 className="text-2xl font-extrabold text-foreground">العناوين</h1>
         <div className="flex items-center gap-3">
           <input
             type="text"
@@ -138,10 +143,10 @@ export default function CafeBranches() {
             className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <FilterSelect
-            label="المقهى"
-            value={filterCafe}
-            onChange={setFilterCafe}
-            options={cafes.map((c) => ({ value: c.id, label: c.name }))}
+            label="المستخدم"
+            value={filterUser}
+            onChange={setFilterUser}
+            options={users.map((u) => ({ value: u.id, label: u.name }))}
           />
           <FilterSelect
             label="الحالة"
@@ -152,7 +157,7 @@ export default function CafeBranches() {
               { value: '0', label: 'معطل' },
             ]}
           />
-          {canCreate && <Button variant="primary" onClick={openCreate}>إضافة فرع</Button>}
+          {canCreate && <Button variant="primary" onClick={openCreate}>إضافة عنوان</Button>}
         </div>
       </header>
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
@@ -163,8 +168,8 @@ export default function CafeBranches() {
         loading={loading}
         pagination={pagination}
         onPageChange={setPage}
-        emptyText="لا توجد فروع."
-        onRowClick={(row) => navigate(`/cafe-branches/${row.id}`)}
+        emptyText="لا توجد عناوين."
+        onRowClick={(row) => navigate(`/addresses/${row.id}`)}
         actions={(row) => (
           <>
             {canEdit && <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>تعديل</Button>}
@@ -172,26 +177,26 @@ export default function CafeBranches() {
           </>
         )}
       />
-      <Modal title={editing ? 'تعديل فرع' : 'إضافة فرع'} open={modal} onClose={close}>
+      <Modal title={editing ? 'تعديل عنوان' : 'إضافة عنوان'} open={modal} onClose={close}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isCafe && (
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted">المقهى</label>
+              <label className="mb-1.5 block text-sm font-medium text-muted">المستخدم</label>
               <select
                 className="w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
-                value={form.cafe_id}
-                onChange={(e) => setForm({ ...form, cafe_id: e.target.value })}
+                value={form.user_id}
+                onChange={(e) => setForm({ ...form, user_id: e.target.value })}
                 required
               >
-                <option value="">اختر المقهى</option>
-                {cafes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                <option value="">اختر المستخدم</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
               </select>
             </div>
           )}
           <Input
-            label="اسم الفرع"
+            label="اسم العنوان"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
@@ -206,6 +211,15 @@ export default function CafeBranches() {
             value={form.street || ''}
             onChange={(e) => setForm({ ...form, street: e.target.value })}
           />
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-muted">أرقام التواصل (رقم في كل سطر)</label>
+            <textarea
+              className="w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
+              rows={3}
+              value={form.contact_phones}
+              onChange={(e) => setForm({ ...form, contact_phones: e.target.value })}
+            />
+          </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-muted">الموقع ومنطقة التوصيل</label>
             <div className="flex flex-wrap items-center gap-2">

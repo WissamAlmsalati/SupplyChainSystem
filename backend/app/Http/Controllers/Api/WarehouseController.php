@@ -161,28 +161,18 @@ class WarehouseController extends BaseApiController
      *     @OA\Response(response=204, description="Warehouse deleted")
      * )
      */
+    // Soft delete; blocked while the warehouse still holds stock.
     public function destroy(Warehouse $warehouse): JsonResponse
     {
-        try {
-            $warehouse->delete();
-            return $this->jsonResponse(['message' => 'تم حذف المستودع بنجاح'], 200);
-        } catch (\Exception $e) {
-            return $this->jsonResponse(['message' => 'فشل حذف المستودع: ' . $e->getMessage()], 500);
+        if ($warehouse->inventories()->where('quantity', '>', 0)->exists()) {
+            return $this->jsonResponse(['message' => 'لا يمكن حذف مستودع يحتوي على مخزون'], 422);
         }
+
+        $warehouse->delete();
+
+        return $this->jsonResponse(['message' => 'تم حذف المستودع بنجاح'], 200);
     }
 
-    /**
-     * Expand a warehouse hex into child hex delivery zones.
-     *
-     * @OA\Post(
-     *     path="/warehouses/{warehouse}/expand-hex",
-     *     tags={"Admin Warehouses"},
-     *     summary="Split warehouse hex into child hex delivery zones",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="child_resolution", type="integer"))),
-     *     @OA\Response(response=201, description="Delivery zones created")
-     * )
-     */
     public function expandHex(Request $request, Warehouse $warehouse): JsonResponse
     {
         $data = $request->validate([

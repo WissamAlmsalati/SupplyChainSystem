@@ -2,100 +2,84 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\CafeBranchRequest;
-use App\Models\Cafe;
-use App\Models\CafeBranch;
+use App\Enums\CartType;
+use App\Enums\OrderSource;
+use App\Enums\OrderStatus;
+use App\Http\Requests\Api\AddressRequest;
+use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\DeliveryZone;
-use App\Models\Inventory;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\PremiumFeature;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Services\DelegateAssignmentService;
 use App\Services\H3Service;
-use Illuminate\Http\Exceptions\HttpResponseException;
+use App\Services\OrderPlacementService;
+use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 /**
- * @OA\Tag(name="Cafe Mobile Orders", description="Cafe mobile app order management")
- * @OA\Tag(name="Cafe Mobile Branches", description="Cafe mobile app branch management")
- * @OA\Tag(name="Cafe Mobile Profile", description="Cafe mobile app profile")
- * @OA\Tag(name="Cafe Mobile Catalog", description="Cafe mobile app product catalog")
+ * @OA\Tag(name="Cafe Mobile", description="Endpoints for the customer (cafe) mobile app")
  */
 class CafeMobileController extends BaseApiController
 {
-    protected function cafeId(): ?int
-    {
-        return auth()->user()?->cafe_id;
-    }
-
-    protected function isCafeUser(): bool
-    {
-        return auth()->user()?->userType?->name === 'cafe';
-    }
-
     protected function orderScope()
     {
-        return Order::with(['user', 'branch', 'deliveryZone'])
-            ->whereHas('branch', fn ($q) => $q->where('cafe_id', $this->cafeId()));
+        return Order::with(['user', 'address', 'deliveryZone'])
+            ->where('user_id', auth()->id());
     }
 
-    protected function branchScope()
+    protected function addressScope()
     {
-        return CafeBranch::with(['cafe', 'deliveryZone'])
-            ->where('cafe_id', $this->cafeId());
+        return Address::with('deliveryZone')
+            ->where('user_id', auth()->id());
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/orders",
-     *     tags={"Cafe Mobile Orders"},
-     *     summary="List cafe orders",
-     *     @OA\Response(response=200, description="Paginated list of cafe orders")
-     * )
+     * @OA\Get(path="/cafe/orders", tags={"Cafe Mobile"}, summary="List own orders",
+     *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="address_id", in="query", @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
+     *     @OA\Response(response=200, description="Paginated orders"))
      */
     public function orders(Request $request): JsonResponse
     {
-        $query = $this->orderScope()->orderByDesc('order_date');
+        $query = $this->orderScope()->orderByDesc('placed_at');
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->integer('branch_id'));
+        if ($request->filled('address_id')) {
+            $query->where('address_id', $request->integer('address_id'));
         }
         if ($request->filled('from')) {
-            $query->whereDate('order_date', '>=', $request->input('from'));
+            $query->whereDate('placed_at', '>=', $request->input('from'));
         }
         if ($request->filled('to')) {
-            $query->whereDate('order_date', '<=', $request->input('to'));
+            $query->whereDate('placed_at', '<=', $request->input('to'));
         }
 
         return $this->jsonResponse($query->paginate($request->integer('per_page', 15)));
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/branches/{id}/orders",
-     *     tags={"Cafe Mobile Branches"},
-     *     summary="List orders for a specific branch",
+     * @OA\Get(path="/cafe/addresses/{id}/orders", tags={"Cafe Mobile"}, summary="Orders delivered to one address",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="List of branch orders"),
-     *     @OA\Response(response=404, description="Branch not found")
-     * )
+     *     @OA\Response(response=200, description="Paginated orders"))
      */
-    public function branchOrders(Request $request, int $id): JsonResponse
+    public function addressOrders(Request $request, int $id): JsonResponse
     {
-        $branch = $this->branchScope()->findOrFail($id);
+        $address = $this->addressScope()->findOrFail($id);
         $query = $this->orderScope()
-            ->where('branch_id', $branch->id)
-            ->orderByDesc('order_date');
+            ->where('address_id', $address->id)
+            ->orderByDesc('placed_at');
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -105,76 +89,56 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/orders/{id}",
-     *     tags={"Cafe Mobile Orders"},
-     *     summary="Get a cafe order",
+     * @OA\Get(path="/cafe/orders/{id}", tags={"Cafe Mobile"}, summary="Own order details",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Order details"),
-     *     @OA\Response(response=404, description="Not found")
-     * )
+     *     @OA\Response(response=200, description="Order"))
      */
     public function showOrder(int $id): JsonResponse
     {
-        $order = $this->orderScope()->with(['user', 'branch', 'deliveryZone', 'items.productVariant', 'payments', 'statusLogs'])->findOrFail($id);
+        $order = $this->orderScope()
+            ->with(['items.productVariant', 'payments', 'statusLogs'])
+            ->findOrFail($id);
+
         return $this->jsonResponse($order);
     }
 
     /**
-     * @OA\Put(
-     *     path="/cafe/orders/{id}/status",
-     *     tags={"Cafe Mobile Orders"},
-     *     summary="Confirm order receipt (only after the delegate marks it delivered)",
+     * @OA\Put(path="/cafe/orders/{id}/status", tags={"Cafe Mobile"}, summary="Confirm receipt of a delivered order",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="status", type="string", enum={"received"}))),
-     *     @OA\Response(response=200, description="Receipt confirmed"),
-     *     @OA\Response(response=422, description="Invalid status or order not delivered yet")
-     * )
+     *     @OA\Response(response=200, description="Order updated"),
+     *     @OA\Response(response=422, description="Order is not delivered yet"))
      */
     public function updateOrderStatus(Request $request, int $id): JsonResponse
     {
-        $request->validate(['status' => ['required', 'string', 'in:received']]);
+        $request->validate(['status' => ['required', 'string', Rule::in([OrderStatus::Received->value])]]);
 
         $order = $this->orderScope()->findOrFail($id);
 
-        if ($order->status !== 'delivered') {
+        if ($order->status !== OrderStatus::Delivered) {
             return $this->jsonResponse(['message' => 'لا يمكن تأكيد الاستلام إلا بعد التسليم'], 422);
         }
 
-        $order->update(['status' => 'received']);
-        $order->statusLogs()->create([
-            'status' => 'received',
-            'changed_by' => auth()->id(),
-            'changed_at' => now(),
-        ]);
+        $order->update(['status' => OrderStatus::Received]);
 
-        return $this->jsonResponse($order->load(['user', 'branch', 'deliveryZone']));
+        return $this->jsonResponse($order->load(['user', 'address', 'deliveryZone']));
     }
 
     /**
-     * @OA\Post(
-     *     path="/cafe/orders/{id}/cancel-request",
-     *     tags={"Cafe Mobile Orders"},
-     *     summary="Request order cancellation (reviewed by admin)",
+     * @OA\Post(path="/cafe/orders/{id}/cancel-request", tags={"Cafe Mobile"}, summary="Ask the admins to cancel a pending order",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Cancellation requested"),
-     *     @OA\Response(response=422, description="Order cannot be cancelled in its current state")
-     * )
+     *     @OA\Response(response=422, description="Order is not pending"))
      */
     public function requestCancellation(int $id): JsonResponse
     {
         $order = $this->orderScope()->findOrFail($id);
 
-        if ($order->status !== 'pending') {
+        if ($order->status !== OrderStatus::Pending) {
             return $this->jsonResponse(['message' => 'لا يمكن طلب الإلغاء إلا للطلبات قيد الانتظار'], 422);
         }
 
-        $order->update(['status' => 'cancellation_requested']);
-        $order->statusLogs()->create([
-            'status' => 'cancellation_requested',
-            'changed_by' => auth()->id(),
-            'changed_at' => now(),
-        ]);
+        $order->update(['status' => OrderStatus::CancellationRequested]);
 
         Notification::notifyAdmins(
             'طلب إلغاء',
@@ -191,111 +155,58 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Post(
-     *     path="/cafe/orders",
-     *     tags={"Cafe Mobile Orders"},
-     *     summary="Create an order for the cafe",
+     * @OA\Post(path="/cafe/orders", tags={"Cafe Mobile"}, summary="Place an order directly (without the cart)",
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CafeOrderRequest")),
      *     @OA\Response(response=201, description="Order created"),
-     *     @OA\Response(response=422, description="Validation error")
-     * )
+     *     @OA\Response(response=409, description="Insufficient stock"))
      */
-    public function storeOrder(Request $request): JsonResponse
+    public function storeOrder(Request $request, OrderPlacementService $placement): JsonResponse
     {
         $data = $request->validate([
-            'branch_id' => ['required', 'integer', 'exists:cafe_branch,id'],
+            'address_id' => ['required', 'integer', 'exists:addresses,id'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_variant_id' => ['required', 'integer', 'exists:product_variant,id'],
+            'items.*.product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
         ]);
 
-        $branch = CafeBranch::with('deliveryZone')->find($data['branch_id']);
-        if (! $branch || $branch->cafe_id !== $this->cafeId()) {
+        $address = $this->addressScope()->find($data['address_id']);
+        if (! $address) {
             return $this->jsonResponse(['message' => 'غير مصرح'], 403);
         }
 
-        // ponytail: price is always taken server-side from the variant; client-sent prices are ignored
-        $variants = ProductVariant::whereIn('id', collect($data['items'])->pluck('product_variant_id'))
-            ->get()
-            ->keyBy('id');
+        // ponytail: prices always come from the variant; client-sent prices are ignored
+        $order = $placement->place(auth()->user(), $address, $data['items'], OrderSource::App);
 
-        $items = collect($data['items'])->map(fn ($item) => [
-            'product_variant_id' => $item['product_variant_id'],
-            'quantity' => $item['quantity'],
-            'unit_price' => $variants[$item['product_variant_id']]->price,
-        ])->all();
-
-        $subtotal = collect($items)->sum(fn ($item) => $item['quantity'] * $item['unit_price']);
-        $deliveryFee = $branch->deliveryZone?->delivery_price ?? 0;
-
-        $orderData = [
-            'user_id' => auth()->id(),
-            'branch_id' => $branch->id,
-            'delegate_id' => null,
-            'delivery_zone_id' => $branch->delivery_zone_id,
-            'delivery_fee' => $deliveryFee,
-            'order_date' => now(),
-            'status' => 'pending',
-            'source' => 'cafe_app',
-            'total_amount' => $subtotal + $deliveryFee,
-        ];
-
-        $order = DB::transaction(function () use ($orderData, $items) {
-            $this->drainStock(collect($items)->pluck('quantity', 'product_variant_id')->all());
-            $orderData['order_number'] = Order::generateOrderNumber();
-            $order = Order::create($orderData);
-            $order->items()->createMany($items);
-            return $order;
-        });
-
-        $assigned = app(DelegateAssignmentService::class)->assignNearest($order);
-
-        Notification::notifyAdmins(
-            'طلب جديد من مقهى',
-            "تم إنشاء طلب جديد برقم {$order->order_number}",
-            "/orders/{$order->id}",
-            'order'
-        );
-
-        return $this->jsonResponse([
-            'id' => $order->id,
-            'status' => $order->status,
-            'total_amount' => $order->total_amount,
-            'delegate_id' => $order->delegate_id,
-            'message' => 'تم إنشاء الطلب بنجاح',
-        ], 201);
+        return $this->orderCreatedResponse($order);
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/branches",
-     *     tags={"Cafe Mobile Branches"},
-     *     summary="List cafe branches",
-     *     @OA\Response(response=200, description="Paginated list of cafe branches")
-     * )
+     * @OA\Get(path="/cafe/addresses", tags={"Cafe Mobile"}, summary="List own addresses",
+     *     @OA\Response(response=200, description="Addresses and the delivery price at the customer's registered location"))
      */
-    public function branches(Request $request): JsonResponse
+    public function addresses(Request $request): JsonResponse
     {
-        $branches = $this->branchScope()->with('deliveryZone:id,name,delivery_price')->get();
+        $addresses = $this->addressScope()->with('deliveryZone:id,name,delivery_price')->get();
 
         return $this->jsonResponse(['data' => [
-            'branches' => $branches,
-            'delivery_price' => $this->cafeZonePrice(),
+            'addresses' => $addresses,
+            'delivery_price' => $this->userZonePrice(),
         ]]);
     }
 
-    // Delivery price for the cafe's own location — used when the cafe has no
-    // branches and orders ship to the cafe's registered lat/lng.
+    // Delivery price for the customer's registered location — used when the
+    // customer has no addresses yet.
     // ponytail: delivery zones are drawn on the res-4 map grid, so one cell
     // lookup covers all of them; other resolutions would need one call per res.
-    private function cafeZonePrice(): ?float
+    private function userZonePrice(): ?float
     {
-        $cafe = Cafe::find($this->cafeId());
-        if (! $cafe || $cafe->latitude === null || $cafe->longitude === null) {
+        $profile = auth()->user()->customerProfile;
+
+        if ($profile?->latitude === null || $profile?->longitude === null) {
             return null;
         }
 
-        $cell = H3Service::latLngToCell((float) $cafe->latitude, (float) $cafe->longitude, 4);
+        $cell = H3Service::latLngToCell((float) $profile->latitude, (float) $profile->longitude, 4);
 
         $zone = DeliveryZone::where('is_active', true)
             ->where('hex_id', $cell)
@@ -305,207 +216,124 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/branches/{id}",
-     *     tags={"Cafe Mobile Branches"},
-     *     summary="Get a cafe branch",
+     * @OA\Get(path="/cafe/addresses/{id}", tags={"Cafe Mobile"}, summary="Own address details",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Branch details"),
-     *     @OA\Response(response=404, description="Not found")
-     * )
+     *     @OA\Response(response=200, description="Address"))
      */
-    public function showBranch(int $id): JsonResponse
+    public function showAddress(int $id): JsonResponse
     {
-        $branch = $this->branchScope()->with(['cafe', 'deliveryZone'])->findOrFail($id);
-        return $this->jsonResponse($branch);
+        return $this->jsonResponse($this->addressScope()->findOrFail($id));
     }
 
     /**
-     * @OA\Post(
-     *     path="/cafe/branches",
-     *     tags={"Cafe Mobile Branches"},
-     *     summary="Create a branch for the cafe",
-     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CafeBranchRequest")),
-     *     @OA\Response(response=201, description="Branch created"),
-     *     @OA\Response(response=422, description="Validation error")
-     * )
+     * @OA\Post(path="/cafe/addresses", tags={"Cafe Mobile"}, summary="Create an address",
+     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
+     *     @OA\Response(response=201, description="Address created"))
      */
-    public function storeBranch(CafeBranchRequest $request): JsonResponse
+    public function storeAddress(AddressRequest $request): JsonResponse
     {
-        if (!PremiumFeature::isActive('cafe_branches')) {
-            return $this->jsonResponse(['message' => 'إضافة فروع غير متاحة — الميزة معطلة'], 403);
+        if (! PremiumFeature::isActive('cafe_branches')) {
+            return $this->jsonResponse(['message' => 'إضافة عناوين غير متاحة — الميزة معطلة'], 403);
         }
 
-        $data = $request->validated();
-        $data['cafe_id'] = $this->cafeId();
-        $branch = CafeBranch::create($data);
+        $address = Address::create($request->validated() + ['user_id' => auth()->id()]);
+
         return $this->jsonResponse([
-            'id' => $branch->id,
-            'name' => $branch->name,
-            'message' => 'تم إنشاء الفرع بنجاح',
+            'id' => $address->id,
+            'name' => $address->name,
+            'message' => 'تم إنشاء العنوان بنجاح',
         ], 201);
     }
 
     /**
-     * @OA\Put(
-     *     path="/cafe/branches/{id}",
-     *     tags={"Cafe Mobile Branches"},
-     *     summary="Update a cafe branch",
+     * @OA\Put(path="/cafe/addresses/{id}", tags={"Cafe Mobile"}, summary="Update an address",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CafeBranchRequest")),
-     *     @OA\Response(response=200, description="Branch updated"),
-     *     @OA\Response(response=403, description="Forbidden")
-     * )
+     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
+     *     @OA\Response(response=200, description="Address updated"))
      */
-    public function updateBranch(CafeBranchRequest $request, int $id): JsonResponse
+    public function updateAddress(AddressRequest $request, int $id): JsonResponse
     {
-        $branch = $this->branchScope()->findOrFail($id);
-        $data = $request->validated();
-        $data['cafe_id'] = $this->cafeId();
-        $branch->update($data);
-        return $this->jsonResponse($branch->load(['cafe', 'deliveryZone']));
+        $address = $this->addressScope()->findOrFail($id);
+        $address->update($request->validated());
+
+        return $this->jsonResponse($address->load('deliveryZone'));
     }
 
     /**
-     * @OA\Delete(
-     *     path="/cafe/branches/{id}",
-     *     tags={"Cafe Mobile Branches"},
-     *     summary="Delete a cafe branch",
+     * @OA\Delete(path="/cafe/addresses/{id}", tags={"Cafe Mobile"}, summary="Delete an address",
+     *     description="Soft delete; past orders keep their own copy of the delivery address.",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Branch deleted"),
-     *     @OA\Response(response=409, description="Branch has orders")
-     * )
+     *     @OA\Response(response=200, description="Address deleted"))
      */
-    public function destroyBranch(int $id): JsonResponse
+    public function destroyAddress(int $id): JsonResponse
     {
-        $branch = $this->branchScope()->findOrFail($id);
+        $this->addressScope()->findOrFail($id)->delete();
 
-        if ($branch->orders()->exists()) {
-            return $this->jsonResponse(['message' => 'لا يمكن حذف فرع لديه طلبات'], 409);
-        }
-
-        $branch->delete();
-
-        return $this->jsonResponse(['message' => 'تم حذف الفرع بنجاح']);
+        return $this->jsonResponse(['message' => 'تم حذف العنوان بنجاح']);
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/profile",
-     *     tags={"Cafe Mobile Profile"},
-     *     summary="Get cafe profile (first call after login: check has_cafe)",
-     *     description="Returns has_cafe=false with cafe=null when the user has not added a cafe yet. Otherwise returns the cafe with its branches and is_active approval state.",
-     *     @OA\Response(response=200, description="Cafe profile")
-     * )
+     * @OA\Get(path="/cafe/profile", tags={"Cafe Mobile"}, summary="Customer profile",
+     *     @OA\Response(response=200, description="User fields merged with the customer profile, plus addresses"))
      */
     public function profile(): JsonResponse
     {
-        $cafe = $this->cafeId() ? Cafe::with('branches')->find($this->cafeId()) : null;
-
         return $this->jsonResponse([
-            'has_cafe' => ! is_null($cafe),
-            'cafe' => $cafe,
-            'user' => auth()->user()?->only(['id', 'name', 'email', 'mobile_number']),
+            'user' => $this->profilePayload(),
+            'addresses' => $this->addressScope()->with('deliveryZone:id,name,delivery_price')->get(),
         ]);
     }
 
     /**
-     * @OA\Post(
-     *     path="/cafe/profile",
-     *     tags={"Cafe Mobile Profile"},
-     *     summary="Add the cafe for the logged-in user (pending admin approval)",
-     *     @OA\RequestBody(required=true, @OA\MediaType(mediaType="multipart/form-data", @OA\Schema(
-     *         required={"name"},
-     *         @OA\Property(property="name", type="string", maxLength=150),
-     *         @OA\Property(property="contact_info", type="string", maxLength=200, nullable=true, description="Defaults to the user's phone number"),
-     *         @OA\Property(property="logo", type="string", format="binary", nullable=true)
-     *     ))),
-     *     @OA\Response(response=201, description="Cafe created"),
-     *     @OA\Response(response=409, description="User already has a cafe"),
-     *     @OA\Response(response=422, description="Validation error")
-     * )
-     */
-    public function storeCafe(Request $request): JsonResponse
-    {
-        $user = auth()->user();
-
-        if (! $this->isCafeUser()) {
-            return $this->jsonResponse(['message' => 'غير مصرح'], 403);
-        }
-
-        if ($user->cafe_id) {
-            return $this->jsonResponse(['message' => 'لديك مقهى مسجل بالفعل'], 409);
-        }
-
-        $data = $request->validate([
-            'name' => 'required|string|max:150',
-            'contact_info' => 'nullable|string|max:200',
-            'logo' => 'nullable|image|max:2048',
-        ]);
-
-        $autoApprove = PremiumFeature::isActive('cafe_auto_approve');
-
-        $cafe = Cafe::create([
-            'name' => $data['name'],
-            'contact_info' => $data['contact_info'] ?? $user->mobile_number,
-            'image' => $request->file('logo')?->store('cafes', 'public'),
-            'is_active' => $autoApprove,
-        ]);
-
-        $user->syncCafeUser(['cafe_id' => $cafe->id]);
-
-        if ($autoApprove) {
-            Notification::notifyAdmins(
-                'مقهى جديد مفعل تلقائياً',
-                "تم تسجيل وتفعيل مقهى جديد: {$cafe->name}",
-                '/cafes',
-                'cafe_registration'
-            );
-        } else {
-            Notification::notifyAdmins(
-                'طلب تسجيل مقهى جديد',
-                "طلب مقهى جديد ينتظر الموافقة: {$cafe->name}",
-                '/cafe-registrations/pending',
-                'cafe_registration'
-            );
-        }
-
-        return $this->jsonResponse([
-            'message' => $autoApprove
-                ? 'تم تسجيل مقهاك وتفعيله'
-                : 'تم إرسال طلب التسجيل بنجاح، سيتم التواصل معك بعد الموافقة',
-            'cafe' => $cafe->only(['id', 'name', 'contact_info', 'image_url', 'is_active']),
-        ], 201);
-    }
-
-    /**
-     * @OA\Put(
-     *     path="/cafe/profile",
-     *     tags={"Cafe Mobile Profile"},
-     *     summary="Update cafe profile",
-     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="name", type="string"), @OA\Property(property="contact_info", type="string"))),
-     *     @OA\Response(response=200, description="Profile updated")
-     * )
+     * @OA\Put(path="/cafe/profile", tags={"Cafe Mobile"}, summary="Update customer profile",
+     *     @OA\RequestBody(@OA\JsonContent(
+     *         @OA\Property(property="name", type="string"),
+     *         @OA\Property(property="mobile_number", type="string"),
+     *         @OA\Property(property="business_name", type="string", nullable=true),
+     *         @OA\Property(property="latitude", type="number", nullable=true),
+     *         @OA\Property(property="longitude", type="number", nullable=true))),
+     *     @OA\Response(response=200, description="Updated profile"))
      */
     public function updateProfile(Request $request): JsonResponse
     {
+        $user = auth()->user();
+
         $data = $request->validate([
-            'name' => 'sometimes|required|string|max:150',
-            'contact_info' => 'nullable|string|max:200',
+            'name' => ['sometimes', 'required', 'string', 'max:100'],
+            'mobile_number' => ['sometimes', 'required', 'string', 'max:20', Rule::unique('users', 'mobile_number')->ignore($user->id)],
+            'business_name' => ['nullable', 'string', 'max:150'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
-        $cafe = Cafe::findOrFail($this->cafeId());
-        $cafe->update($data);
-        return $this->jsonResponse($cafe);
+        DB::transaction(function () use ($user, $data) {
+            $user->update(collect($data)->only(['name', 'mobile_number'])->all());
+            $user->customerProfile()->updateOrCreate(
+                ['user_id' => $user->id],
+                collect($data)->only(['business_name', 'latitude', 'longitude'])->all()
+            );
+        });
+
+        $user->unsetRelation('customerProfile');
+
+        return $this->jsonResponse($this->profilePayload());
+    }
+
+    private function profilePayload(): array
+    {
+        $user = auth()->user()->loadMissing('customerProfile');
+        $profile = $user->customerProfile;
+
+        return $user->only(['id', 'name', 'email', 'mobile_number']) + [
+            'business_name' => $profile?->business_name,
+            'latitude' => $profile?->latitude,
+            'longitude' => $profile?->longitude,
+        ];
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/delivery-zones",
-     *     tags={"Cafe Mobile Branches"},
-     *     summary="List active delivery zones for map branch placement",
-     *     @OA\Response(response=200, description="List of delivery zones")
-     * )
+     * @OA\Get(path="/cafe/delivery-zones", tags={"Cafe Mobile"}, summary="Active delivery zones for the map",
+     *     @OA\Response(response=200, description="Zones"))
      */
     public function deliveryZones(Request $request): JsonResponse
     {
@@ -517,31 +345,27 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/categories",
-     *     tags={"Cafe Mobile Catalog"},
-     *     summary="List product categories",
-     *     @OA\Response(response=200, description="List of categories")
-     * )
+     * @OA\Get(path="/cafe/categories", tags={"Cafe Mobile"}, summary="List categories",
+     *     @OA\Response(response=200, description="Categories"))
      */
     public function categories(Request $request): JsonResponse
     {
-        $categories = Category::with('parentCategory')->get();
-        return $this->jsonResponse(['data' => $categories]);
+        return $this->jsonResponse(['data' => Category::with('parentCategory')->get()]);
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/products",
-     *     tags={"Cafe Mobile Catalog"},
-     *     summary="List products",
-     *     @OA\Parameter(name="category_id", in="query", required=false, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Paginated list of products")
-     * )
+     * @OA\Get(path="/cafe/products", tags={"Cafe Mobile"}, summary="List active products (cards)",
+     *     @OA\Parameter(name="category_id", in="query", @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
+     *     @OA\Response(response=200, description="Products"))
      */
     public function products(Request $request): JsonResponse
     {
-        $query = Product::with(['variants' => fn ($q) => $q->where('is_active', true)->orderBy('id'), 'variants.images']);
+        $query = Product::with([
+            'allImages',
+            'variants' => fn ($q) => $q->where('is_active', true)->orderBy('id'),
+            'variants.images',
+        ])->where('is_active', true);
 
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->integer('category_id'));
@@ -553,35 +377,18 @@ class CafeMobileController extends BaseApiController
 
         // ponytail: mobile list cards only need name/price/image — full description
         // and variants live in show() and /variants (quick-add uses default_variant_id).
-        $products = $query->get()->map(function (Product $product) {
-            $primaryImage = $product->variants
-                ->flatMap(fn ($v) => $v->images)
-                ->first(fn ($img) => $img->is_primary);
-
-            if (! $primaryImage) {
-                $primaryImage = $product->variants
-                    ->flatMap(fn ($v) => $v->images)
-                    ->first();
-            }
-
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'image_url' => $product->image_url ?: $primaryImage?->image_url,
-                'min_price' => $product->variants->min(fn ($v) => $v->sell_price ?? $v->price),
-                'category_id' => $product->category_id,
-                'default_variant_id' => $product->variants->first()?->id,
-            ];
-        });
+        $products = $query->get()->map(fn (Product $product) => [
+            'id' => $product->id,
+            'name' => $product->name,
+            'image_url' => $product->image_url,
+            'min_price' => $product->variants->min('price'),
+            'category_id' => $product->category_id,
+            'default_variant_id' => $product->variants->first()?->id,
+        ]);
 
         return $this->jsonResponse(['data' => $products]);
     }
 
-    /**
-     * Search returns product-shaped entries at variant level: each matched
-     * variant becomes "Product — variant" with its own price/image, so the
-     * mobile app renders results exactly like normal product cards.
-     */
     private function searchProducts(Request $request, $query): array
     {
         $search = trim((string) $request->input('search'));
@@ -590,14 +397,14 @@ class CafeMobileController extends BaseApiController
         foreach ($query->get() as $product) {
             $variantHit = false;
             foreach ($product->variants as $variant) {
-                if (mb_stripos((string) $variant->attribute_value, $search) !== false) {
+                if (mb_stripos((string) $variant->name, $search) !== false) {
                     $variantHit = true;
                     $results[] = [
                         'id' => $product->id,
                         'variant_id' => $variant->id,
-                        'name' => $product->name . ' — ' . $variant->attribute_value,
+                        'name' => $product->name . ' — ' . $variant->name,
                         'image_url' => $variant->images->first()?->image_url ?: $product->image_url,
-                        'min_price' => $variant->sell_price ?? $variant->price,
+                        'min_price' => $variant->price,
                         'category_id' => $product->category_id,
                         'default_variant_id' => $variant->id,
                     ];
@@ -607,8 +414,8 @@ class CafeMobileController extends BaseApiController
                 $results[] = [
                     'id' => $product->id,
                     'name' => $product->name,
-                    'image_url' => $product->image_url ?: $product->variants->flatMap(fn ($v) => $v->images)->first()?->image_url,
-                    'min_price' => $product->variants->min(fn ($v) => $v->sell_price ?? $v->price),
+                    'image_url' => $product->image_url,
+                    'min_price' => $product->variants->min('price'),
                     'category_id' => $product->category_id,
                     'default_variant_id' => $product->variants->first()?->id,
                 ];
@@ -619,124 +426,78 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/products/{id}",
-     *     tags={"Cafe Mobile Catalog"},
-     *     summary="Get product details",
+     * @OA\Get(path="/cafe/products/{id}", tags={"Cafe Mobile"}, summary="Product details",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Product details"),
-     *     @OA\Response(response=404, description="Not found")
-     * )
+     *     @OA\Response(response=200, description="Product with its own images"))
      */
     public function showProduct(int $id): JsonResponse
     {
-        $product = Product::with(['category', 'variants.images'])->findOrFail($id);
-        $primaryImage = $product->variants->flatMap(fn ($v) => $v->images)->first(fn ($img) => $img->is_primary)
-            ?? $product->variants->flatMap(fn ($v) => $v->images)->first();
+        $product = Product::with(['category', 'allImages'])->where('is_active', true)->findOrFail($id);
+
         return $this->jsonResponse([
             'id' => $product->id,
             'name' => $product->name,
+            'brand' => $product->brand,
             'description' => $product->description,
-            'image_url' => $product->image_url ?: $primaryImage?->image_url,
+            'image_url' => $product->image_url,
+            'images' => $product->allImages->whereNull('product_variant_id')->values(),
             'category' => $product->category,
         ]);
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/products/{id}/variants",
-     *     tags={"Cafe Mobile Catalog"},
-     *     summary="Get product variants by product id",
+     * @OA\Get(path="/cafe/products/{id}/variants", tags={"Cafe Mobile"}, summary="Active sizes of a product",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="List of product variants"),
-     *     @OA\Response(response=404, description="Product not found")
-     * )
+     *     @OA\Response(response=200, description="Variants with images and stock"))
      */
-    public function productVariants(int $id): JsonResponse
+    public function productVariants(int $id, StockService $stock): JsonResponse
     {
         $product = Product::findOrFail($id);
-        return $this->jsonResponse(['data' => $product->variants()->with('images')->get()]);
+        $variants = $product->variants()->where('is_active', true)->with('images')->orderBy('id')->get();
+        $levels = $stock->levels($variants->pluck('id')->all());
+
+        $variants->each(fn (ProductVariant $v) => $v->setAttribute('in_stock', $levels[$v->id]['total'] ?? 0));
+
+        return $this->jsonResponse(['data' => $variants]);
     }
 
     /**
-     * @OA\Get(
-     *     path="/cafe/cart",
-     *     tags={"Cafe Mobile Cart"},
-     *     summary="Get the current cafe user's active cart",
-     *     @OA\Response(response=200, description="Cart details")
-     * )
+     * @OA\Get(path="/cafe/cart", tags={"Cafe Mobile"}, summary="Current shopping cart (null when none)",
+     *     @OA\Response(response=200, description="Cart"))
      */
     public function cart(): JsonResponse
     {
-        $cart = $this->currentCart();
+        $cart = $this->shoppingCart();
 
-        return $this->jsonResponse([
-            'data' => $cart?->load(['branch', 'items.productVariant.product']),
-        ]);
+        return $this->jsonResponse(['data' => $cart ? $this->cartPayload($cart) : null]);
     }
 
     /**
-     * @OA\Put(
-     *     path="/cafe/cart/branch",
-     *     tags={"Cafe Mobile Cart"},
-     *     summary="Select the delivery branch for the cart",
-     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="branch_id", type="integer"))),
-     *     @OA\Response(response=200, description="Branch selected; items are reset when the branch changes")
-     * )
+     * @OA\Get(path="/cafe/cart/check-stock", tags={"Cafe Mobile"}, summary="Stock availability for the cart items",
+     *     @OA\Response(response=200, description="Per-item availability"),
+     *     @OA\Response(response=400, description="Cart is empty"))
      */
-    public function selectBranch(Request $request): JsonResponse
+    public function checkStock(StockService $stock): JsonResponse
     {
-        $data = $request->validate(['branch_id' => ['required', 'integer', 'exists:cafe_branch,id']]);
-        $branch = $this->branchScope()->findOrFail($data['branch_id']);
-
-        $cart = $this->currentCart($branch->id);
-
-        // one branch per cart; switching branch resets the items
-        $switched = $cart->branch_id && $cart->branch_id !== $branch->id;
-        if ($switched) {
-            $cart->items()->delete();
-        }
-        $cart->update(['branch_id' => $branch->id]);
-
-        return $this->jsonResponse([
-            'data' => $cart->load(['branch', 'branch.deliveryZone', 'items.productVariant.product']),
-            'branch_switched' => $switched,
-            'message' => $switched ? 'تم تغيير الفرع وإعادة تعيين السلة' : 'تم اختيار الفرع',
-        ]);
-    }
-
-    /**
-     * @OA\Get(
-     *     path="/cafe/cart/check-stock",
-     *     tags={"Cafe Mobile Cart"},
-     *     summary="Check stock availability for every cart item (no reservation)",
-     *     @OA\Response(response=200, description="Per-item availability report")
-     * )
-     */
-    public function checkStock(): JsonResponse
-    {
-        $cart = $this->currentCart();
+        $cart = $this->shoppingCart();
         if (! $cart || $cart->items->isEmpty()) {
             return $this->jsonResponse(['message' => 'السلة فارغة'], 400);
         }
 
         $cart->loadMissing('items.productVariant.product');
-        $levels = $this->stockLevels($cart->items->pluck('product_variant_id')->all());
+        $levels = $stock->levels($cart->items->pluck('product_variant_id')->all());
 
         $items = $cart->items->map(function (CartItem $item) use ($levels) {
-            $variant = $item->productVariant;
-            $name = $variant?->product?->name ?? 'منتج';
-            $label = $variant?->attribute_value ? "{$name} - {$variant->attribute_value}" : $name;
-            $stock = $levels[$item->product_variant_id] ?? ['total' => 0, 'warehouses' => []];
+            $level = $levels[$item->product_variant_id] ?? ['total' => 0, 'warehouses' => []];
 
             return [
                 'cart_item_id' => $item->id,
                 'product_variant_id' => $item->product_variant_id,
-                'name' => $label,
-                'requested' => (int) $item->quantity,
-                'in_stock' => $stock['total'],
-                'available' => $stock['total'] >= $item->quantity,
-                'warehouses' => $stock['warehouses'],
+                'name' => $item->productVariant?->label() ?? 'منتج',
+                'requested' => $item->quantity,
+                'in_stock' => $level['total'],
+                'available' => $level['total'] >= $item->quantity,
+                'warehouses' => $level['warehouses'],
             ];
         });
 
@@ -747,297 +508,158 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Post(
-     *     path="/cafe/cart/items",
-     *     tags={"Cafe Mobile Cart"},
-     *     summary="Add an item to the cafe user's cart",
+     * @OA\Post(path="/cafe/cart/items", tags={"Cafe Mobile"}, summary="Add an item to the shopping cart (sets its quantity)",
      *     @OA\RequestBody(required=true, @OA\JsonContent(
-     *         @OA\Property(property="branch_id", type="integer"),
      *         @OA\Property(property="product_variant_id", type="integer"),
-     *         @OA\Property(property="quantity", type="integer"),
-     *         @OA\Property(property="price_at_add", type="number", format="float", nullable=true)
-     *     )),
-     *     @OA\Response(response=201, description="Item added"),
-     *     @OA\Response(response=422, description="Validation error")
-     * )
+     *         @OA\Property(property="quantity", type="integer"))),
+     *     @OA\Response(response=201, description="Item saved"))
      */
     public function addCartItem(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'branch_id' => ['required', 'integer', 'exists:cafe_branch,id'],
-            'product_variant_id' => ['required', 'integer', 'exists:product_variant,id'],
+            'product_variant_id' => ['required', 'integer', Rule::exists('product_variants', 'id')->where('is_active', true)->whereNull('deleted_at')],
             'quantity' => ['required', 'integer', 'min:1'],
         ]);
 
-        $branch = $this->branchScope()->findOrFail($data['branch_id']);
-        $variant = ProductVariant::findOrFail($data['product_variant_id']);
-
-        $cart = $this->currentCart($branch->id);
-
-        // ponytail: one branch per cart; reset items if branch changes
-        if ($cart->branch_id && $cart->branch_id !== $branch->id) {
-            $cart->items()->delete();
-        }
-        $cart->update(['branch_id' => $branch->id]);
+        $cart = Cart::firstOrCreate(['user_id' => auth()->id(), 'type' => CartType::Shopping]);
 
         $item = $cart->items()->updateOrCreate(
-            ['product_variant_id' => $variant->id],
-            [
-                'quantity' => $data['quantity'],
-                'price_at_add' => $variant->price,
-            ]
+            ['product_variant_id' => $data['product_variant_id']],
+            ['quantity' => $data['quantity']]
         );
 
         return $this->jsonResponse([
             'data' => $item->load('productVariant.product'),
-            'cart' => $cart->load(['branch', 'items.productVariant.product']),
+            'cart' => $this->cartPayload($cart),
         ], 201);
     }
 
     /**
-     * @OA\Put(
-     *     path="/cafe/cart/items/{id}",
-     *     tags={"Cafe Mobile Cart"},
-     *     summary="Update a cart item quantity",
+     * @OA\Put(path="/cafe/cart/items/{id}", tags={"Cafe Mobile"}, summary="Change a cart item quantity",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="quantity", type="integer"))),
-     *     @OA\Response(response=200, description="Item updated"),
-     *     @OA\Response(response=404, description="Not found")
-     * )
+     *     @OA\Response(response=200, description="Cart"))
      */
     public function updateCartItem(Request $request, int $id): JsonResponse
     {
         $data = $request->validate(['quantity' => ['required', 'integer', 'min:1']]);
 
-        $cart = $this->currentCart();
+        $cart = $this->shoppingCart();
         if (! $cart) {
             return $this->jsonResponse(['message' => 'السلة غير موجودة'], 404);
         }
 
-        $item = $cart->items()->findOrFail($id);
-        $item->update(['quantity' => $data['quantity']]);
+        $cart->items()->findOrFail($id)->update(['quantity' => $data['quantity']]);
 
-        return $this->jsonResponse($cart->load(['branch', 'items.productVariant.product']));
+        return $this->jsonResponse($this->cartPayload($cart));
     }
 
     /**
-     * @OA\Delete(
-     *     path="/cafe/cart/items/{id}",
-     *     tags={"Cafe Mobile Cart"},
-     *     summary="Remove an item from the cart",
+     * @OA\Delete(path="/cafe/cart/items/{id}", tags={"Cafe Mobile"}, summary="Remove a cart item",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Item removed"),
-     *     @OA\Response(response=404, description="Not found")
-     * )
+     *     @OA\Response(response=200, description="Cart"))
      */
     public function removeCartItem(int $id): JsonResponse
     {
-        $cart = $this->currentCart();
+        $cart = $this->shoppingCart();
         if (! $cart) {
             return $this->jsonResponse(['message' => 'السلة غير موجودة'], 404);
         }
 
         $cart->items()->findOrFail($id)->delete();
 
-        return $this->jsonResponse($cart->load(['branch', 'items.productVariant.product']));
+        return $this->jsonResponse($this->cartPayload($cart));
     }
 
     /**
-     * @OA\Delete(
-     *     path="/cafe/cart",
-     *     tags={"Cafe Mobile Cart"},
-     *     summary="Clear the current cart",
-     *     @OA\Response(response=200, description="Cart cleared")
-     * )
+     * @OA\Delete(path="/cafe/cart", tags={"Cafe Mobile"}, summary="Empty the shopping cart",
+     *     @OA\Response(response=200, description="Cart emptied"))
      */
     public function clearCart(): JsonResponse
     {
-        $cart = $this->currentCart();
-        $cart?->items()->delete();
-        $cart?->delete();
+        $this->shoppingCart()?->items()->delete();
 
         return $this->jsonResponse(['message' => 'تم إفراغ السلة']);
     }
 
     /**
-     * @OA\Post(
-     *     path="/cafe/cart/checkout",
-     *     tags={"Cafe Mobile Cart"},
-     *     summary="Checkout the cart and create an order",
+     * @OA\Post(path="/cafe/cart/checkout", tags={"Cafe Mobile"}, summary="Turn the shopping cart into an order",
+     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="address_id", type="integer"))),
      *     @OA\Response(response=201, description="Order created"),
-     *     @OA\Response(response=400, description="Cart is empty")
-     * )
+     *     @OA\Response(response=400, description="Cart is empty"),
+     *     @OA\Response(response=409, description="Insufficient stock"))
      */
-    public function checkout(): JsonResponse
+    public function checkout(Request $request, OrderPlacementService $placement): JsonResponse
     {
-        $cart = $this->currentCart();
+        $data = $request->validate(['address_id' => ['required', 'integer']]);
 
+        $cart = $this->shoppingCart();
         if (! $cart || $cart->items->isEmpty()) {
             return $this->jsonResponse(['message' => 'السلة فارغة'], 400);
         }
 
-        $branch = $this->branchScope()->findOrFail($cart->branch_id);
-        $items = $cart->items->map(fn (CartItem $item) => [
-            'product_variant_id' => $item->product_variant_id,
-            'quantity' => $item->quantity,
-            'unit_price' => $item->price_at_add,
-        ])->all();
+        $address = $this->addressScope()->findOrFail($data['address_id']);
 
-        $subtotal = $cart->items->sum(fn ($item) => $item->quantity * $item->price_at_add);
-        $deliveryFee = $branch->deliveryZone?->delivery_price ?? 0;
-
-        $orderData = [
-            'user_id' => auth()->id(),
-            'branch_id' => $branch->id,
-            'delegate_id' => null,
-            'delivery_zone_id' => $branch->delivery_zone_id,
-            'delivery_fee' => $deliveryFee,
-            'order_date' => now(),
-            'status' => 'pending',
-            'source' => 'cafe_app',
-            'total_amount' => $subtotal + $deliveryFee,
-        ];
-
-        $order = DB::transaction(function () use ($orderData, $items, $cart) {
-            $this->drainStock($cart->items->pluck('quantity', 'product_variant_id')->all());
-            $orderData['order_number'] = Order::generateOrderNumber();
-            $order = Order::create($orderData);
-            $order->items()->createMany($items);
+        $order = DB::transaction(function () use ($placement, $cart, $address) {
+            $order = $placement->place(auth()->user(), $address, $cart->items->toArray(), OrderSource::App, $cart);
             $cart->items()->delete();
-            $cart->delete();
+
             return $order;
         });
 
-        $assigned = app(DelegateAssignmentService::class)->assignNearest($order);
+        return $this->orderCreatedResponse($order);
+    }
 
-        Notification::notifyAdmins(
-            'طلب جديد من سلة مقهى',
-            "تم إنشاء طلب جديد برقم {$order->order_number}",
-            "/orders/{$order->id}",
-            'order'
-        );
+    /**
+     * @OA\Get(path="/cafe/orders/{id}/delegate", tags={"Cafe Mobile"}, summary="Live location of the order's delegate",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Delegate location"),
+     *     @OA\Response(response=404, description="No delegate assigned"))
+     */
+    public function orderDelegate(int $id): JsonResponse
+    {
+        $order = $this->orderScope()->with('delegate.delegateProfile')->findOrFail($id);
+
+        if (! $order->delegate) {
+            return $this->jsonResponse(['message' => 'لا يوجد مندوب مخصص لهذا الطلب'], 404);
+        }
+
+        $profile = $order->delegate->delegateProfile;
 
         return $this->jsonResponse([
+            'data' => [
+                'id' => $order->delegate->id,
+                'name' => $order->delegate->name,
+                'latitude' => $profile?->latitude,
+                'longitude' => $profile?->longitude,
+                'is_available' => (bool) $profile?->is_available,
+                'location_updated_at' => $profile?->location_updated_at?->toDateTimeString(),
+            ],
+        ]);
+    }
+
+    private function shoppingCart(): ?Cart
+    {
+        return Cart::shopping()->with('items')->where('user_id', auth()->id())->first();
+    }
+
+    private function cartPayload(Cart $cart): Cart
+    {
+        $cart->load('items.productVariant.product');
+        $cart->setAttribute('subtotal', $cart->subtotal());
+
+        return $cart;
+    }
+
+    private function orderCreatedResponse(Order $order): JsonResponse
+    {
+        return $this->jsonResponse([
             'id' => $order->id,
+            'order_number' => $order->order_number,
             'status' => $order->status,
             'total_amount' => $order->total_amount,
             'delegate_id' => $order->delegate_id,
             'message' => 'تم إنشاء الطلب بنجاح',
         ], 201);
-    }
-
-    /**
-     * @OA\Get(
-     *     path="/cafe/orders/{id}/delegate",
-     *     tags={"Cafe Mobile Orders"},
-     *     summary="Get the assigned delegate live location for a cafe order",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Delegate location"),
-     *     @OA\Response(response=404, description="No delegate assigned")
-     * )
-     */
-    public function orderDelegate(int $id): JsonResponse
-    {
-        $order = $this->orderScope()
-            ->with(['delegate'])
-            ->findOrFail($id);
-
-        if (! $order->delegate_id) {
-            return $this->jsonResponse(['message' => 'لا يوجد مندوب مخصص لهذا الطلب'], 404);
-        }
-
-        $delegate = $order->delegate;
-
-        return $this->jsonResponse([
-            'data' => [
-                'id' => $delegate->id,
-                'name' => $delegate->name,
-                'latitude' => $delegate->latitude,
-                'longitude' => $delegate->longitude,
-                'is_available' => $delegate->is_available,
-                'location_updated_at' => $delegate->location_updated_at?->toDateTimeString(),
-            ],
-        ]);
-    }
-
-    private function currentCart(?int $branchId = null): ?Cart
-    {
-        $cart = Cart::with('items')
-            ->where('user_id', auth()->id())
-            ->where(function ($q) {
-                $q->whereNull('status')->orWhere('status', 'active');
-            })
-            ->first();
-
-        if (! $cart && $branchId) {
-            $cart = Cart::create([
-                'user_id' => auth()->id(),
-                'branch_id' => $branchId,
-                'status' => 'active',
-            ]);
-            $cart->load('items');
-        }
-
-        return $cart;
-    }
-
-    // Available stock per variant: total + per-warehouse breakdown.
-    private function stockLevels(array $variantIds): array
-    {
-        return Inventory::whereIn('product_variant_id', $variantIds)
-            ->with('warehouse:id,name')
-            ->get()
-            ->groupBy('product_variant_id')
-            ->map(fn ($rows) => [
-                'total' => (int) $rows->sum('quantity'),
-                'warehouses' => $rows->map(fn ($r) => [
-                    'warehouse_id' => $r->warehouse_id,
-                    'warehouse_name' => $r->warehouse?->name,
-                    'quantity' => (int) $r->quantity,
-                ])->values(),
-            ])
-            ->all();
-    }
-
-    // ponytail: no reservation — stock is locked and drained at payment time only.
-    // Must run inside a DB::transaction; throws a 409 with a shortage report when
-    // any variant is short, so the order is never created and nothing is deducted.
-    private function drainStock(array $quantitiesByVariant): void
-    {
-        $rows = Inventory::whereIn('product_variant_id', array_keys($quantitiesByVariant))
-            ->lockForUpdate()
-            ->orderBy('id')
-            ->get()
-            ->groupBy('product_variant_id');
-
-        $shortages = [];
-        foreach ($quantitiesByVariant as $variantId => $qty) {
-            $available = (int) ($rows->get($variantId)?->sum('quantity') ?? 0);
-            if ($available < $qty) {
-                $shortages[] = [
-                    'product_variant_id' => $variantId,
-                    'requested' => $qty,
-                    'available' => $available,
-                ];
-            }
-        }
-
-        if ($shortages) {
-            throw new HttpResponseException($this->jsonResponse([
-                'message' => 'الكمية المطلوبة غير متوفرة لبعض المنتجات',
-                'shortages' => $shortages,
-            ], 409));
-        }
-
-        foreach ($quantitiesByVariant as $variantId => $qty) {
-            foreach ($rows->get($variantId) ?? [] as $inventory) {
-                if ($qty <= 0) {
-                    break;
-                }
-                $take = min((int) $inventory->quantity, $qty);
-                $inventory->decrement('quantity', $take);
-                $qty -= $take;
-            }
-        }
     }
 }

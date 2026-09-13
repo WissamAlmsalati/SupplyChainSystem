@@ -61,7 +61,7 @@ export default function Map() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { items: warehouses, loading: whLoading } = useApiResource('/warehouses', {}, { persistPage: false })
-  const { items: branches, loading: branchLoading } = useApiResource('/cafe-branches', {}, { persistPage: false })
+  const { items: addresses, loading: addressLoading } = useApiResource('/addresses', {}, { persistPage: false })
   const { items: delegates, loading: delegateLoading } = useApiResource('/delegates', {}, { persistPage: false })
   const { items: zones, loading: zoneLoading, fetch } = useApiResource('/delivery-zones?per_page=10000', {}, { persistPage: false })
   const mapRef = useRef(null)
@@ -140,7 +140,14 @@ export default function Map() {
   }, [])
 
   useEffect(() => {
-    setLiveDelegates(delegates)
+    setLiveDelegates(delegates.map((d) => ({
+      id: d.id,
+      name: d.name,
+      latitude: d.delegate_profile?.latitude,
+      longitude: d.delegate_profile?.longitude,
+      is_available: d.delegate_profile?.is_available,
+      location_updated_at: d.delegate_profile?.location_updated_at,
+    })))
   }, [delegates])
 
   useEffect(() => {
@@ -193,7 +200,7 @@ export default function Map() {
     }
 
     if (layer === 'branches' || layer === 'all') {
-      branches.forEach((b) => {
+      addresses.forEach((b) => {
         if (b.latitude != null && b.longitude != null) {
           L.circle([b.latitude, b.longitude], { radius: 500, color: '#2563eb' })
             .addTo(map)
@@ -257,7 +264,7 @@ export default function Map() {
         }
       })
     }
-  }, [warehouses, branches, liveDelegates, zones, layer, gridVisible, showPricedOnly, libyaCells, zoneMap, warehouseZoneMap])
+  }, [warehouses, addresses, liveDelegates, zones, layer, gridVisible, showPricedOnly, libyaCells, zoneMap, warehouseZoneMap])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -308,7 +315,7 @@ export default function Map() {
     }
   }
 
-  const loading = whLoading || branchLoading || delegateLoading || zoneLoading
+  const loading = whLoading || addressLoading || delegateLoading || zoneLoading
 
   const closeModal = () => {
     setModal(false)
@@ -321,7 +328,7 @@ export default function Map() {
         <h1 className="text-2xl font-extrabold text-foreground">الخريطة</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant={layer === 'warehouses' ? 'primary' : 'secondary'} size="sm" onClick={() => setLayer('warehouses')}>المستودعات</Button>
-          <Button variant={layer === 'branches' ? 'primary' : 'secondary'} size="sm" onClick={() => setLayer('branches')}>الفروع</Button>
+          <Button variant={layer === 'branches' ? 'primary' : 'secondary'} size="sm" onClick={() => setLayer('branches')}>العناوين</Button>
           <Button variant={layer === 'delegates' ? 'primary' : 'secondary'} size="sm" onClick={() => setLayer('delegates')}>المناديب</Button>
           <Button variant={layer === 'zones' ? 'primary' : 'secondary'} size="sm" onClick={() => setLayer('zones')}>المناطق</Button>
           <Button variant={layer === 'all' ? 'primary' : 'secondary'} size="sm" onClick={() => setLayer('all')}>الكل</Button>

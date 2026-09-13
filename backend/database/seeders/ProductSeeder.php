@@ -19,13 +19,7 @@ class ProductSeeder extends Seeder
 
         Product::factory()
             ->count(20)
-            ->create([
-                'category_id' => fn () => $categories->random()->id,
-            ])
-            ->each(function (Product $product) {
-                ProductVariant::factory()->count(rand(1, 3))->create([
-                    'product_id' => $product->id,
-                ]);
-            });
+            ->create(['category_id' => fn () => $categories->random()->id])
+            ->each(fn (Product $product) => ProductVariant::factory()->count(rand(1, 3))->create(['product_id' => $product->id]));
     }
 }

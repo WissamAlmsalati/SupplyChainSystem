@@ -27,13 +27,15 @@ class DelegateLocationUpdated implements ShouldBroadcastNow
 
     public function broadcastWith(): array
     {
+        $profile = $this->delegate->delegateProfile;
+
         return [
             'id' => $this->delegate->id,
             'name' => $this->delegate->name,
-            'latitude' => $this->delegate->latitude,
-            'longitude' => $this->delegate->longitude,
-            'is_available' => $this->delegate->is_available,
-            'location_updated_at' => $this->delegate->location_updated_at?->toDateTimeString(),
+            'latitude' => $profile?->latitude,
+            'longitude' => $profile?->longitude,
+            'is_available' => (bool) $profile?->is_available,
+            'location_updated_at' => $profile?->location_updated_at?->toDateTimeString(),
         ];
     }
 

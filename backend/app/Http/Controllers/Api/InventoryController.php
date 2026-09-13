@@ -2,26 +2,18 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\StockMovementType;
 use App\Http\Requests\Api\InventoryRequest;
 use App\Models\Inventory;
-use Illuminate\Database\QueryException;
+use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
-/**
- * @OA\Tag(name="Admin Inventory", description="Admin platform inventory management")
- */
+// Stock balances. Every change goes through StockService and is recorded in stock_movements.
 class InventoryController extends BaseApiController
 {
-    /**
-     * @OA\Get(
-     *     path="/inventory",
-     *     tags={"Admin Inventory"},
-     *     summary="List inventory records",
-     *     @OA\Response(response=200, description="Paginated list of inventory records")
-     * )
-     */
+    public function __construct(private StockService $stock) {}
+
     public function index(Request $request): JsonResponse
     {
         $query = Inventory::with(['warehouse', 'productVariant.product']);
@@ -30,6 +22,7 @@ class InventoryController extends BaseApiController
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->whereHas('productVariant.product', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('productVariant', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
                   ->orWhereHas('warehouse', fn ($sub) => $sub->where('name', 'like', "%{$search}%"));
             });
         }
@@ -38,102 +31,55 @@ class InventoryController extends BaseApiController
             $query->where('warehouse_id', $request->integer('warehouse_id'));
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
+        if ($request->filled('product_variant_id')) {
+            $query->where('product_variant_id', $request->integer('product_variant_id'));
+        }
+
+        $perPage = $request->integer('per_page', 15);
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
     }
 
-    /**
-     * @OA\Post(
-     *     path="/inventory",
-     *     tags={"Admin Inventory"},
-     *     summary="Create an inventory record",
-     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/InventoryRequest")),
-     *     @OA\Response(response=201, description="Inventory record created"),
-     *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
-     * )
-     */
+    // Adds stock to a warehouse (sums with any existing balance).
     public function store(InventoryRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-        $qty = (int) $validated['quantity'];
+        $data = $request->validated();
 
-        $inventory = DB::transaction(function () use ($validated, $qty) {
-            $existing = Inventory::where('warehouse_id', $validated['warehouse_id'])
-                ->where('product_variant_id', $validated['product_variant_id'])
-                ->lockForUpdate()
-                ->first();
-
-            if ($existing) {
-                // "add stock" always sums with the existing stock, never replaces it
-                $existing->increment('quantity', $qty);
-                return $existing->refresh();
-            }
-
-            try {
-                return Inventory::create([
-                    'warehouse_id' => $validated['warehouse_id'],
-                    'product_variant_id' => $validated['product_variant_id'],
-                    'quantity' => $qty,
-                ]);
-            } catch (QueryException) {
-                // unique (warehouse_id, product_variant_id) — a concurrent first-add
-                // created the row between our SELECT and INSERT; sum instead.
-                $existing = Inventory::where('warehouse_id', $validated['warehouse_id'])
-                    ->where('product_variant_id', $validated['product_variant_id'])
-                    ->lockForUpdate()
-                    ->firstOrFail();
-                $existing->increment('quantity', $qty);
-                return $existing->refresh();
-            }
-        });
+        $inventory = $this->stock->adjust(
+            $data['warehouse_id'],
+            $data['product_variant_id'],
+            (int) $data['quantity'],
+            StockMovementType::Adjustment,
+            null,
+            $data['note'] ?? 'إضافة مخزون يدوية',
+        );
 
         return $this->jsonResponse($inventory->load(['warehouse', 'productVariant.product']), 201);
     }
 
-
-    /**
-     * @OA\Get(
-     *     path="/inventory/{id}",
-     *     tags={"Admin Inventory"},
-     *     summary="Get an inventory record",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Inventory record details"),
-     *     @OA\Response(response=404, description="Not found")
-     * )
-     */
     public function show(Inventory $inventory): JsonResponse
     {
         return $this->jsonResponse($inventory->load(['warehouse', 'productVariant.product']));
     }
 
-    /**
-     * @OA\Put(
-     *     path="/inventory/{id}",
-     *     tags={"Admin Inventory"},
-     *     summary="Update an inventory record",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/InventoryRequest")),
-     *     @OA\Response(response=200, description="Inventory record updated"),
-     *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
-     * )
-     */
+    // Sets the counted on-hand quantity; the difference is recorded as an adjustment.
     public function update(InventoryRequest $request, Inventory $inventory): JsonResponse
     {
-        $inventory->update($request->validated());
+        $data = $request->validated();
+
+        $inventory = $this->stock->setQuantity($inventory, (int) $data['quantity'], $data['note'] ?? 'جرد يدوي');
+
         return $this->jsonResponse($inventory->load(['warehouse', 'productVariant.product']));
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/inventory/{id}",
-     *     tags={"Admin Inventory"},
-     *     summary="Delete an inventory record",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=204, description="Inventory record deleted")
-     * )
-     */
     public function destroy(Inventory $inventory): JsonResponse
     {
+        if ($inventory->quantity > 0) {
+            return $this->jsonResponse(['message' => 'لا يمكن حذف سجل مخزون به كمية، قم بتصفيره أولاً'], 422);
+        }
+
         $inventory->delete();
+
         return $this->jsonResponse(null, 204);
     }
 }

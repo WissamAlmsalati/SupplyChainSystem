@@ -5,21 +5,17 @@ import { SkeletonCard } from '../components/ui/Skeleton'
 
 export default function Profile() {
   const { user } = useAuth()
-  const [cafe, setCafe] = useState(null)
+  const [addresses, setAddresses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!user?.cafe_id) {
-      setCafe(null)
-      setLoading(false)
-      return
-    }
     client
-      .get(`/cafes/${user.cafe_id}`)
-      .then((res) => setCafe(res.data?.data ?? res.data))
-      .catch(() => setCafe(null))
+      .get('/cafe/profile')
+      .then((res) => setAddresses(res.data?.data?.addresses ?? res.data?.addresses ?? []))
+      .catch(() => setError('فشل تحميل بيانات الملف.'))
       .finally(() => setLoading(false))
-  }, [user])
+  }, [])
 
   if (loading) {
     return (
@@ -40,8 +36,10 @@ export default function Profile() {
     <>
       <header className="mb-6 pt-6">
         <h1 className="text-2xl font-extrabold text-foreground">الملف الشخصي</h1>
-        <p className="mt-1 text-muted">معلومات حسابك ومقهاك</p>
+        <p className="mt-1 text-muted">معلومات حسابك وعناوينك</p>
       </header>
+
+      {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
@@ -55,15 +53,20 @@ export default function Profile() {
         </div>
 
         <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-          <h2 className="mb-4 font-semibold text-foreground">معلومات المقهى</h2>
-          {cafe ? (
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-muted">الاسم</span><span>{cafe.name}</span></div>
-              <div className="flex justify-between"><span className="text-muted">معلومات التواصل</span><span>{cafe.contact_info ?? '-'}</span></div>
-              <div className="flex justify-between"><span className="text-muted">الحالة</span><span>{cafe.is_active ? 'نشط' : 'غير نشط'}</span></div>
-            </div>
+          <h2 className="mb-4 font-semibold text-foreground">عناويني</h2>
+          {addresses.length === 0 ? (
+            <div className="text-sm text-muted">لا توجد عناوين. أضف عنوانًا من صفحة العناوين.</div>
           ) : (
-            <div className="text-sm text-muted">فشل تحميل بيانات المقهى.</div>
+            <ul className="space-y-3 text-sm">
+              {addresses.map((a) => (
+                <li key={a.id} className="rounded-lg border border-border bg-background p-3">
+                  <div className="flex justify-between"><span className="text-muted">الاسم</span><span>{a.name}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">المدينة</span><span>{a.city ?? '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">أرقام التواصل</span><span>{(a.contact_phones ?? []).join('، ') || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">الحالة</span><span>{a.is_active ? 'نشط' : 'غير نشط'}</span></div>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </div>

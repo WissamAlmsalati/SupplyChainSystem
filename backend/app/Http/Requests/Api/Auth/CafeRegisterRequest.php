@@ -15,9 +15,11 @@ class CafeRegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:100'],
-            'phone_number' => ['required', 'string', 'max:20', 'unique:user,mobile_number'],
-            'email' => ['nullable', 'string', 'email', 'max:150', 'unique:user,email'],
+            'phone_number' => ['required', 'string', 'max:20', 'unique:users,mobile_number'],
+            'email' => ['nullable', 'string', 'email', 'max:150', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ];
     }
 }

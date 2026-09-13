@@ -70,7 +70,8 @@
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Register a new cafe (pending admin approval)",
+                "summary": "Register a cafe account (OTP verification required before login)",
+                "description": "Creates an inactive cafe user and sends a 6-digit OTP. Verify it via POST /cafe/verify-otp: when cafe_auto_approve is active a bearer token is returned immediately, otherwise the account waits for admin approval and only a message is returned.",
                 "operationId": "caaf1719c560e5070b1899f6815484ff",
                 "requestBody": {
                     "required": true,
@@ -84,7 +85,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Registration pending approval"
+                        "description": "Account created"
                     },
                     "422": {
                         "description": "Validation error",
@@ -95,6 +96,70 @@
                                 }
                             }
                         }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/cafe/verify-otp": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verify registration OTP",
+                "description": "When cafe_auto_approve is active the user is activated and a bearer token is returned immediately. Otherwise the account stays inactive until an admin approves it, and only a message is returned.",
+                "operationId": "a585743c6d8da4b15d2cbc53333d4924",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "token": {
+                                        "type": "string"
+                                    },
+                                    "otp": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Verified: token (auto-approve) or pending-approval message"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/cafe/resend-otp": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Resend the registration OTP",
+                "operationId": "6ef9155b58786aa49be4e578daf78162",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "mobile_number": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP resent"
                     }
                 },
                 "security": []
@@ -175,13 +240,13 @@
                 }
             }
         },
-        "/cafe/branches/{id}/orders": {
+        "/cafe/addresses/{id}/orders": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Branches"
+                    "Cafe Mobile Addresses"
                 ],
-                "summary": "List orders for a specific branch",
-                "operationId": "59df518569219287be1f17d7ff72c78d",
+                "summary": "List orders for a specific address",
+                "operationId": "3b61e53ce5f991ac0854a881739366dd",
                 "parameters": [
                     {
                         "name": "id",
@@ -194,10 +259,10 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "List of branch orders"
+                        "description": "List of address orders"
                     },
                     "404": {
-                        "description": "Branch not found"
+                        "description": "Address not found"
                     }
                 }
             }
@@ -301,38 +366,38 @@
                 }
             }
         },
-        "/cafe/branches": {
+        "/cafe/addresses": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Branches"
+                    "Cafe Mobile Addresses"
                 ],
-                "summary": "List cafe branches",
-                "operationId": "29bf3a3c3bb631e6885ee6f65afb6f0d",
+                "summary": "List the cafe user's addresses",
+                "operationId": "a07c813cdcc666e312d6fee002a20896",
                 "responses": {
                     "200": {
-                        "description": "Paginated list of cafe branches"
+                        "description": "Addresses and the delivery price for the user's own location"
                     }
                 }
             },
             "post": {
                 "tags": [
-                    "Cafe Mobile Branches"
+                    "Cafe Mobile Addresses"
                 ],
-                "summary": "Create a branch for the cafe",
-                "operationId": "1a40ff98a18f993c5a30a7c0113c49b4",
+                "summary": "Create an address for the cafe user",
+                "operationId": "33942d72732902c0a6e52aa3afcaa69f",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/CafeBranchRequest"
+                                "$ref": "#/components/schemas/AddressRequest"
                             }
                         }
                     }
                 },
                 "responses": {
                     "201": {
-                        "description": "Branch created"
+                        "description": "Address created"
                     },
                     "422": {
                         "description": "Validation error"
@@ -340,13 +405,13 @@
                 }
             }
         },
-        "/cafe/branches/{id}": {
+        "/cafe/addresses/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Branches"
+                    "Cafe Mobile Addresses"
                 ],
-                "summary": "Get a cafe branch",
-                "operationId": "8c9baf70781a9927d0ab8dd263b36ba2",
+                "summary": "Get one of the cafe user's addresses",
+                "operationId": "9bf8e7685614df8f03734955aa091bac",
                 "parameters": [
                     {
                         "name": "id",
@@ -359,7 +424,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Branch details"
+                        "description": "Address details"
                     },
                     "404": {
                         "description": "Not found"
@@ -368,10 +433,10 @@
             },
             "put": {
                 "tags": [
-                    "Cafe Mobile Branches"
+                    "Cafe Mobile Addresses"
                 ],
-                "summary": "Update a cafe branch",
-                "operationId": "faa28d4c68cdbaa8d23976bcc1383504",
+                "summary": "Update one of the cafe user's addresses",
+                "operationId": "5f88ea85126e58bf3a13190d1b9e3ed0",
                 "parameters": [
                     {
                         "name": "id",
@@ -387,14 +452,14 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/CafeBranchRequest"
+                                "$ref": "#/components/schemas/AddressRequest"
                             }
                         }
                     }
                 },
                 "responses": {
                     "200": {
-                        "description": "Branch updated"
+                        "description": "Address updated"
                     },
                     "403": {
                         "description": "Forbidden"
@@ -403,10 +468,10 @@
             },
             "delete": {
                 "tags": [
-                    "Cafe Mobile Branches"
+                    "Cafe Mobile Addresses"
                 ],
-                "summary": "Delete a cafe branch",
-                "operationId": "97aeba5e7f05dd277545f6d6e3da20f3",
+                "summary": "Delete one of the cafe user's addresses",
+                "operationId": "09a6b02d13c972073081a82a49f118d4",
                 "parameters": [
                     {
                         "name": "id",
@@ -419,10 +484,10 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Branch deleted"
+                        "description": "Address deleted"
                     },
                     "409": {
-                        "description": "Branch has orders"
+                        "description": "Address has orders"
                     }
                 }
             }
@@ -432,11 +497,11 @@
                 "tags": [
                     "Cafe Mobile Profile"
                 ],
-                "summary": "Get cafe profile",
+                "summary": "Get the cafe user's profile with their addresses",
                 "operationId": "b61a587e42e4a65a611e9ce586ebe1f0",
                 "responses": {
                     "200": {
-                        "description": "Cafe profile"
+                        "description": "User profile and addresses"
                     }
                 }
             },
@@ -444,7 +509,7 @@
                 "tags": [
                     "Cafe Mobile Profile"
                 ],
-                "summary": "Update cafe profile",
+                "summary": "Update the cafe user's profile (name, contact, own location)",
                 "operationId": "6d026f2b75cdcbd36744e80489abf60f",
                 "requestBody": {
                     "required": true,
@@ -455,8 +520,16 @@
                                     "name": {
                                         "type": "string"
                                     },
-                                    "contact_info": {
+                                    "mobile_number": {
                                         "type": "string"
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "format": "float"
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "format": "float"
                                     }
                                 },
                                 "type": "object"
@@ -474,9 +547,9 @@
         "/cafe/delivery-zones": {
             "get": {
                 "tags": [
-                    "Cafe Mobile Branches"
+                    "Cafe Mobile Addresses"
                 ],
-                "summary": "List active delivery zones for map branch placement",
+                "summary": "List active delivery zones for map address placement",
                 "operationId": "b15b8a190b3b5da333be486589960f5c",
                 "responses": {
                     "200": {
@@ -603,6 +676,49 @@
                 }
             }
         },
+        "/cafe/cart/branch": {
+            "put": {
+                "tags": [
+                    "Cafe Mobile Cart"
+                ],
+                "summary": "Select the delivery address for the cart",
+                "operationId": "097cf16bc26214546452cf27d576ea99",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "address_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Address selected; items are reset when the address changes"
+                    }
+                }
+            }
+        },
+        "/cafe/cart/check-stock": {
+            "get": {
+                "tags": [
+                    "Cafe Mobile Cart"
+                ],
+                "summary": "Check stock availability for every cart item (no reservation)",
+                "operationId": "5e5d6d84d3c86dc7872e628ccd5881a9",
+                "responses": {
+                    "200": {
+                        "description": "Per-item availability report"
+                    }
+                }
+            }
+        },
         "/cafe/cart/items": {
             "post": {
                 "tags": [
@@ -616,7 +732,7 @@
                         "application/json": {
                             "schema": {
                                 "properties": {
-                                    "branch_id": {
+                                    "address_id": {
                                         "type": "integer"
                                     },
                                     "product_variant_id": {
@@ -835,39 +951,15 @@
     },
     "components": {
         "schemas": {
-            "CafeRequest": {
+            "AddressRequest": {
                 "required": [
-                    "name"
-                ],
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "maxLength": 150
-                    },
-                    "contact_info": {
-                        "type": "string",
-                        "maxLength": 200,
-                        "nullable": true
-                    },
-                    "created_by_admin_id": {
-                        "type": "integer",
-                        "nullable": true
-                    },
-                    "is_active": {
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
-            },
-            "CafeBranchRequest": {
-                "required": [
-                    "cafe_id",
+                    "user_id",
                     "name",
                     "latitude",
                     "longitude"
                 ],
                 "properties": {
-                    "cafe_id": {
+                    "user_id": {
                         "type": "integer"
                     },
                     "name": {
@@ -898,6 +990,14 @@
                     },
                     "is_active": {
                         "type": "boolean"
+                    },
+                    "contact_phones": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 20
+                        },
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -943,26 +1043,6 @@
                 },
                 "type": "object"
             },
-            "SupplierRequest": {
-                "required": [
-                    "name"
-                ],
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "maxLength": 150
-                    },
-                    "contact_info": {
-                        "type": "string",
-                        "maxLength": 200,
-                        "nullable": true
-                    },
-                    "is_active": {
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
-            },
             "ProductRequest": {
                 "required": [
                     "category_id",
@@ -971,10 +1051,6 @@
                 "properties": {
                     "category_id": {
                         "type": "integer"
-                    },
-                    "supplier_id": {
-                        "type": "integer",
-                        "nullable": true
                     },
                     "name": {
                         "type": "string",
@@ -1116,30 +1192,20 @@
                         "type": "string",
                         "maxLength": 20,
                         "nullable": true
-                    },
-                    "cafe_id": {
-                        "type": "integer",
-                        "nullable": true
                     }
                 },
                 "type": "object"
             },
             "CafeRegisterRequest": {
                 "required": [
-                    "cafe_name",
+                    "name",
                     "phone_number",
-                    "password",
-                    "address"
+                    "password"
                 ],
                 "properties": {
-                    "cafe_name": {
+                    "name": {
                         "type": "string",
-                        "maxLength": 150
-                    },
-                    "logo": {
-                        "type": "string",
-                        "format": "binary",
-                        "nullable": true
+                        "maxLength": 100
                     },
                     "phone_number": {
                         "type": "string",
@@ -1155,24 +1221,6 @@
                         "type": "string",
                         "format": "password",
                         "minLength": 6
-                    },
-                    "address": {
-                        "type": "string",
-                        "maxLength": 1000
-                    },
-                    "latitude": {
-                        "type": "number",
-                        "format": "float",
-                        "maximum": 90,
-                        "minimum": -90,
-                        "nullable": true
-                    },
-                    "longitude": {
-                        "type": "number",
-                        "format": "float",
-                        "maximum": 180,
-                        "minimum": -180,
-                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -1224,10 +1272,6 @@
                     "user_type_id": {
                         "type": "integer"
                     },
-                    "cafe_id": {
-                        "type": "integer",
-                        "nullable": true
-                    },
                     "is_active": {
                         "type": "boolean"
                     }
@@ -1260,10 +1304,6 @@
                         "format": "password",
                         "minLength": 6
                     },
-                    "cafe_id": {
-                        "type": "integer",
-                        "nullable": true
-                    },
                     "is_active": {
                         "type": "boolean"
                     }
@@ -1293,7 +1333,7 @@
             "OrderRequest": {
                 "required": [
                     "user_id",
-                    "branch_id",
+                    "address_id",
                     "status",
                     "total_amount"
                 ],
@@ -1301,7 +1341,7 @@
                     "user_id": {
                         "type": "integer"
                     },
-                    "branch_id": {
+                    "address_id": {
                         "type": "integer"
                     },
                     "delegate_id": {
@@ -1339,11 +1379,11 @@
             },
             "CafeOrderRequest": {
                 "required": [
-                    "branch_id",
+                    "address_id",
                     "items"
                 ],
                 "properties": {
-                    "branch_id": {
+                    "address_id": {
                         "type": "integer"
                     },
                     "items": {
@@ -1358,13 +1398,13 @@
             "CartRequest": {
                 "required": [
                     "user_id",
-                    "branch_id"
+                    "address_id"
                 ],
                 "properties": {
                     "user_id": {
                         "type": "integer"
                     },
-                    "branch_id": {
+                    "address_id": {
                         "type": "integer"
                     },
                     "status": {
@@ -1376,14 +1416,10 @@
             },
             "PurchaseOrderRequest": {
                 "required": [
-                    "supplier_id",
                     "warehouse_id",
                     "status"
                 ],
                 "properties": {
-                    "supplier_id": {
-                        "type": "integer"
-                    },
                     "warehouse_id": {
                         "type": "integer"
                     },
@@ -1470,8 +1506,8 @@
             "description": "Cafe mobile app order management"
         },
         {
-            "name": "Cafe Mobile Branches",
-            "description": "Cafe mobile app branch management"
+            "name": "Cafe Mobile Addresses",
+            "description": "Cafe mobile app address management"
         },
         {
             "name": "Cafe Mobile Profile",

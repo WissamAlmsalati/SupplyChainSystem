@@ -56,7 +56,10 @@ class CheckPermission
             return $next($request);
         }
 
-        $module = strtoupper(str_replace('-', '_', $resource));
+        // ponytail: addresses keeps the historic CAFE_BRANCHES_* permission
+        // codes so existing roles keep working; only the label changed.
+        $moduleMap = ['addresses' => 'CAFE_BRANCHES'];
+        $module = $moduleMap[$resource] ?? strtoupper(str_replace('-', '_', $resource));
         $code = "{$module}_{$suffix}";
 
         return $this->requirePermission($user, $code, $next, $request);
