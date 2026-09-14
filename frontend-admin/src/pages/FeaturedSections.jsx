@@ -8,7 +8,30 @@ import Badge from '../components/ui/Badge'
 import Modal from '../components/Modal'
 import { Card, CardContent } from '../components/ui/Card'
 
-const emptyForm = { id: null, title: '', is_active: true, products: [] }
+const emptyForm = {
+  id: null, title: '', is_active: true, source: 'manual', products: [],
+  sort: 'popular', products_limit: 10,
+  filters: { category_id: [], brand: [], min_price: '', max_price: '', in_stock: false },
+}
+
+export const SORT_LABELS = {
+  popular: 'الأكثر مبيعاً',
+  price_asc: 'الأقل سعراً',
+  price_desc: 'الأعلى سعراً',
+  newest: 'الأحدث',
+  name_asc: 'حسب الاسم',
+}
+
+// Only the filters the admin actually set are sent.
+function cleanFilters(filters) {
+  const out = {}
+  if (filters.category_id?.length) out.category_id = filters.category_id.map(Number)
+  if (filters.brand?.length) out.brand = filters.brand
+  if (filters.min_price !== '' && filters.min_price != null) out.min_price = Number(filters.min_price)
+  if (filters.max_price !== '' && filters.max_price != null) out.max_price = Number(filters.max_price)
+  if (filters.in_stock) out.in_stock = true
+  return out
+}
 
 function move(list, index, delta) {
   const next = [...list]
@@ -22,6 +45,14 @@ function move(list, index, delta) {
 export default function FeaturedSections() {
   const { canCreate, canEdit, canDelete } = useModulePermission('FEATURED_SECTIONS')
   const allProducts = useApiList('/products?per_page=10000')
+  const [categories, setCategories] = useState([])
+  const [preview, setPreview] = useState(null)
+  const [previewing, setPreviewing] = useState(false)
+  const brands = useMemo(() => [...new Set(allProducts.map((p) => p.brand).filter(Boolean))].sort(), [allProducts])
+
+  useEffect(() => {
+    client.get('/categories', { params: { per_page: 1000 } }).then((res) => setCategories(res.data?.data ?? [])).catch(() => {})
+  }, [])
   const [sections, setSections] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -40,15 +71,42 @@ export default function FeaturedSections() {
 
   const openNew = () => {
     setSearch('')
-    setForm({ ...emptyForm })
+    setPreview(null)
+    setForm({ ...emptyForm, filters: { ...emptyForm.filters } })
   }
 
   const openEdit = async (section) => {
     setSearch('')
     const res = await client.get(`/featured-sections/${section.id}`)
     const data = res.data?.data ?? res.data
-    setForm({ id: data.id, title: data.title, is_active: data.is_active, products: data.products ?? [] })
+    const f = data.filters ?? {}
+    setForm({
+      id: data.id, title: data.title, is_active: data.is_active, source: data.source ?? 'manual',
+      products: data.source === 'filter' ? [] : data.products ?? [],
+      sort: data.sort ?? 'popular', products_limit: data.products_limit ?? 10,
+      filters: { category_id: (f.category_id ?? []).map(String), brand: f.brand ?? [], min_price: f.min_price ?? '', max_price: f.max_price ?? '', in_stock: !!f.in_stock },
+    })
+    setPreview(data.source === 'filter' ? { total: data.products_total, products: data.products ?? [] } : null)
   }
+
+  const runPreview = async () => {
+    setPreviewing(true)
+    setError('')
+    try {
+      const res = await client.post('/featured-sections/preview', { sort: form.sort, products_limit: Number(form.products_limit) || 10, filters: cleanFilters(form.filters) })
+      setPreview(res.data?.data ?? res.data)
+    } catch (err) {
+      setError(err.response?.data?.message || 'فشل عرض المعاينة')
+    } finally {
+      setPreviewing(false)
+    }
+  }
+
+  const setFilter = (key, value) => setForm((prev) => ({ ...prev, filters: { ...prev.filters, [key]: value } }))
+  const toggleFilterValue = (key, value) => setForm((prev) => {
+    const list = prev.filters[key] ?? []
+    return { ...prev, filters: { ...prev.filters, [key]: list.includes(value) ? list.filter((v) => v !== value) : [...list, value] } }
+  })
 
   const selectedIds = useMemo(() => new Set((form?.products ?? []).map((p) => p.id)), [form])
   const candidates = useMemo(() => {
@@ -61,14 +119,16 @@ export default function FeaturedSections() {
 
   const save = async (e) => {
     e.preventDefault()
-    if (form.products.length === 0) {
+    if (form.source === 'manual' && form.products.length === 0) {
       setError('اختر منتجاً واحداً على الأقل')
       return
     }
     setSaving(true)
     setError('')
     try {
-      const payload = { title: form.title, is_active: form.is_active, product_ids: form.products.map((p) => p.id) }
+      const payload = { title: form.title, is_active: form.is_active, source: form.source, products_limit: Number(form.products_limit) || 10 }
+      if (form.source === 'manual') payload.product_ids = form.products.map((p) => p.id)
+      else Object.assign(payload, { sort: form.sort, filters: cleanFilters(form.filters) })
       if (form.id) await client.put(`/featured-sections/${form.id}`, payload)
       else await client.post('/featured-sections', payload)
       setForm(null)
@@ -130,12 +190,17 @@ export default function FeaturedSections() {
                     <span className="text-lg font-bold text-foreground">{section.title}</span>
                     <Badge variant={section.is_active ? 'success' : 'default'}>{section.is_active ? 'ظاهر' : 'مخفي'}</Badge>
                   </div>
-                  <div className="text-sm text-muted">{section.products_count} منتج · الترتيب {index + 1}</div>
+                  <div className="text-sm text-muted">
+                    {section.source === 'filter'
+                      ? <>تلقائي: <span className="font-medium text-foreground">{SORT_LABELS[section.sort] ?? section.sort}</span>{section.filters ? ' + فلاتر' : ''}</>
+                      : <>اختيار يدوي · {section.products_count} منتج</>}
+                    {' · '}يعرض {section.products_limit} · الترتيب {index + 1}
+                  </div>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 {canEdit && <Button variant="secondary" size="sm" onClick={() => toggleActive(section)}>{section.is_active ? 'إخفاء' : 'إظهار'}</Button>}
-                {canEdit && <Button variant="primary" size="sm" onClick={() => openEdit(section)}>تعديل المنتجات</Button>}
+                {canEdit && <Button variant="primary" size="sm" onClick={() => openEdit(section)}>تعديل</Button>}
                 {canDelete && <Button variant="danger" size="sm" onClick={() => destroy(section)}>حذف</Button>}
               </div>
             </CardContent>
@@ -164,7 +229,109 @@ export default function FeaturedSections() {
               </label>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <div className="mb-1.5 text-sm font-medium text-muted">مصدر المنتجات</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[['manual', 'اختيار يدوي', 'أنت تختار المنتجات وترتيبها'], ['filter', 'تلقائي حسب قاعدة', 'الأكثر مبيعاً، الأقل سعراً… يتحدث وحده']].map(([value, label, hint]) => (
+                  <label key={value} className={`cursor-pointer rounded-lg border px-3 py-2.5 text-sm ${form.source === value ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                    <span className="flex items-center gap-2 font-semibold text-foreground">
+                      <input type="radio" name="source" checked={form.source === value} onChange={() => { setForm({ ...form, source: value }); setPreview(null) }} />
+                      {label}
+                    </span>
+                    <span className="ms-6 block text-xs text-muted">{hint}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-muted">عدد المنتجات في الرئيسية</label>
+                <input type="number" min="1" max="50" value={form.products_limit} onChange={(e) => setForm({ ...form, products_limit: e.target.value })}
+                  className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none" />
+                <div className="mt-1 text-xs text-muted">الباقي يظهر في "عرض الكل"</div>
+              </div>
+              {form.source === 'filter' && (
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-muted">ترتيب واختيار المنتجات</label>
+                  <select value={form.sort} onChange={(e) => { setForm({ ...form, sort: e.target.value }); setPreview(null) }}
+                    className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none">
+                    {Object.entries(SORT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {form.source === 'filter' ? (
+              <div className="space-y-3 rounded-lg border border-border bg-background p-3">
+                <div className="text-sm font-medium text-foreground">فلاتر اختيارية لتضييق المنتجات</div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <div className="mb-1 text-xs font-medium text-muted">التصنيفات</div>
+                    <div className="max-h-36 space-y-1 overflow-y-auto rounded-md border border-border bg-surface p-2">
+                      {categories.map((c) => (
+                        <label key={c.id} className="flex items-center gap-2 text-sm text-foreground">
+                          <input type="checkbox" checked={form.filters.category_id.includes(String(c.id))} onChange={() => { toggleFilterValue('category_id', String(c.id)); setPreview(null) }} />
+                          {c.parent_category ? `${c.parent_category.name} ← ` : ''}{c.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-1 text-xs font-medium text-muted">العلامات التجارية</div>
+                    <div className="max-h-36 space-y-1 overflow-y-auto rounded-md border border-border bg-surface p-2">
+                      {brands.length === 0 && <div className="text-xs text-muted">لا توجد علامات</div>}
+                      {brands.map((b) => (
+                        <label key={b} className="flex items-center gap-2 text-sm text-foreground">
+                          <input type="checkbox" checked={form.filters.brand.includes(b)} onChange={() => { toggleFilterValue('brand', b); setPreview(null) }} />
+                          {b}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3 sm:items-end">
+                  <div>
+                    <div className="mb-1 text-xs font-medium text-muted">السعر من</div>
+                    <input type="number" min="0" step="0.01" value={form.filters.min_price} onChange={(e) => { setFilter('min_price', e.target.value); setPreview(null) }}
+                      className="w-full rounded-md border border-border-strong bg-surface px-3 py-1.5 text-sm" />
+                  </div>
+                  <div>
+                    <div className="mb-1 text-xs font-medium text-muted">إلى</div>
+                    <input type="number" min="0" step="0.01" value={form.filters.max_price} onChange={(e) => { setFilter('max_price', e.target.value); setPreview(null) }}
+                      className="w-full rounded-md border border-border-strong bg-surface px-3 py-1.5 text-sm" />
+                  </div>
+                  <label className="flex items-center gap-2 pb-2 text-sm text-foreground">
+                    <input type="checkbox" checked={form.filters.in_stock} onChange={(e) => { setFilter('in_stock', e.target.checked); setPreview(null) }} />
+                    المتوفر فقط
+                  </label>
+                </div>
+
+                <div className="border-t border-border pt-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">
+                      {preview ? `معاينة: ${preview.total} منتج مطابق` : 'اضغط معاينة لرؤية المنتجات'}
+                    </span>
+                    <Button type="button" variant="secondary" size="sm" onClick={runPreview} disabled={previewing}>{previewing ? 'جاري...' : 'معاينة'}</Button>
+                  </div>
+                  {preview && (
+                    <ol className="grid gap-1.5 sm:grid-cols-2">
+                      {preview.products.map((p, i) => (
+                        <li key={p.id} className="flex items-center gap-2 rounded-md border border-border bg-surface px-2 py-1.5 text-sm">
+                          <span className="w-5 text-center text-xs text-muted">{i + 1}</span>
+                          <span className="flex-1 truncate text-foreground">{p.name}</span>
+                          <span className="text-xs text-muted">
+                            {form.sort === 'popular' ? `مبيع ${p.sold_quantity ?? 0}` : `${Number(p.min_price).toFixed(2)} د.ل`}
+                          </span>
+                        </li>
+                      ))}
+                      {preview.products.length === 0 && <li className="text-sm text-danger">لا توجد منتجات تطابق هذه القاعدة</li>}
+                    </ol>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <div className="mb-1.5 text-sm font-medium text-muted">المنتجات المختارة ({form.products.length})</div>
                 <div className="min-h-[220px] rounded-lg border border-border bg-background p-2">
@@ -217,6 +384,8 @@ export default function FeaturedSections() {
                 </ul>
               </div>
             </div>
+
+            )}
 
             {error && <div className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
             <div className="flex justify-end gap-2">

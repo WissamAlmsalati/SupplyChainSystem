@@ -28,6 +28,7 @@ class RecurringCartController extends BaseApiController
     {
         $cart->load('items.productVariant.product');
         $cart->setAttribute('subtotal', $cart->subtotal());
+        CafeMobileController::markFavorites($cart->items);
 
         return $cart;
     }

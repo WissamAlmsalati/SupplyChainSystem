@@ -26,6 +26,7 @@ class CheckPermission
         'entries' => 'VIEW',
         'summary' => 'VIEW',
         'reorder' => 'EDIT',
+        'preview' => 'VIEW',
         'settle' => 'EDIT',
     ];
 

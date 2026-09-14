@@ -99,12 +99,21 @@ namespace App\OpenApi;
  * ---------------- Featured sections ----------------
  * @OA\Get(path="/featured-sections", tags={"Catalog"}, summary="Curated product sections (admin)", security={{"bearerAuth":{}}},
  *     @OA\Response(response=200, description="Sections with products_count, in display order"))
- * @OA\Post(path="/featured-sections", tags={"Catalog"}, summary="Create a section", security={{"bearerAuth":{}}},
- *     @OA\RequestBody(required=true, @OA\JsonContent(required={"title","product_ids"},
- *         @OA\Property(property="title", type="string", example="الأكثر طلباً"), @OA\Property(property="is_active", type="boolean"),
+ * @OA\Post(path="/featured-sections", tags={"Catalog"}, summary="Create a section: hand-picked (manual) or rule-based (filter)", security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(required=true, @OA\JsonContent(required={"title"},
+ *         @OA\Property(property="title", type="string", example="الأكثر مبيعاً"), @OA\Property(property="is_active", type="boolean"),
  *         @OA\Property(property="sort_order", type="integer"),
- *         @OA\Property(property="product_ids", type="array", description="Ordered; first is shown first", @OA\Items(type="integer")))),
- *     @OA\Response(response=201, description="Section with products"))
+ *         @OA\Property(property="source", type="string", enum={"manual","filter"}, default="manual"),
+ *         @OA\Property(property="products_limit", type="integer", default=10, maximum=50, description="Products shown on the home screen"),
+ *         @OA\Property(property="product_ids", type="array", description="manual: ordered, first is shown first", @OA\Items(type="integer")),
+ *         @OA\Property(property="sort", type="string", enum={"popular","price_asc","price_desc","newest","name_asc"}, description="filter: how products are chosen"),
+ *         @OA\Property(property="filters", type="object", description="filter: optional narrowing",
+ *             @OA\Property(property="category_id", type="array", @OA\Items(type="integer")), @OA\Property(property="brand", type="array", @OA\Items(type="string")),
+ *             @OA\Property(property="min_price", type="number"), @OA\Property(property="max_price", type="number"), @OA\Property(property="in_stock", type="boolean")))),
+ *     @OA\Response(response=201, description="Section with products and products_total"))
+ * @OA\Post(path="/featured-sections/preview", tags={"Catalog"}, summary="Preview the products a rule-based section would show", security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="sort", type="string"), @OA\Property(property="filters", type="object"), @OA\Property(property="products_limit", type="integer"))),
+ *     @OA\Response(response=200, description="total + products"))
  * @OA\Get(path="/featured-sections/{id}", tags={"Catalog"}, summary="Section with its products", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Section"))
  * @OA\Put(path="/featured-sections/{id}", tags={"Catalog"}, summary="Update title/status/order and replace products", security={{"bearerAuth":{}}},

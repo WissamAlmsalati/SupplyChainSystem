@@ -23,7 +23,8 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'tags' => 'array',
+        // Stored unescaped so Arabic tags are searchable with LIKE.
+        'tags' => 'json:unicode',
         'is_active' => 'boolean',
     ];
 

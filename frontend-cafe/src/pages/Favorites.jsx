@@ -20,13 +20,29 @@ export default function Favorites() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [adding, setAdding] = useState(null)
+  const [meta, setMeta] = useState(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  const loadPage = async (page) => {
+    const res = await client.get('/cafe/favorites', { params: { page, per_page: 20 } })
+    setProducts((prev) => (page === 1 ? res.data?.data ?? [] : [...prev, ...(res.data?.data ?? [])]))
+    setMeta(res.data?.meta ?? null)
+  }
 
   useEffect(() => {
-    client.get('/cafe/favorites')
-      .then((res) => setProducts(res.data?.data ?? []))
-      .catch(() => setError('فشل تحميل المفضلة'))
-      .finally(() => setLoading(false))
+    loadPage(1).catch(() => setError('فشل تحميل المفضلة')).finally(() => setLoading(false))
   }, [])
+
+  const loadMore = async () => {
+    setLoadingMore(true)
+    try {
+      await loadPage(meta.current_page + 1)
+    } catch {
+      setError('فشل تحميل المزيد')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   // Hide cards as soon as their heart is turned off on this page.
   const visible = products.filter((p) => favorites?.isFavorite(p.id))
@@ -49,7 +65,7 @@ export default function Favorites() {
     <>
       <header className="mb-6 pt-6">
         <h1 className="text-2xl font-extrabold text-foreground">المفضلة</h1>
-        <p className="mt-1 text-muted">المنتجات التي حفظتها للرجوع إليها بسرعة</p>
+        <p className="mt-1 text-muted">{meta ? `${meta.total} منتج محفوظ` : 'المنتجات التي حفظتها للرجوع إليها بسرعة'}</p>
       </header>
 
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
@@ -97,6 +113,13 @@ export default function Favorites() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {!loading && meta && meta.current_page < meta.last_page && (
+        <div className="mt-6 text-center">
+          <button onClick={loadMore} disabled={loadingMore} className="rounded-lg border border-primary px-6 py-2 text-sm font-semibold text-primary hover:bg-primary/5 disabled:opacity-60">
+            {loadingMore ? 'جاري التحميل...' : 'تحميل المزيد'}
+          </button>
         </div>
       )}
     </>

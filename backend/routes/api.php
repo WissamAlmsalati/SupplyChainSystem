@@ -102,7 +102,9 @@ Route::prefix('v1')->group(function () {
             Route::get('delivery-zones', [CafeMobileController::class, 'deliveryZones'])->name('delivery-zones.index');
             Route::get('categories', [CafeMobileController::class, 'categories'])->name('categories.index');
             Route::get('products', [CafeMobileController::class, 'products'])->name('products.index');
+            Route::get('products/filters', [CafeMobileController::class, 'productFilters'])->name('products.filters');
             Route::get('featured-sections', [CafeMobileController::class, 'featuredSections'])->name('featured-sections.index');
+            Route::get('featured-sections/{id}/products', [CafeMobileController::class, 'featuredSectionProducts'])->name('featured-sections.products');
             Route::get('favorites', [FavoriteController::class, 'index'])->name('favorites.index');
             Route::get('favorites/ids', [FavoriteController::class, 'ids'])->name('favorites.ids');
             Route::post('favorites', [FavoriteController::class, 'store'])->name('favorites.store');
@@ -179,6 +181,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('stock-movements', StockMovementController::class)->only(['index', 'show']);
 
         Route::post('featured-sections/reorder', [FeaturedSectionController::class, 'reorder'])->name('featured-sections.reorder');
+        Route::post('featured-sections/preview', [FeaturedSectionController::class, 'preview'])->name('featured-sections.preview');
         Route::apiResource('featured-sections', FeaturedSectionController::class);
 
         Route::get('custody', [CustodyController::class, 'index'])->name('custody.index');

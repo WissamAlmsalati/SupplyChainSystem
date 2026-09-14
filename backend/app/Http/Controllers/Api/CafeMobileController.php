@@ -20,6 +20,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\H3Service;
 use App\Services\OrderPlacementService;
+use App\Services\ProductSearch;
 use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -354,30 +355,110 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/products", tags={"Cafe Products"}, summary="List active products (cards)",
-     *     @OA\Parameter(name="category_id", in="query", @OA\Schema(type="integer")),
-     *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
-     *     @OA\Response(response=200, description="Products"))
+     * @OA\Get(path="/cafe/products", tags={"Cafe Products"}, summary="Search and filter products (paginated)",
+     *     description="Text search covers product name, brand, description, tags, category and size name / SKU / barcode. Filters combine with AND; list filters accept comma-separated values. Use GET /cafe/products/filters for the available options and counts.",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="q", in="query", description="Search text (alias: search)", @OA\Schema(type="string", example="قهوة")),
+     *     @OA\Parameter(name="category_id", in="query", description="One or more category ids, e.g. 1,4 (sub-categories included)", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="brand", in="query", description="One or more brands, comma-separated", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="min_price", in="query", description="Products with at least one size at or above this price", @OA\Schema(type="number")),
+     *     @OA\Parameter(name="max_price", in="query", description="Products with at least one size at or below this price", @OA\Schema(type="number")),
+     *     @OA\Parameter(name="in_stock", in="query", description="Only products with stock", @OA\Schema(type="boolean")),
+     *     @OA\Parameter(name="favorites", in="query", description="Only my favorites", @OA\Schema(type="boolean")),
+     *     @OA\Parameter(name="sort", in="query", description="Default: relevance when q is given, otherwise newest", @OA\Schema(type="string", enum={"relevance","newest","price_asc","price_desc","name_asc","popular"})),
+     *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
+     *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=20, maximum=100)),
+     *     @OA\Response(response=200, description="data: product cards; meta: pagination + applied filters",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="data", type="array", @OA\Items(
+     *                 @OA\Property(property="id", type="integer"), @OA\Property(property="name", type="string"),
+     *                 @OA\Property(property="brand", type="string", nullable=true), @OA\Property(property="image_url", type="string", nullable=true),
+     *                 @OA\Property(property="min_price", type="string"), @OA\Property(property="max_price", type="string"),
+     *                 @OA\Property(property="in_stock", type="boolean"), @OA\Property(property="category_id", type="integer"),
+     *                 @OA\Property(property="default_variant_id", type="integer", description="The matched size when the query matched a size/SKU/barcode"),
+     *                 @OA\Property(property="matched_variant", type="object", nullable=true, @OA\Property(property="id", type="integer"), @OA\Property(property="name", type="string"), @OA\Property(property="price", type="string")),
+     *                 @OA\Property(property="is_favorite", type="boolean"))),
+     *             @OA\Property(property="meta", type="object",
+     *                 @OA\Property(property="current_page", type="integer"), @OA\Property(property="per_page", type="integer"),
+     *                 @OA\Property(property="total", type="integer"), @OA\Property(property="last_page", type="integer"),
+     *                 @OA\Property(property="applied", type="object")))))
      */
     public function products(Request $request): JsonResponse
     {
-        $query = Product::with([
-            'allImages',
-            'variants' => fn ($q) => $q->where('is_active', true)->orderBy('id'),
-            'variants.images',
-        ])->where('is_active', true);
-
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->integer('category_id'));
-        }
-
-        if ($request->filled('search')) {
-            return $this->jsonResponse(['data' => $this->searchProducts($request, $query)]);
-        }
-
+        $search = new ProductSearch($request, auth()->id());
+        $perPage = max(1, min(100, $request->integer('per_page', 20)));
+        $page = $search->results()->paginate($perPage);
         $favorites = $this->favoriteIds();
 
-        return $this->jsonResponse(['data' => $query->get()->map(fn (Product $product) => self::productCard($product, $favorites->contains($product->id)))]);
+        $cards = $page->getCollection()->map(function (Product $product) use ($search, $favorites) {
+            $card = self::productCard($product, $favorites->contains($product->id));
+            if ($variant = $search->matchedVariant($product)) {
+                $card['default_variant_id'] = $variant->id;
+                $card['matched_variant'] = ['id' => $variant->id, 'name' => $variant->name, 'price' => $variant->price];
+            }
+
+            return $card;
+        });
+
+        return $this->jsonResponse([
+            'data' => $cards,
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'last_page' => $page->lastPage(),
+                'applied' => $search->applied(),
+            ],
+        ]);
+    }
+
+    /**
+     * @OA\Get(path="/cafe/products/filters", tags={"Cafe Products"}, summary="Filter options with counts for the current search",
+     *     description="Accepts the same parameters as GET /cafe/products. Each facet is counted as if its own filter were not applied, so users can switch between options.",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="q", in="query", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="category_id", in="query", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="brand", in="query", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="min_price", in="query", @OA\Schema(type="number")),
+     *     @OA\Parameter(name="max_price", in="query", @OA\Schema(type="number")),
+     *     @OA\Parameter(name="in_stock", in="query", @OA\Schema(type="boolean")),
+     *     @OA\Parameter(name="favorites", in="query", @OA\Schema(type="boolean")),
+     *     @OA\Response(response=200, description="Facets",
+     *         @OA\JsonContent(@OA\Property(property="data", type="object",
+     *             @OA\Property(property="total", type="integer"),
+     *             @OA\Property(property="in_stock_count", type="integer"),
+     *             @OA\Property(property="categories", type="array", @OA\Items(@OA\Property(property="id", type="integer"), @OA\Property(property="name", type="string"), @OA\Property(property="parent_category_id", type="integer", nullable=true), @OA\Property(property="count", type="integer"))),
+     *             @OA\Property(property="brands", type="array", @OA\Items(@OA\Property(property="name", type="string"), @OA\Property(property="count", type="integer"))),
+     *             @OA\Property(property="price", type="object", @OA\Property(property="min", type="number"), @OA\Property(property="max", type="number")),
+     *             @OA\Property(property="sort_options", type="array", @OA\Items(@OA\Property(property="value", type="string"), @OA\Property(property="label", type="string"))),
+     *             @OA\Property(property="applied", type="object")))))
+     */
+    public function productFilters(Request $request): JsonResponse
+    {
+        return $this->jsonResponse(['data' => (new ProductSearch($request, auth()->id()))->facets()]);
+    }
+
+    // ponytail: mobile list cards only need name/price/image — full description
+    // and variants live in show() and /variants (quick-add uses default_variant_id).
+    public static function productCard(Product $product, bool $isFavorite = false): array
+    {
+        $stock = $product->getAttribute('stock_quantity');
+        if ($stock === null) {
+            $stock = $product->variants->sum(fn ($v) => $v->relationLoaded('inventories') ? $v->inventories->sum('quantity') : $v->inventories()->sum('quantity'));
+        }
+
+        return [
+            'id' => $product->id,
+            'name' => $product->name,
+            'brand' => $product->brand,
+            'image_url' => $product->image_url,
+            'min_price' => $product->variants->min('price'),
+            'max_price' => $product->variants->max('price'),
+            'in_stock' => (int) $stock > 0,
+            'category_id' => $product->category_id,
+            'default_variant_id' => $product->variants->first()?->id,
+            'is_favorite' => $isFavorite,
+        ];
     }
 
     // Product ids the signed-in customer has favorited.
@@ -386,89 +467,105 @@ class CafeMobileController extends BaseApiController
         return auth()->user()->favoriteProducts()->pluck('products.id');
     }
 
-    // ponytail: mobile list cards only need name/price/image — full description
-    // and variants live in show() and /variants (quick-add uses default_variant_id).
-    public static function productCard(Product $product, bool $isFavorite = false): array
+    /**
+     * @OA\Get(path="/cafe/featured-sections", tags={"Cafe Products"}, summary="Home-screen product sections (paginated): title + first products in one object",
+     *     description="Each section shows up to its products_limit products. Sections are either hand-picked by the admin (source=manual, admin order) or rule-based (source=filter, e.g. sort=popular for best sellers or price_asc for cheapest). Sections without available products are left out of the page.
+
+**View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /cafe/featured-sections/{id}/products` (see the guide at the top of Cafe Products).",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
+     *     @OA\Parameter(name="per_page", in="query", description="Sections per page", @OA\Schema(type="integer", default=10, maximum=50)),
+     *     @OA\Response(response=200, description="Sections",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="data", type="array", @OA\Items(
+     *                 @OA\Property(property="id", type="integer"),
+     *                 @OA\Property(property="title", type="string", example="الأكثر مبيعاً"),
+     *                 @OA\Property(property="source", type="string", enum={"manual","filter"}),
+     *                 @OA\Property(property="sort", type="string", nullable=true, enum={"popular","price_asc","price_desc","newest","name_asc"}),
+     *                 @OA\Property(property="products_total", type="integer"),
+     *                 @OA\Property(property="has_more", type="boolean"),
+     *                 @OA\Property(property="products", type="array", @OA\Items(
+     *                     @OA\Property(property="id", type="integer"), @OA\Property(property="name", type="string"),
+     *                     @OA\Property(property="brand", type="string", nullable=true), @OA\Property(property="image_url", type="string", nullable=true),
+     *                     @OA\Property(property="min_price", type="string"), @OA\Property(property="max_price", type="string"),
+     *                     @OA\Property(property="in_stock", type="boolean"), @OA\Property(property="category_id", type="integer"),
+     *                     @OA\Property(property="default_variant_id", type="integer"), @OA\Property(property="is_favorite", type="boolean"))))),
+     *             @OA\Property(property="meta", type="object",
+     *                 @OA\Property(property="current_page", type="integer"), @OA\Property(property="per_page", type="integer"),
+     *                 @OA\Property(property="total", type="integer"), @OA\Property(property="last_page", type="integer")))))
+     */
+    public function featuredSections(Request $request): JsonResponse
     {
-        return [
-            'id' => $product->id,
-            'name' => $product->name,
-            'image_url' => $product->image_url,
-            'min_price' => $product->variants->min('price'),
-            'category_id' => $product->category_id,
-            'default_variant_id' => $product->variants->first()?->id,
-            'is_favorite' => $isFavorite,
-        ];
+        $perPage = max(1, min(50, $request->integer('per_page', 10)));
+        $page = FeaturedSection::where('is_active', true)->orderBy('sort_order')->orderBy('id')->paginate($perPage);
+        $favorites = $this->favoriteIds();
+
+        $sections = $page->getCollection()
+            ->map(function (FeaturedSection $section) use ($favorites) {
+                $query = $section->productsQuery(auth()->id());
+                $total = (clone $query)->reorder()->count();
+
+                return [
+                    'id' => $section->id,
+                    'title' => $section->title,
+                    'source' => $section->source->value,
+                    'sort' => $section->source->value === 'filter' ? $section->sort : null,
+                    'products_total' => $total,
+                    'has_more' => $total > $section->products_limit,
+                    'products' => $query->limit($section->products_limit)->get()
+                        ->map(fn (Product $product) => self::productCard($product, $favorites->contains($product->id)))->values(),
+                ];
+            })
+            ->filter(fn (array $section) => $section['products_total'] > 0)
+            ->values();
+
+        return $this->jsonResponse([
+            'data' => $sections,
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'last_page' => $page->lastPage(),
+            ],
+        ]);
     }
 
     /**
-     * @OA\Get(path="/cafe/featured-sections", tags={"Cafe Products"}, summary="Curated product sections chosen by the business (title + products in one object)",
+     * @OA\Get(path="/cafe/featured-sections/{id}/products", tags={"Cafe Products"}, summary="All products of a section (paginated) for 'view all'",
+     *     description="Screen opened from a section's «عرض الكل» button.
+
+1. Request `page=1` and show `section.title` and `meta.total`.
+2. On scroll end, while `meta.current_page < meta.last_page`, request the next `page` and append the results.
+
+Page 1 starts from the beginning of the section (it repeats the products already shown on the home screen, in the same order) — render the response as-is. The order is fixed by the section type. Returns 404 when the section is hidden or deleted.",
      *     security={{"bearerAuth":{}}},
-     *     @OA\Response(response=200, description="Active sections in display order; each has id, title and products (same card shape as /cafe/products). Sections without available products are omitted.",
-     *         @OA\JsonContent(@OA\Property(property="data", type="array", @OA\Items(
-     *             @OA\Property(property="id", type="integer"),
-     *             @OA\Property(property="title", type="string", example="الأكثر طلباً"),
-     *             @OA\Property(property="products", type="array", @OA\Items(
-     *                 @OA\Property(property="id", type="integer"), @OA\Property(property="name", type="string"),
-     *                 @OA\Property(property="image_url", type="string", nullable=true), @OA\Property(property="min_price", type="string"),
-     *                 @OA\Property(property="category_id", type="integer"), @OA\Property(property="default_variant_id", type="integer"),
-     *                 @OA\Property(property="is_favorite", type="boolean")))
-     *         )))))
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
+     *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=20, maximum=100)),
+     *     @OA\Response(response=200, description="section {id,title,source,sort}, data: product cards in the section's order, meta: pagination"),
+     *     @OA\Response(response=404, description="Section not found or hidden"))
      */
-    public function featuredSections(): JsonResponse
+    public function featuredSectionProducts(Request $request, int $id): JsonResponse
     {
-        $sections = FeaturedSection::where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->with(['products' => fn ($q) => $q
-                ->where('is_active', true)
-                ->whereHas('variants', fn ($v) => $v->where('is_active', true))
-                ->with(['allImages', 'variants' => fn ($v) => $v->where('is_active', true)->orderBy('id')]),
-            ])
-            ->get()
-            ->filter(fn (FeaturedSection $section) => $section->products->isNotEmpty());
+        $section = FeaturedSection::where('is_active', true)->findOrFail($id);
+        $page = $section->productsQuery(auth()->id())->paginate(max(1, min(100, $request->integer('per_page', 20))));
         $favorites = $this->favoriteIds();
 
-        $sections = $sections
-            ->map(fn (FeaturedSection $section) => [
+        return $this->jsonResponse([
+            'section' => [
                 'id' => $section->id,
                 'title' => $section->title,
-                'products' => $section->products->map(fn (Product $product) => self::productCard($product, $favorites->contains($product->id)))->values(),
-            ])
-            ->values();
-
-        return $this->jsonResponse(['data' => $sections]);
-    }
-
-    private function searchProducts(Request $request, $query): array
-    {
-        $search = trim((string) $request->input('search'));
-        $results = [];
-        $favorites = $this->favoriteIds();
-
-        foreach ($query->get() as $product) {
-            $variantHit = false;
-            foreach ($product->variants as $variant) {
-                if (mb_stripos((string) $variant->name, $search) !== false) {
-                    $variantHit = true;
-                    $results[] = [
-                        'id' => $product->id,
-                        'variant_id' => $variant->id,
-                        'name' => $product->name . ' — ' . $variant->name,
-                        'image_url' => $variant->images->first()?->image_url ?: $product->image_url,
-                        'min_price' => $variant->price,
-                        'category_id' => $product->category_id,
-                        'default_variant_id' => $variant->id,
-                        'is_favorite' => $favorites->contains($product->id),
-                    ];
-                }
-            }
-            if (! $variantHit && (mb_stripos($product->name, $search) !== false || in_array($search, $product->tags ?? []))) {
-                $results[] = self::productCard($product, $favorites->contains($product->id));
-            }
-        }
-
-        return $results;
+                'source' => $section->source->value,
+                'sort' => $section->source->value === 'filter' ? $section->sort : null,
+            ],
+            'data' => $page->getCollection()->map(fn (Product $product) => self::productCard($product, $favorites->contains($product->id)))->values(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'last_page' => $page->lastPage(),
+            ],
+        ]);
     }
 
     /**
@@ -575,8 +672,11 @@ class CafeMobileController extends BaseApiController
             ['quantity' => $data['quantity']]
         );
 
+        $item->load('productVariant.product');
+        self::markFavorites([$item]);
+
         return $this->jsonResponse([
-            'data' => $item->load('productVariant.product'),
+            'data' => $item,
             'cart' => $this->cartPayload($cart),
         ], 201);
     }
@@ -700,8 +800,24 @@ class CafeMobileController extends BaseApiController
     {
         $cart->load('items.productVariant.product');
         $cart->setAttribute('subtotal', $cart->subtotal());
+        self::markFavorites($cart->items);
 
         return $cart;
+    }
+
+    /**
+     * Sets is_favorite on the product of each cart item so the app can draw the heart.
+     *
+     * @param  iterable<\App\Models\CartItem>  $items
+     */
+    public static function markFavorites(iterable $items): void
+    {
+        $favorites = auth()->user()?->favoriteProducts()->pluck('products.id') ?? collect();
+
+        foreach ($items as $item) {
+            $product = $item->productVariant?->product;
+            $product?->setAttribute('is_favorite', $favorites->contains($product->id));
+        }
     }
 
     private function orderCreatedResponse(Order $order): JsonResponse

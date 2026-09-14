@@ -129,16 +129,12 @@ class LibyanDataSeeder extends Seeder
             }
         }
 
-        // Curated rows for the customer app home screen.
-        $sections = [
-            'الأكثر طلباً' => ['بن عربي محمص', 'بن إسبريسو', 'حليب مبخر', 'أكواب ورقية'],
-            'مستلزمات التحضير' => ['سكر أبيض', 'شراب فانيليا', 'أغطية أكواب'],
-        ];
-        foreach (array_keys($sections) as $i => $title) {
-            $section = \App\Models\FeaturedSection::create(['title' => $title, 'sort_order' => $i]);
-            $section->syncProducts(Product::whereIn('name', $sections[$title])->get()
-                ->sortBy(fn ($p) => array_search($p->name, $sections[$title]))->pluck('id')->all());
-        }
+        // Home screen rows: two rule-based (recomputed on every request) and one hand-picked.
+        \App\Models\FeaturedSection::create(['title' => 'الأكثر مبيعاً', 'source' => 'filter', 'sort' => 'popular', 'products_limit' => 8, 'sort_order' => 0]);
+        \App\Models\FeaturedSection::create(['title' => 'أسعار مناسبة', 'source' => 'filter', 'sort' => 'price_asc', 'filters' => ['in_stock' => true], 'products_limit' => 8, 'sort_order' => 1]);
+        $picked = ['سكر أبيض', 'شراب فانيليا', 'أغطية أكواب'];
+        \App\Models\FeaturedSection::create(['title' => 'مستلزمات التحضير', 'sort_order' => 2])
+            ->syncProducts(Product::whereIn('name', $picked)->get()->sortBy(fn ($p) => array_search($p->name, $picked))->pluck('id')->all());
 
         $customerType = UserType::where('name', UserRole::Customer->value)->firstOrFail();
         foreach ($this->cafeNames as $i => $cafeName) {

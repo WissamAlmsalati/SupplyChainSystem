@@ -36,7 +36,9 @@ class CategoryController extends BaseApiController
             $query->whereNotNull('parent_category_id');
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
+        $perPage = $request->integer('per_page', 15);
+
+        return $this->jsonResponse($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 1000) : 15));
     }
 
     /**

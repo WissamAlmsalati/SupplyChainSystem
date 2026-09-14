@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Product;
+use App\Services\ProductSearch;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -10,21 +12,35 @@ use Illuminate\Validation\Rule;
 class FavoriteController extends BaseApiController
 {
     /**
-     * @OA\Get(path="/cafe/favorites", tags={"Cafe Favorites"}, summary="My favorite products (newest first, product card shape)", security={{"bearerAuth":{}}},
-     *     @OA\Response(response=200, description="data: products with id, name, image_url, min_price, category_id, default_variant_id, is_favorite, favorited_at"))
+     * @OA\Get(path="/cafe/favorites", tags={"Cafe Favorites"}, summary="My favorite products (paginated, newest first)", security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
+     *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=20, maximum=100)),
+     *     @OA\Response(response=200, description="data: product cards with favorited_at; meta: current_page, per_page, total, last_page"))
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $products = auth()->user()->favoriteProducts()
-            ->where('is_active', true)
-            ->whereHas('variants', fn ($v) => $v->where('is_active', true))
-            ->with(['allImages', 'variants' => fn ($v) => $v->where('is_active', true)->orderBy('id')])
-            ->get()
-            ->map(fn (Product $product) => CafeMobileController::productCard($product, true) + [
-                'favorited_at' => $product->pivot->created_at,
-            ]);
+        $userId = auth()->id();
+        $query = (new ProductSearch(Request::create('/', 'GET'), $userId))->results()
+            ->join('favorites', function ($join) use ($userId) {
+                $join->on('favorites.product_id', '=', 'products.id')->where('favorites.user_id', '=', $userId);
+            })
+            ->addSelect('favorites.created_at as favorited_at')
+            ->reorder('favorites.created_at', 'desc')
+            ->orderByDesc('favorites.id');
 
-        return $this->jsonResponse(['data' => $products]);
+        $page = $query->paginate(max(1, min(100, $request->integer('per_page', 20))));
+
+        return $this->jsonResponse([
+            'data' => $page->getCollection()->map(fn (Product $product) => CafeMobileController::productCard($product, true) + [
+                'favorited_at' => $product->getAttribute('favorited_at'),
+            ])->values(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'last_page' => $page->lastPage(),
+            ],
+        ]);
     }
 
     /**

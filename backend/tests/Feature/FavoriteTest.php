@@ -91,4 +91,49 @@ class FavoriteTest extends TestCase
         $this->coffee->update(['is_active' => true]);
         $this->getJson('/api/v1/cafe/favorites', $h)->assertJsonCount(1, 'data');
     }
+
+    public function test_favorites_list_is_paginated_newest_first(): void
+    {
+        $h = $this->as($this->customer);
+        $this->postJson('/api/v1/cafe/favorites', ['product_id' => $this->tea->id], $h)->assertCreated();
+        $this->travel(1)->seconds();
+        $this->postJson('/api/v1/cafe/favorites', ['product_id' => $this->coffee->id], $h)->assertCreated();
+
+        $this->getJson('/api/v1/cafe/favorites?per_page=1', $h)->assertOk()
+            ->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'قهوة')
+            ->assertJsonPath('meta.total', 2)->assertJsonPath('meta.last_page', 2);
+        $this->getJson('/api/v1/cafe/favorites?per_page=1&page=2', $h)->assertJsonPath('data.0.name', 'شاي')->assertJsonPath('meta.current_page', 2);
+    }
+
+    public function test_cart_and_recurring_cart_products_carry_the_heart_flag(): void
+    {
+        $h = $this->as($this->customer);
+        $this->postJson('/api/v1/cafe/favorites', ['product_id' => $this->coffee->id], $h)->assertCreated();
+
+        $coffeeVariant = $this->coffee->variants()->first()->id;
+        $teaVariant = $this->tea->variants()->first()->id;
+
+        $this->postJson('/api/v1/cafe/cart/items', ['product_variant_id' => $coffeeVariant, 'quantity' => 1], $h)->assertCreated()
+            ->assertJsonPath('data.data.product_variant.product.is_favorite', true)
+            ->assertJsonPath('data.cart.items.0.product_variant.product.is_favorite', true);
+        $this->postJson('/api/v1/cafe/cart/items', ['product_variant_id' => $teaVariant, 'quantity' => 1], $h)->assertCreated();
+
+        $items = collect($this->getJson('/api/v1/cafe/cart', $h)->assertOk()->json('data.items'))->keyBy('product_variant_id');
+        $this->assertTrue($items[$coffeeVariant]['product_variant']['product']['is_favorite']);
+        $this->assertFalse($items[$teaVariant]['product_variant']['product']['is_favorite']);
+
+        $rc = $this->postJson('/api/v1/cafe/recurring-carts', ['name' => 'أسبوعية', 'items' => [
+            ['product_variant_id' => $coffeeVariant, 'quantity' => 1], ['product_variant_id' => $teaVariant, 'quantity' => 2],
+        ]], $h)->assertCreated()->json('data');
+        $flags = collect($rc['items'])->mapWithKeys(fn ($i) => [$i['product_variant_id'] => $i['product_variant']['product']['is_favorite']]);
+        $this->assertSame([$coffeeVariant => true, $teaVariant => false], $flags->all());
+
+        $this->getJson("/api/v1/cafe/recurring-carts/{$rc['id']}", $h)->assertJsonPath('items.0.product_variant.product.is_favorite', true);
+        $this->getJson('/api/v1/cafe/recurring-carts', $h)->assertJsonPath('data.0.items.0.product_variant.product.is_favorite', true);
+
+        // Removing the favorite turns the heart off everywhere.
+        $this->deleteJson("/api/v1/cafe/favorites/{$this->coffee->id}", [], $h)->assertOk();
+        $this->getJson('/api/v1/cafe/cart', $h)->assertJsonPath('data.items.0.product_variant.product.is_favorite', false);
+        $this->getJson("/api/v1/cafe/products/{$this->coffee->id}", $h)->assertJsonPath('is_favorite', false);
+    }
 }

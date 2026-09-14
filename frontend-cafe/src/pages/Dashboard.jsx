@@ -185,7 +185,13 @@ export default function Dashboard() {
         <section key={section.id} className="mt-10">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-foreground">{section.title}</h2>
-            <span className="text-sm text-muted">{section.products.length} منتج</span>
+            {section.has_more ? (
+              <button onClick={() => navigate(`/sections/${section.id}`)} className="text-sm font-semibold text-primary hover:underline">
+                عرض الكل ({section.products_total})
+              </button>
+            ) : (
+              <span className="text-sm text-muted">{section.products_total} منتج</span>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {section.products.map(renderCard)}

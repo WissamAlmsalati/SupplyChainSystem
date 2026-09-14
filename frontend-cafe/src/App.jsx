@@ -18,6 +18,7 @@ import Cart from './pages/Cart'
 import RecurringCarts from './pages/RecurringCarts'
 import Wallet from './pages/Wallet'
 import Favorites from './pages/Favorites'
+import FeaturedSectionProducts from './pages/FeaturedSectionProducts'
 import { useAuth } from './context/AuthContext'
 
 function HomeRedirect() {
@@ -53,6 +54,7 @@ function App() {
         <Route path="/recurring-carts" element={isDelegate ? <Navigate to="/" replace /> : <RecurringCarts />} />
         <Route path="/wallet" element={isDelegate ? <Navigate to="/" replace /> : <Wallet />} />
         <Route path="/favorites" element={isDelegate ? <Navigate to="/" replace /> : <Favorites />} />
+        <Route path="/sections/:id" element={isDelegate ? <Navigate to="/" replace /> : <FeaturedSectionProducts />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

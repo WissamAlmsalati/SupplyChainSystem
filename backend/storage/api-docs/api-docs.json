@@ -762,29 +762,350 @@
                 "tags": [
                     "Cafe Products"
                 ],
-                "summary": "List active products (cards)",
+                "summary": "Search and filter products (paginated)",
+                "description": "Text search covers product name, brand, description, tags, category and size name / SKU / barcode. Filters combine with AND; list filters accept comma-separated values. Use GET /cafe/products/filters for the available options and counts.",
                 "operationId": "46d95a00fca533270cd7255284e834f8",
                 "parameters": [
                     {
-                        "name": "category_id",
+                        "name": "q",
                         "in": "query",
+                        "description": "Search text (alias: search)",
                         "schema": {
-                            "type": "integer"
+                            "type": "string",
+                            "example": "قهوة"
                         }
                     },
                     {
-                        "name": "search",
+                        "name": "category_id",
                         "in": "query",
+                        "description": "One or more category ids, e.g. 1,4 (sub-categories included)",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "brand",
+                        "in": "query",
+                        "description": "One or more brands, comma-separated",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_price",
+                        "in": "query",
+                        "description": "Products with at least one size at or above this price",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "max_price",
+                        "in": "query",
+                        "description": "Products with at least one size at or below this price",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "in_stock",
+                        "in": "query",
+                        "description": "Only products with stock",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "favorites",
+                        "in": "query",
+                        "description": "Only my favorites",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "Default: relevance when q is given, otherwise newest",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "relevance",
+                                "newest",
+                                "price_asc",
+                                "price_desc",
+                                "name_asc",
+                                "popular"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 100
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Products"
+                        "description": "data: product cards; meta: pagination + applied filters",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "brand": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "image_url": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "min_price": {
+                                                        "type": "string"
+                                                    },
+                                                    "max_price": {
+                                                        "type": "string"
+                                                    },
+                                                    "in_stock": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "category_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "default_variant_id": {
+                                                        "description": "The matched size when the query matched a size/SKU/barcode",
+                                                        "type": "integer"
+                                                    },
+                                                    "matched_variant": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "price": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "type": "object",
+                                                        "nullable": true
+                                                    },
+                                                    "is_favorite": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                },
+                                                "applied": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/products/filters": {
+            "get": {
+                "tags": [
+                    "Cafe Products"
+                ],
+                "summary": "Filter options with counts for the current search",
+                "description": "Accepts the same parameters as GET /cafe/products. Each facet is counted as if its own filter were not applied, so users can switch between options.",
+                "operationId": "738b56589c4b0119177d894ca965e879",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "brand",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_price",
+                        "in": "query",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "max_price",
+                        "in": "query",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "in_stock",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "favorites",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Facets",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "in_stock_count": {
+                                                    "type": "integer"
+                                                },
+                                                "categories": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "parent_category_id": {
+                                                                "type": "integer",
+                                                                "nullable": true
+                                                            },
+                                                            "count": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "brands": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "count": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "price": {
+                                                    "properties": {
+                                                        "min": {
+                                                            "type": "number"
+                                                        },
+                                                        "max": {
+                                                            "type": "number"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "sort_options": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "value": {
+                                                                "type": "string"
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "applied": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/cafe/featured-sections": {
@@ -792,11 +1113,32 @@
                 "tags": [
                     "Cafe Products"
                 ],
-                "summary": "Curated product sections chosen by the business (title + products in one object)",
+                "summary": "Home-screen product sections (paginated): title + first products in one object",
+                "description": "Each section shows up to its products_limit products. Sections are either hand-picked by the admin (source=manual, admin order) or rule-based (source=filter, e.g. sort=popular for best sellers or price_asc for cheapest). Sections without available products are left out of the page.\n\n**View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /cafe/featured-sections/{id}/products` (see the guide at the top of Cafe Products).",
                 "operationId": "a6f681d9f21a5448e350d119c7ead111",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Sections per page",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "maximum": 50
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Active sections in display order; each has id, title and products (same card shape as /cafe/products). Sections without available products are omitted.",
+                        "description": "Sections",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -810,7 +1152,31 @@
                                                     },
                                                     "title": {
                                                         "type": "string",
-                                                        "example": "الأكثر طلباً"
+                                                        "example": "الأكثر مبيعاً"
+                                                    },
+                                                    "source": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "manual",
+                                                            "filter"
+                                                        ]
+                                                    },
+                                                    "sort": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "popular",
+                                                            "price_asc",
+                                                            "price_desc",
+                                                            "newest",
+                                                            "name_asc"
+                                                        ],
+                                                        "nullable": true
+                                                    },
+                                                    "products_total": {
+                                                        "type": "integer"
+                                                    },
+                                                    "has_more": {
+                                                        "type": "boolean"
                                                     },
                                                     "products": {
                                                         "type": "array",
@@ -822,12 +1188,22 @@
                                                                 "name": {
                                                                     "type": "string"
                                                                 },
+                                                                "brand": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                },
                                                                 "image_url": {
                                                                     "type": "string",
                                                                     "nullable": true
                                                                 },
                                                                 "min_price": {
                                                                     "type": "string"
+                                                                },
+                                                                "max_price": {
+                                                                    "type": "string"
+                                                                },
+                                                                "in_stock": {
+                                                                    "type": "boolean"
                                                                 },
                                                                 "category_id": {
                                                                     "type": "integer"
@@ -845,12 +1221,79 @@
                                                 },
                                                 "type": "object"
                                             }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
                                         }
                                     },
                                     "type": "object"
                                 }
                             }
                         }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/cafe/featured-sections/{id}/products": {
+            "get": {
+                "tags": [
+                    "Cafe Products"
+                ],
+                "summary": "All products of a section (paginated) for 'view all'",
+                "description": "Screen opened from a section's «عرض الكل» button.\n\n1. Request `page=1` and show `section.title` and `meta.total`.\n2. On scroll end, while `meta.current_page < meta.last_page`, request the next `page` and append the results.\n\nPage 1 starts from the beginning of the section (it repeats the products already shown on the home screen, in the same order) — render the response as-is. The order is fixed by the section type. Returns 404 when the section is hidden or deleted.",
+                "operationId": "796886bedae59b65c81fbe6ef97dae63",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "section {id,title,source,sort}, data: product cards in the section's order, meta: pagination"
+                    },
+                    "404": {
+                        "description": "Section not found or hidden"
                     }
                 },
                 "security": [
@@ -2018,11 +2461,30 @@
                 "tags": [
                     "Cafe Favorites"
                 ],
-                "summary": "My favorite products (newest first, product card shape)",
+                "summary": "My favorite products (paginated, newest first)",
                 "operationId": "cccdcd09cb028b38b63949bedf4c3458",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 100
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "data: products with id, name, image_url, min_price, category_id, default_variant_id, is_favorite, favorited_at"
+                        "description": "data: product cards with favorited_at; meta: current_page, per_page, total, last_page"
                     }
                 },
                 "security": [
@@ -3740,7 +4202,7 @@
                 "tags": [
                     "Catalog"
                 ],
-                "summary": "Create a section",
+                "summary": "Create a section: hand-picked (manual) or rule-based (filter)",
                 "operationId": "e8f79c4cf169068eea5fb2fb681cc0ec",
                 "requestBody": {
                     "required": true,
@@ -3748,13 +4210,12 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "title",
-                                    "product_ids"
+                                    "title"
                                 ],
                                 "properties": {
                                     "title": {
                                         "type": "string",
-                                        "example": "الأكثر طلباً"
+                                        "example": "الأكثر مبيعاً"
                                     },
                                     "is_active": {
                                         "type": "boolean"
@@ -3762,12 +4223,64 @@
                                     "sort_order": {
                                         "type": "integer"
                                     },
+                                    "source": {
+                                        "type": "string",
+                                        "default": "manual",
+                                        "enum": [
+                                            "manual",
+                                            "filter"
+                                        ]
+                                    },
+                                    "products_limit": {
+                                        "description": "Products shown on the home screen",
+                                        "type": "integer",
+                                        "default": 10,
+                                        "maximum": 50
+                                    },
                                     "product_ids": {
-                                        "description": "Ordered; first is shown first",
+                                        "description": "manual: ordered, first is shown first",
                                         "type": "array",
                                         "items": {
                                             "type": "integer"
                                         }
+                                    },
+                                    "sort": {
+                                        "description": "filter: how products are chosen",
+                                        "type": "string",
+                                        "enum": [
+                                            "popular",
+                                            "price_asc",
+                                            "price_desc",
+                                            "newest",
+                                            "name_asc"
+                                        ]
+                                    },
+                                    "filters": {
+                                        "description": "filter: optional narrowing",
+                                        "properties": {
+                                            "category_id": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "brand": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "min_price": {
+                                                "type": "number"
+                                            },
+                                            "max_price": {
+                                                "type": "number"
+                                            },
+                                            "in_stock": {
+                                                "type": "boolean"
+                                            }
+                                        },
+                                        "type": "object"
                                     }
                                 },
                                 "type": "object"
@@ -3777,7 +4290,47 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Section with products"
+                        "description": "Section with products and products_total"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/featured-sections/preview": {
+            "post": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Preview the products a rule-based section would show",
+                "operationId": "a21b6263fe07ca83799f382bc6614a1a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "sort": {
+                                        "type": "string"
+                                    },
+                                    "filters": {
+                                        "type": "object"
+                                    },
+                                    "products_limit": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "total + products"
                     }
                 },
                 "security": [
@@ -6423,11 +6976,11 @@
         },
         {
             "name": "Cafe Products",
-            "description": "التصنيفات، المنتجات والبحث، تفاصيل المنتج وأحجامه، والأقسام المميزة المختارة من الإدارة."
+            "description": "التصنيفات، المنتجات والبحث بالفلاتر، تفاصيل المنتج وأحجامه، والأقسام المميزة.\n\n## أقسام الرئيسية و«عرض الكل»\n\n**1. الرئيسية** — `GET /cafe/featured-sections`\n\nكل قسم يرجع أول N منتج فقط (N يحدده الأدمن) مع:\n- `products_total`: عدد كل منتجات القسم\n- `has_more`: `true` إذا كان هناك منتجات أكثر من المعروضة\n\nاعرض عنوان القسم ومنتجاته، وإذا كان `has_more = true` أضف زر **«عرض الكل (products_total)»**.\n\n**2. شاشة «عرض الكل»** — `GET /cafe/featured-sections/{id}/products?page=1&per_page=20`\n\n```json\n{\n  \"section\": { \"id\": 1, \"title\": \"الأكثر مبيعاً\", \"source\": \"filter\", \"sort\": \"popular\" },\n  \"data\": [ \"...كروت المنتجات...\" ],\n  \"meta\": { \"current_page\": 1, \"per_page\": 20, \"total\": 12, \"last_page\": 1 }\n}\n```\n\nالعنوان من `section.title` والعدد من `meta.total`.\n\n**3. تحميل المزيد (infinite scroll)** — عند الوصول لآخر القائمة وطالما `meta.current_page < meta.last_page` اطلب `page` التالية وأضف النتائج تحت الموجودة.\n\n**ملاحظات**\n- الصفحة الأولى تبدأ من بداية القسم (تشمل منتجات الرئيسية نفسها بنفس الترتيب) — اعرض الرد كما هو ولا تدمجه مع منتجات الرئيسية.\n- الترتيب ثابت حسب نوع القسم: الأكثر مبيعاً بالمبيعات، الأقل سعراً بالسعر، واليدوي بترتيب الأدمن.\n- القسم المخفي أو المحذوف يرجع `404` — ارجع للرئيسية أو اعرض «القسم غير متاح».\n- الكارت نفسه في كل الشاشات: `is_favorite` للقلب، `in_stock` للتوفر، و`default_variant_id` لإضافة سريعة عبر `POST /cafe/cart/items`.\n- `per_page` الافتراضي 20 والحد الأقصى 100."
         },
         {
             "name": "Cafe Favorites",
-            "description": "إضافة المنتجات للمفضلة وعرضها. كل كارت منتج يحمل `is_favorite`."
+            "description": "إضافة المنتجات للمفضلة وإزالتها وعرضها.\n\n## القلب الأحمر `is_favorite`\n\nكل منتج يرجع للتطبيق يحمل `is_favorite` (`true` = اعرض القلب أحمر) للمستخدم الحالي:\n\n| المكان | الحقل |\n|---|---|\n| قائمة المنتجات والبحث `GET /cafe/products` | `data[].is_favorite` |\n| تفاصيل المنتج `GET /cafe/products/{id}` | `is_favorite` |\n| أقسام الرئيسية `GET /cafe/featured-sections` | `data[].products[].is_favorite` |\n| عرض الكل `GET /cafe/featured-sections/{id}/products` | `data[].is_favorite` |\n| المفضلة `GET /cafe/favorites` | `data[].is_favorite` (دائماً `true`) |\n| السلة `GET /cafe/cart` | `data.items[].product_variant.product.is_favorite` |\n| الطلبيات المتكررة `GET /cafe/recurring-carts` و `/{id}` | `items[].product_variant.product.is_favorite` |\n\n**عند الضغط على القلب:** `POST /cafe/favorites` بـ `{ \"product_id\": 5 }` للإضافة، و `DELETE /cafe/favorites/{productId}` للإزالة. الاستدعاءان آمنان للتكرار ويرجعان `is_favorite` و `favorites_count`، فحدّث القلب محلياً مباشرة دون إعادة تحميل القائمة.\n\nلتلوين القلوب في شاشة لا تحمل الحقل يمكن جلب الأرقام مرة واحدة من `GET /cafe/favorites/ids`."
         },
         {
             "name": "Cafe Cart",
