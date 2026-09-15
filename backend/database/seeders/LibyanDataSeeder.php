@@ -164,7 +164,6 @@ class LibyanDataSeeder extends Seeder
                 'latitude' => $city['lat'],
                 'longitude' => $city['lng'],
                 'delivery_zone_id' => $zoneRecords[$city['name']]->id,
-                'is_default' => true,
             ]);
             Address::create([
                 'user_id' => $customer->id,

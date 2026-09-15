@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import Button from '../components/ui/Button'
-import Badge from '../components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import DataTable from '../components/DataTable'
 import { StatusBadge } from '../lib/status'
@@ -78,10 +77,6 @@ export default function AddressDetail() {
               <div><span className="font-medium">الشارع:</span> {address.street ?? '-'}</div>
               <div><span className="font-medium">أرقام التواصل:</span> {(address.contact_phones ?? []).join('، ') || '-'}</div>
               <div><span className="font-medium">منطقة التوصيل:</span> {address.delivery_zone?.name ?? '-'}</div>
-              <div>
-                <span className="font-medium">الحالة:</span>{' '}
-                <Badge variant={address.is_active ? 'success' : 'default'}>{address.is_active ? 'نشط' : 'غير نشط'}</Badge>
-              </div>
             </div>
           </CardContent>
         </Card>

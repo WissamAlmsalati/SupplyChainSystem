@@ -355,7 +355,7 @@
                 "operationId": "bc2032a379aa97707ccc61511897c120",
                 "responses": {
                     "200": {
-                        "description": "Authenticated user details"
+                        "description": "Authenticated user details. has_addresses is true when the user has at least one address (branch); addresses_count gives the number."
                     },
                     "401": {
                         "description": "Unauthenticated"
@@ -444,7 +444,8 @@
                 "tags": [
                     "Cafe Addresses"
                 ],
-                "summary": "Orders delivered to one address",
+                "summary": "Orders of one address (branch), paginated",
+                "description": "Light order cards for one address. Address details are at GET /cafe/addresses/{id}. meta.counts gives the number per tab (all / active / completed / cancelled) and per status; it honours from, to and q but not status or group, so tab badges stay stable. Open GET /cafe/orders/{id} for the full order.",
                 "operationId": "3b61e53ce5f991ac0854a881739366dd",
                 "parameters": [
                     {
@@ -454,13 +455,154 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "name": "group",
+                        "in": "query",
+                        "description": "Tab: active (pending, confirmed, preparing, out_for_delivery, cancellation_requested), completed (delivered, received), cancelled",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "completed",
+                                "cancelled"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "One or more statuses, comma-separated",
+                        "schema": {
+                            "type": "string",
+                            "example": "pending,confirmed"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Order number search",
+                        "schema": {
+                            "type": "string",
+                            "example": "00039"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15,
+                            "maximum": 50
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Paginated orders"
+                        "description": "data + meta",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/CafeOrderCard"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "example": 15
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 6
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "counts": {
+                                                    "properties": {
+                                                        "all": {
+                                                            "type": "integer",
+                                                            "example": 6
+                                                        },
+                                                        "active": {
+                                                            "type": "integer",
+                                                            "example": 2
+                                                        },
+                                                        "completed": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        },
+                                                        "cancelled": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "by_status": {
+                                                            "type": "object",
+                                                            "example": {
+                                                                "pending": 1,
+                                                                "confirmed": 1,
+                                                                "received": 3,
+                                                                "cancelled": 1
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "applied": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Address not found or not yours"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/cafe/orders/{id}": {
@@ -564,13 +706,44 @@
                 "tags": [
                     "Cafe Addresses"
                 ],
-                "summary": "List own addresses",
+                "summary": "List own addresses (branches)",
+                "description": "Address details with delivery zone and price. Orders of an address are a separate call: GET /cafe/addresses/{id}/orders. data.delivery_price is the price at the customer's registered location (used when there are no addresses yet).",
                 "operationId": "a07c813cdcc666e312d6fee002a20896",
                 "responses": {
                     "200": {
-                        "description": "Addresses and the delivery price at the customer's registered location"
+                        "description": "Addresses",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "addresses": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/CafeAddressDetail"
+                                                    }
+                                                },
+                                                "delivery_price": {
+                                                    "type": "number",
+                                                    "example": 6,
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -614,9 +787,24 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Address"
+                        "description": "Address with delivery zone and price",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CafeAddressDetail"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Address not found or not yours"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             },
             "put": {
                 "tags": [
@@ -683,7 +871,50 @@
                 "operationId": "b61a587e42e4a65a611e9ce586ebe1f0",
                 "responses": {
                     "200": {
-                        "description": "User fields merged with the customer profile, plus addresses"
+                        "description": "User fields merged with the customer profile, plus addresses. user.has_addresses is true once the cafe has at least one address (branch); user.addresses_count gives the number.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "user": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "mobile_number": {
+                                                    "type": "string",
+                                                    "example": "0910000001"
+                                                },
+                                                "business_name": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "has_addresses": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "addresses_count": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "addresses": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -6309,6 +6540,206 @@
     },
     "components": {
         "schemas": {
+            "CafeAddressDetail": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "فرع طرابلس الرئيسي"
+                    },
+                    "city": {
+                        "type": "string",
+                        "example": "طرابلس"
+                    },
+                    "street": {
+                        "type": "string",
+                        "example": "شارع الجمهورية"
+                    },
+                    "full_address": {
+                        "type": "string",
+                        "example": "شارع الجمهورية، طرابلس"
+                    },
+                    "contact_phones": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "0910000001"
+                        },
+                        "nullable": true
+                    },
+                    "latitude": {
+                        "type": "string",
+                        "example": "32.88720000"
+                    },
+                    "longitude": {
+                        "type": "string",
+                        "example": "13.19130000"
+                    },
+                    "delivery_zone_id": {
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "deleted_at": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "delivery_zone": {
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "example": 1
+                            },
+                            "name": {
+                                "type": "string",
+                                "example": "منطقة طرابلس"
+                            },
+                            "delivery_price": {
+                                "type": "string",
+                                "example": "6.00"
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "delivery_price": {
+                        "type": "number",
+                        "example": 6,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CafeOrderCard": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 39
+                    },
+                    "order_number": {
+                        "type": "string",
+                        "example": "ORD-2026-00039"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "confirmed",
+                            "preparing",
+                            "out_for_delivery",
+                            "delivered",
+                            "received",
+                            "cancellation_requested",
+                            "cancelled"
+                        ],
+                        "example": "received"
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "example": "مستلم"
+                    },
+                    "source": {
+                        "type": "string",
+                        "enum": [
+                            "app",
+                            "dashboard"
+                        ]
+                    },
+                    "items_count": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "subtotal": {
+                        "type": "string",
+                        "example": "137.00"
+                    },
+                    "delivery_fee": {
+                        "type": "string",
+                        "example": "6.00"
+                    },
+                    "total_amount": {
+                        "type": "string",
+                        "example": "143.00"
+                    },
+                    "payment": {
+                        "properties": {
+                            "method": {
+                                "type": "string",
+                                "enum": [
+                                    "cash",
+                                    "card",
+                                    "bank_transfer",
+                                    "wallet"
+                                ]
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "pending",
+                                    "paid",
+                                    "failed",
+                                    "refunded"
+                                ]
+                            },
+                            "amount": {
+                                "type": "string",
+                                "example": "143.00"
+                            },
+                            "paid_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "delegate": {
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "example": 8
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "mobile_number": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "can_cancel": {
+                        "description": "Pending: POST /cafe/orders/{id}/cancel-request is allowed",
+                        "type": "boolean"
+                    },
+                    "can_confirm_receipt": {
+                        "description": "Delivered: PUT /cafe/orders/{id}/status received is allowed",
+                        "type": "boolean"
+                    },
+                    "placed_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
             "AddressRequest": {
                 "required": [
                     "name",
@@ -6345,12 +6776,6 @@
                     "delivery_zone_id": {
                         "type": "integer",
                         "nullable": true
-                    },
-                    "is_default": {
-                        "type": "boolean"
-                    },
-                    "is_active": {
-                        "type": "boolean"
                     },
                     "contact_phones": {
                         "type": "array",

@@ -69,7 +69,6 @@ class CafeMobileEndpointsTest extends TestCase
             'latitude' => 27.0,
             'longitude' => 17.0,
             'delivery_zone_id' => $zone->id,
-            'is_active' => true,
         ]);
 
         $this->warehouse = Warehouse::create([
@@ -144,7 +143,8 @@ class CafeMobileEndpointsTest extends TestCase
         $token = $this->token();
         $this->getJson('/api/v1/me', ['Authorization' => "Bearer $token"])
             ->assertOk()
-            ->assertJsonPath('email', 'cafe@test.com');
+            ->assertJsonPath('email', 'cafe@test.com')
+            ->assertJsonPath('has_addresses', true);
     }
 
     public function test_cafe_profile(): void
@@ -153,8 +153,25 @@ class CafeMobileEndpointsTest extends TestCase
         $res = $this->getJson('/api/v1/cafe/profile', ['Authorization' => "Bearer $token"]);
         $res->assertOk()
             ->assertJsonPath('user.email', 'cafe@test.com')
+            ->assertJsonPath('user.has_addresses', true)
+            ->assertJsonPath('user.addresses_count', 1)
             ->assertJsonMissingPath('has_cafe');
         $this->assertCount(1, $res->json('addresses'));
+    }
+
+    public function test_cafe_profile_without_addresses(): void
+    {
+        $token = $this->token();
+        \App\Models\Address::query()->delete();
+
+        $this->getJson('/api/v1/cafe/profile', ['Authorization' => "Bearer $token"])
+            ->assertOk()
+            ->assertJsonPath('user.has_addresses', false)
+            ->assertJsonPath('user.addresses_count', 0);
+
+        $this->getJson('/api/v1/me', ['Authorization' => "Bearer $token"])
+            ->assertOk()
+            ->assertJsonPath('has_addresses', false);
     }
 
     public function test_cafe_addresses_list(): void
@@ -183,12 +200,88 @@ class CafeMobileEndpointsTest extends TestCase
         $this->assertDatabaseHas('addresses', ['name' => 'عنوان جديد']);
     }
 
+    private function placeOrder(string $token, int $quantity = 3): int
+    {
+        return $this->postJson('/api/v1/cafe/orders', [
+            'address_id' => $this->address->id,
+            'items' => [['product_variant_id' => $this->variant->id, 'quantity' => $quantity, 'unit_price' => 10]],
+        ], ['Authorization' => "Bearer $token"])->assertCreated()->json('data.id')
+            ?? \App\Models\Order::latest('id')->value('id');
+    }
+
+    public function test_cafe_addresses_list_includes_details_without_orders(): void
+    {
+        $token = $this->token();
+        $this->placeOrder($token, 3);
+
+        $address = $this->getJson('/api/v1/cafe/addresses', ['Authorization' => "Bearer $token"])
+            ->assertOk()->json('data.addresses.0');
+
+        $this->assertSame('الشارع الرئيسي، طرابلس', $address['full_address']);
+        $this->assertSame('منطقة اختبار', $address['delivery_zone']['name']);
+        $this->assertEquals(5, $address['delivery_price']);
+        $this->assertArrayNotHasKey('is_default', $address);
+        $this->assertArrayNotHasKey('is_active', $address);
+        $this->assertArrayNotHasKey('stats', $address);
+        $this->assertArrayNotHasKey('last_order', $address);
+
+        $this->getJson('/api/v1/cafe/addresses/' . $this->address->id, ['Authorization' => "Bearer $token"])
+            ->assertOk()
+            ->assertJsonPath('id', $this->address->id)
+            ->assertJsonPath('full_address', 'الشارع الرئيسي، طرابلس')
+            ->assertJsonMissingPath('stats');
+    }
+
     public function test_cafe_address_orders(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/v1/cafe/addresses/' . $this->address->id . '/orders', ['Authorization' => "Bearer $token"]);
-        $res->assertOk();
-        $this->assertIsArray($res->json('data'));
+        $pending = $this->placeOrder($token, 3);
+        $cancelled = $this->placeOrder($token, 1);
+        \App\Models\Order::find($cancelled)->update(['status' => 'cancelled']);
+
+        $url = '/api/v1/cafe/addresses/' . $this->address->id . '/orders';
+        $res = $this->getJson($url, ['Authorization' => "Bearer $token"])->assertOk();
+
+        $res->assertJsonMissingPath('address')
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('meta.counts.all', 2)
+            ->assertJsonPath('meta.counts.active', 1)
+            ->assertJsonPath('meta.counts.cancelled', 1)
+            ->assertJsonPath('meta.counts.by_status.pending', 1);
+        $card = collect($res->json('data'))->firstWhere('id', $pending);
+        $this->assertSame('pending', $card['status']);
+        $this->assertSame('قيد الانتظار', $card['status_label']);
+        $this->assertSame(1, $card['items_count']);
+        $this->assertTrue($card['can_cancel']);
+        $this->assertFalse($card['can_confirm_receipt']);
+        $this->assertArrayNotHasKey('user', $card);
+
+        // Tab filter narrows the list but keeps the tab counts.
+        $this->getJson($url . '?group=cancelled', ['Authorization' => "Bearer $token"])
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $cancelled)
+            ->assertJsonPath('meta.counts.all', 2);
+
+        $this->getJson($url . '?status=pending,bogus', ['Authorization' => "Bearer $token"])
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.applied.status', ['pending']);
+
+        $this->getJson($url . '?group=wrong', ['Authorization' => "Bearer $token"])->assertStatus(422);
+    }
+
+    public function test_cafe_cannot_read_another_users_address_orders(): void
+    {
+        $token = $this->token();
+        $other = Address::create([
+            'user_id' => AppUser::create([
+                'name' => 'Other Cafe', 'email' => 'other@test.com', 'mobile_number' => '0912222222',
+                'password' => bcrypt('password'), 'user_type_id' => $this->cafeUser->user_type_id,
+            ])->id,
+            'name' => 'فرع غريب', 'city' => 'مصراتة', 'street' => 'ش', 'latitude' => 27, 'longitude' => 17,
+        ]);
+
+        $this->getJson('/api/v1/cafe/addresses/' . $other->id . '/orders', ['Authorization' => "Bearer $token"])->assertNotFound();
+        $this->getJson('/api/v1/cafe/addresses/' . $other->id, ['Authorization' => "Bearer $token"])->assertNotFound();
     }
 
     public function test_cafe_orders_list(): void

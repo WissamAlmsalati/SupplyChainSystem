@@ -40,7 +40,7 @@ export default function RecurringCarts() {
     load()
   }, [])
 
-  const defaultAddressId = () => String((addresses.find((a) => a.is_default) ?? addresses[0])?.id ?? '')
+  const defaultAddressId = () => String(addresses[0]?.id ?? '')
 
   const orderCart = async (cart) => {
     const addressId = addressByCart[cart.id] ?? defaultAddressId()

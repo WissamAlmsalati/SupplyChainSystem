@@ -70,7 +70,6 @@ class BrunoDemoSeeder extends Seeder
                 'latitude' => 27.0,
                 'longitude' => 17.0,
                 'delivery_zone_id' => $zone->id,
-                'is_default' => true,
             ]
         );
 

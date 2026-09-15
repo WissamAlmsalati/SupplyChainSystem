@@ -70,22 +70,132 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/addresses/{id}/orders", tags={"Cafe Addresses"}, summary="Orders delivered to one address",
+     * @OA\Get(path="/cafe/addresses/{id}/orders", tags={"Cafe Addresses"}, summary="Orders of one address (branch), paginated",
+     *     description="Light order cards for one address. Address details are at GET /cafe/addresses/{id}. meta.counts gives the number per tab (all / active / completed / cancelled) and per status; it honours from, to and q but not status or group, so tab badges stay stable. Open GET /cafe/orders/{id} for the full order.",
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Paginated orders"))
+     *     @OA\Parameter(name="group", in="query", description="Tab: active (pending, confirmed, preparing, out_for_delivery, cancellation_requested), completed (delivered, received), cancelled", @OA\Schema(type="string", enum={"active","completed","cancelled"})),
+     *     @OA\Parameter(name="status", in="query", description="One or more statuses, comma-separated", @OA\Schema(type="string", example="pending,confirmed")),
+     *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="q", in="query", description="Order number search", @OA\Schema(type="string", example="00039")),
+     *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
+     *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15, maximum=50)),
+     *     @OA\Response(response=200, description="data + meta",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/CafeOrderCard")),
+     *             @OA\Property(property="meta", type="object",
+     *                 @OA\Property(property="current_page", type="integer", example=1),
+     *                 @OA\Property(property="per_page", type="integer", example=15),
+     *                 @OA\Property(property="total", type="integer", example=6),
+     *                 @OA\Property(property="last_page", type="integer", example=1),
+     *                 @OA\Property(property="counts", type="object",
+     *                     @OA\Property(property="all", type="integer", example=6),
+     *                     @OA\Property(property="active", type="integer", example=2),
+     *                     @OA\Property(property="completed", type="integer", example=3),
+     *                     @OA\Property(property="cancelled", type="integer", example=1),
+     *                     @OA\Property(property="by_status", type="object", example={"pending": 1, "confirmed": 1, "received": 3, "cancelled": 1})),
+     *                 @OA\Property(property="applied", type="object")))),
+     *     @OA\Response(response=404, description="Address not found or not yours"))
      */
     public function addressOrders(Request $request, int $id): JsonResponse
     {
+        $request->validate([
+            'group' => ['nullable', Rule::in(array_keys(OrderStatus::groups()))],
+            'status' => ['nullable', 'string'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'q' => ['nullable', 'string', 'max:50'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
         $address = $this->addressScope()->findOrFail($id);
-        $query = $this->orderScope()
+
+        $base = Order::where('user_id', auth()->id())
             ->where('address_id', $address->id)
-            ->orderByDesc('placed_at');
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('placed_at', '>=', $request->input('from')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('placed_at', '<=', $request->input('to')))
+            ->when($request->filled('q'), fn ($q) => $q->where('order_number', 'like', '%'.$request->input('q').'%'));
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->input('status'));
+        $byStatus = (clone $base)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->map(fn ($n) => (int) $n);
+        $counts = ['all' => $byStatus->sum()];
+        foreach (OrderStatus::groups() as $group => $statuses) {
+            $counts[$group] = $byStatus->only($statuses)->sum();
         }
+        $counts['by_status'] = (object) $byStatus->all();
 
-        return $this->jsonResponse($query->paginate($request->integer('per_page', 15)));
+        $statuses = $request->filled('status')
+            ? array_values(array_intersect(array_map('trim', explode(',', $request->input('status'))), OrderStatus::values()))
+            : [];
+
+        $page = (clone $base)
+            ->with(['delegate:id,name,mobile_number', 'payments'])
+            ->withCount('items')
+            ->when($request->filled('group'), fn ($q) => $q->whereIn('status', OrderStatus::groups()[$request->input('group')]))
+            ->when($statuses, fn ($q) => $q->whereIn('status', $statuses))
+            ->orderByDesc('placed_at')
+            ->orderByDesc('id')
+            ->paginate($request->integer('per_page', 15));
+
+        return $this->jsonResponse([
+            'data' => $page->getCollection()->map(fn (Order $order) => $this->orderCard($order))->values(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'last_page' => $page->lastPage(),
+                'counts' => $counts,
+                'applied' => (object) array_filter([
+                    'group' => $request->input('group'),
+                    'status' => $statuses ?: null,
+                    'from' => $request->input('from'),
+                    'to' => $request->input('to'),
+                    'q' => $request->input('q'),
+                ]),
+            ],
+        ]);
+    }
+
+    /** Light order row for lists; the full order lives at GET /cafe/orders/{id}. */
+    private function orderCard(Order $order): array
+    {
+        $payment = $order->payments->sortByDesc('id')->first();
+
+        return [
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'status' => $order->status->value,
+            'status_label' => $order->status->label(),
+            'source' => $order->source?->value,
+            'items_count' => (int) $order->items_count,
+            'subtotal' => $order->subtotal,
+            'delivery_fee' => $order->delivery_fee,
+            'total_amount' => $order->total_amount,
+            'payment' => $payment ? [
+                'method' => $payment->method?->value,
+                'status' => $payment->status?->value,
+                'amount' => $payment->amount,
+                'paid_at' => $payment->paid_at,
+            ] : null,
+            'delegate' => $order->delegate?->only(['id', 'name', 'mobile_number']),
+            'can_cancel' => $order->status === OrderStatus::Pending,
+            'can_confirm_receipt' => $order->status === OrderStatus::Delivered,
+            'placed_at' => $order->placed_at,
+        ];
+    }
+
+    /** Address fields plus its delivery zone and price. Orders live at GET /cafe/addresses/{id}/orders. */
+    private function addressDetails($addresses)
+    {
+        return $addresses->map(function (Address $address) {
+            $zone = $address->deliveryZone;
+
+            return $address->makeHidden(['delivery_zone', 'deliveryZone'])->toArray() + [
+                'full_address' => collect([$address->street, $address->city])->filter()->implode('، '),
+                'delivery_zone' => $zone?->only(['id', 'name', 'delivery_price']),
+                'delivery_price' => $zone ? (float) $zone->delivery_price : null,
+            ];
+        })->values();
     }
 
     /**
@@ -182,12 +292,19 @@ class CafeMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/addresses", tags={"Cafe Addresses"}, summary="List own addresses",
-     *     @OA\Response(response=200, description="Addresses and the delivery price at the customer's registered location"))
+     * @OA\Get(path="/cafe/addresses", tags={"Cafe Addresses"}, summary="List own addresses (branches)",
+     *     description="Address details with delivery zone and price. Orders of an address are a separate call: GET /cafe/addresses/{id}/orders. data.delivery_price is the price at the customer's registered location (used when there are no addresses yet).",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Addresses",
+     *         @OA\JsonContent(@OA\Property(property="data", type="object",
+     *             @OA\Property(property="addresses", type="array", @OA\Items(ref="#/components/schemas/CafeAddressDetail")),
+     *             @OA\Property(property="delivery_price", type="number", nullable=true, example=6)))))
      */
     public function addresses(Request $request): JsonResponse
     {
-        $addresses = $this->addressScope()->with('deliveryZone:id,name,delivery_price')->get();
+        $addresses = $this->addressDetails(
+            $this->addressScope()->orderBy('id')->get()
+        );
 
         return $this->jsonResponse(['data' => [
             'addresses' => $addresses,
@@ -218,12 +335,14 @@ class CafeMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/cafe/addresses/{id}", tags={"Cafe Addresses"}, summary="Own address details",
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Address"))
+     *     @OA\Response(response=200, description="Address with delivery zone and price", @OA\JsonContent(ref="#/components/schemas/CafeAddressDetail")),
+     *     @OA\Response(response=404, description="Address not found or not yours"))
      */
     public function showAddress(int $id): JsonResponse
     {
-        return $this->jsonResponse($this->addressScope()->findOrFail($id));
+        return $this->jsonResponse($this->addressDetails(collect([$this->addressScope()->findOrFail($id)]))->first());
     }
 
     /**
@@ -275,7 +394,16 @@ class CafeMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/cafe/profile", tags={"Cafe Profile"}, summary="Customer profile",
-     *     @OA\Response(response=200, description="User fields merged with the customer profile, plus addresses"))
+     *     @OA\Response(response=200, description="User fields merged with the customer profile, plus addresses. user.has_addresses is true once the cafe has at least one address (branch); user.addresses_count gives the number.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="user", type="object",
+     *                 @OA\Property(property="id", type="integer", example=3),
+     *                 @OA\Property(property="name", type="string"),
+     *                 @OA\Property(property="mobile_number", type="string", example="0910000001"),
+     *                 @OA\Property(property="business_name", type="string", nullable=true),
+     *                 @OA\Property(property="has_addresses", type="boolean", example=true),
+     *                 @OA\Property(property="addresses_count", type="integer", example=2)),
+     *             @OA\Property(property="addresses", type="array", @OA\Items(type="object")))))
      */
     public function profile(): JsonResponse
     {
@@ -324,11 +452,14 @@ class CafeMobileController extends BaseApiController
     {
         $user = auth()->user()->loadMissing('customerProfile');
         $profile = $user->customerProfile;
+        $addressesCount = $user->addresses()->count();
 
         return $user->only(['id', 'name', 'email', 'mobile_number']) + [
             'business_name' => $profile?->business_name,
             'latitude' => $profile?->latitude,
             'longitude' => $profile?->longitude,
+            'has_addresses' => $addressesCount > 0,
+            'addresses_count' => $addressesCount,
         ];
     }
 

@@ -325,12 +325,16 @@ class AuthController extends BaseApiController
      *     tags={"Auth"},
      *     summary="Get the authenticated user",
      *     security={{"bearerAuth":{}}},
-     *     @OA\Response(response=200, description="Authenticated user details"),
+     *     @OA\Response(response=200, description="Authenticated user details. has_addresses is true when the user has at least one address (branch); addresses_count gives the number."),
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
      */
     public function me(Request $request): JsonResponse
     {
-        return $this->jsonResponse($request->user()->load(['userType.permissions', 'addresses', 'adminProfile', 'customerProfile', 'delegateProfile']));
+        $user = $request->user()->load(['userType.permissions', 'addresses', 'adminProfile', 'customerProfile', 'delegateProfile']);
+        $user->setAttribute('has_addresses', $user->addresses->isNotEmpty());
+        $user->setAttribute('addresses_count', $user->addresses->count());
+
+        return $this->jsonResponse($user);
     }
 }

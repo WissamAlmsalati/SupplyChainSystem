@@ -12,7 +12,6 @@ const initial = {
   hex_id: '',
   delivery_zone_id: '',
   contact_phones: '',
-  is_active: true,
 }
 
 export default function Addresses() {
@@ -105,7 +104,6 @@ export default function Addresses() {
         longitude: Number(form.longitude),
         delivery_zone_id: deliveryZoneId,
         contact_phones: form.contact_phones.split('\n').map((p) => p.trim()).filter(Boolean),
-        is_active: Boolean(form.is_active),
       }
       if (!data.street) data.street = null
       if (!data.city) data.city = null
@@ -156,7 +154,6 @@ export default function Addresses() {
               <th className="px-4 py-3 text-start">الشارع</th>
               <th className="px-4 py-3 text-start">أرقام التواصل</th>
               <th className="px-4 py-3 text-start">الموقع</th>
-              <th className="px-4 py-3 text-start">الحالة</th>
               <th className="px-4 py-3 text-start">إجراء</th>
             </tr>
           </thead>
@@ -169,12 +166,11 @@ export default function Addresses() {
                   <td className="px-4 py-3"><div className="h-4 w-28 animate-pulse rounded-md bg-border" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded-md bg-border" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-32 animate-pulse rounded-md bg-border" /></td>
-                  <td className="px-4 py-3"><div className="h-4 w-16 animate-pulse rounded-md bg-border" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-12 animate-pulse rounded-md bg-border" /></td>
                 </tr>
               ))
             ) : addresses.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted">لا توجد عناوين.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">لا توجد عناوين.</td></tr>
             ) : (
               addresses.map((a) => (
                 <tr key={a.id} className="hover:bg-background/50">
@@ -184,11 +180,6 @@ export default function Addresses() {
                   <td className="px-4 py-3">{(a.contact_phones ?? []).join('، ') || '-'}</td>
                   <td className="px-4 py-3 text-xs text-muted">
                     {a.latitude && a.longitude ? `${Number(a.latitude).toFixed(5)}, ${Number(a.longitude).toFixed(5)}` : '-'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${a.is_active ? 'bg-success' : 'bg-muted'}`}>
-                      {a.is_active ? 'نشط' : 'غير نشط'}
-                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <button
@@ -261,15 +252,6 @@ export default function Addresses() {
                   </span>
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input
-                  type="checkbox"
-                  checked={form.is_active}
-                  onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                  className="h-4 w-4 rounded border-border-strong"
-                />
-                نشط
-              </label>
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={close} className="rounded-lg border border-border bg-background px-4 py-2 text-sm hover:bg-surface">
                   إلغاء

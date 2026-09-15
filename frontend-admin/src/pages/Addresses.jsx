@@ -9,7 +9,6 @@ import Modal from '../components/Modal'
 import MapPicker from '../components/MapPicker'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
-import Badge from '../components/ui/Badge'
 import { FilterSelect } from '../components/ui/TableFilters'
 
 const initial = {
@@ -22,7 +21,6 @@ const initial = {
   hex_id: '',
   delivery_zone_id: '',
   contact_phones: '',
-  is_active: true,
 }
 
 export default function Addresses() {
@@ -32,8 +30,7 @@ export default function Addresses() {
   const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [filterUser, setFilterUser] = useState(searchParams.get('user_id') || '')
-  const [filterActive, setFilterActive] = useState('')
-  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/addresses', { search, user_id: filterUser, is_active: filterActive })
+  const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/addresses', { search, user_id: filterUser })
   const users = useApiList('/users?per_page=10000')
   const zones = useApiList('/delivery-zones?per_page=10000')
   const [modal, setModal] = useState(false)
@@ -103,7 +100,6 @@ export default function Addresses() {
         longitude: Number(form.longitude),
         delivery_zone_id: deliveryZoneId,
         contact_phones: form.contact_phones.split('\n').map((p) => p.trim()).filter(Boolean),
-        is_active: Boolean(form.is_active),
       }
       if (!data.street) data.street = null
       if (!data.city) data.city = null
@@ -123,11 +119,6 @@ export default function Addresses() {
     { key: 'street', label: 'الشارع' },
     { key: 'contact_phones', label: 'أرقام التواصل', render: (r) => (r.contact_phones ?? []).join('، ') || '-' },
     { key: 'delivery_zone', label: 'المنطقة', render: (r) => r.delivery_zone?.name || '-' },
-    {
-      key: 'is_active',
-      label: 'الحالة',
-      render: (r) => <Badge variant={r.is_active ? 'success' : 'default'}>{r.is_active ? 'نشط' : 'غير نشط'}</Badge>,
-    },
   ]
 
   return (
@@ -147,15 +138,6 @@ export default function Addresses() {
             value={filterUser}
             onChange={setFilterUser}
             options={users.map((u) => ({ value: u.id, label: u.name }))}
-          />
-          <FilterSelect
-            label="الحالة"
-            value={filterActive}
-            onChange={setFilterActive}
-            options={[
-              { value: '1', label: 'نشط' },
-              { value: '0', label: 'معطل' },
-            ]}
           />
           {canCreate && <Button variant="primary" onClick={openCreate}>إضافة عنوان</Button>}
         </div>
@@ -234,15 +216,6 @@ export default function Addresses() {
             </div>
 
           </div>
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-foreground">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-border-strong text-primary focus:ring-primary"
-              checked={form.is_active}
-              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-            />
-            نشط
-          </label>
           <div className="flex items-center justify-end gap-2 mt-6">
             <Button type="button" variant="secondary" onClick={close}>إلغاء</Button>
             <Button type="submit" variant="primary" disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>

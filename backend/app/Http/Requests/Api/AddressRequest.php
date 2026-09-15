@@ -25,8 +25,6 @@ class AddressRequest extends FormRequest
             'latitude' => [$isStore ? 'required' : 'sometimes', 'numeric', 'between:-90,90'],
             'longitude' => [$isStore ? 'required' : 'sometimes', 'numeric', 'between:-180,180'],
             'delivery_zone_id' => ['nullable', 'integer', 'exists:delivery_zones,id'],
-            'is_default' => ['boolean'],
-            'is_active' => ['boolean'],
             'contact_phones' => ['nullable', 'array'],
             'contact_phones.*' => ['string', 'max:20'],
         ];

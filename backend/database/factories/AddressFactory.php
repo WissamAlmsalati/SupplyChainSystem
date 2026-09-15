@@ -22,8 +22,6 @@ class AddressFactory extends Factory
             'latitude' => $this->faker->latitude(),
             'longitude' => $this->faker->longitude(),
             'delivery_zone_id' => DeliveryZone::factory(),
-            'is_default' => false,
-            'is_active' => true,
         ];
     }
 }

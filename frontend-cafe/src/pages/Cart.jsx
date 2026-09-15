@@ -28,7 +28,7 @@ export default function Cart() {
       .then((res) => {
         const list = res.data?.data?.addresses ?? []
         setAddresses(list)
-        const preferred = list.find((a) => a.is_default) ?? list[0]
+        const preferred = list[0]
         if (preferred) setAddressId(String(preferred.id))
       })
       .catch(() => setAddresses([]))

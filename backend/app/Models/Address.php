@@ -22,16 +22,12 @@ class Address extends Model
         'latitude',
         'longitude',
         'delivery_zone_id',
-        'is_default',
-        'is_active',
     ];
 
     protected $casts = [
         'contact_phones' => 'array',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
-        'is_default' => 'boolean',
-        'is_active' => 'boolean',
     ];
 
     public function user(): BelongsTo
