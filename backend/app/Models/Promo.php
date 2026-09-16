@@ -20,6 +20,6 @@ class Promo extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? '/storage/' . ltrim($this->image, '/') : null;
+        return $this->image ? '/storage/' . ltrim($this->image, '/') : \App\Support\Placeholder::url('promo');
     }
 }

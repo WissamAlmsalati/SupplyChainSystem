@@ -11,6 +11,7 @@ use App\Models\ProductImage;
 use App\Models\Promo;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use App\Support\Placeholder;
 use Illuminate\Support\Facades\Storage;
 
 // Demo content the other seeders leave empty: product images, promo banners,
@@ -35,21 +36,27 @@ class DemoContentSeeder extends Seeder
         $this->notifications();
     }
 
-    private function card(string $title, string $subtitle, int $index, int $width = 600, int $height = 600): string
+    /**
+     * A picture for the demo data: the shared placeholder artwork, tinted and
+     * captioned so each product and banner looks different.
+     */
+    private function card(string $title, string $subtitle, int $index, string $kind = 'product'): string
     {
         [$ink, $bg] = $this->palette[$index % count($this->palette)];
         $title = htmlspecialchars($title, ENT_XML1);
         $subtitle = htmlspecialchars($subtitle, ENT_XML1);
+        $svg = Placeholder::svg($kind);
+        $width = $kind === 'promo' ? 1200 : 600;
 
-        return <<<SVG
-        <svg xmlns="http://www.w3.org/2000/svg" width="{$width}" height="{$height}" viewBox="0 0 {$width} {$height}">
-          <rect width="{$width}" height="{$height}" fill="{$bg}"/>
-          <circle cx="{$width}" cy="0" r="180" fill="{$ink}" opacity="0.12"/>
-          <circle cx="0" cy="{$height}" r="140" fill="{$ink}" opacity="0.10"/>
-          <text x="50%" y="46%" text-anchor="middle" font-family="system-ui, sans-serif" font-size="46" font-weight="bold" fill="{$ink}">{$title}</text>
-          <text x="50%" y="58%" text-anchor="middle" font-family="system-ui, sans-serif" font-size="28" fill="{$ink}" opacity="0.75">{$subtitle}</text>
+        // Tint the shared artwork, then caption it.
+        $svg = str_replace(['#f1f5f9', '#0f766e', '#ccfbf1'], [$bg, $ink, '#ffffff'], $svg);
+        $caption = <<<CAPTION
+          <text x="50%" y="86%" text-anchor="middle" font-family="system-ui, sans-serif" font-size="42" font-weight="bold" fill="{$ink}">{$title}</text>
+          <text x="50%" y="93%" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" fill="{$ink}" opacity="0.75">{$subtitle}</text>
         </svg>
-        SVG;
+        CAPTION;
+
+        return str_replace('</svg>', $caption, $svg);
     }
 
     private function productImages(): void
@@ -91,7 +98,7 @@ class DemoContentSeeder extends Seeder
 
         foreach ($banners as $i => [$title, $description, $link]) {
             $path = "promos/promo-{$i}.svg";
-            Storage::disk('public')->put($path, $this->card($title, $description, $i + 1, 1200, 500));
+            Storage::disk('public')->put($path, $this->card($title, $description, $i + 1, 'promo'));
 
             Promo::create([
                 'image' => $path,

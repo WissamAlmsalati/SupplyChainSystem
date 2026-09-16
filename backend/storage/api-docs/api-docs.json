@@ -3212,6 +3212,32 @@
                 "security": []
             }
         },
+        "/placeholder/{kind}": {
+            "get": {
+                "tags": [
+                    "Cafe Products"
+                ],
+                "summary": "Default image used when a record has no picture",
+                "description": "Public SVG placeholder. image_url falls back to this URL, so clients can always render an image. Kinds: product.svg, promo.svg, category.svg, cafe.svg, user.svg.",
+                "operationId": "09559bfdfa91e17fe6696fcf5c203e66",
+                "parameters": [
+                    {
+                        "name": "kind",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "product.svg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SVG image"
+                    }
+                }
+            }
+        },
         "/premium-features": {
             "get": {
                 "tags": [

@@ -54,6 +54,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
+    Route::get('placeholder/{kind}', [\App\Http\Controllers\Api\PlaceholderController::class, 'show'])->name('placeholder');
     Route::post('cafe/register', [AuthController::class, 'registerCafe'])->name('cafe.register');
     Route::post('cafe/verify-otp', [AuthController::class, 'verifyRegistrationOtp'])->name('cafe.verify-otp');
     Route::post('cafe/resend-otp', [AuthController::class, 'resendRegistrationOtp'])->name('cafe.resend-otp');

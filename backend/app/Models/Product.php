@@ -43,7 +43,7 @@ class Product extends Model
         $image = $own->firstWhere('is_primary', true) ?? $own->first()
             ?? $images->firstWhere('is_primary', true) ?? $images->first();
 
-        return $image?->image_url;
+        return $image?->image_url ?? \App\Support\Placeholder::url('product');
     }
 
     public function category(): BelongsTo
