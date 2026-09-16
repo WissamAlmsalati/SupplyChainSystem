@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             LibyanDataSeeder::class,
             WalletSeeder::class,
             OrderSeeder::class,
+            DemoContentSeeder::class,
         ]);
     }
 }
