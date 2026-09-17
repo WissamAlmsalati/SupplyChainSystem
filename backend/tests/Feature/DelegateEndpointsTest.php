@@ -19,13 +19,13 @@ class DelegateEndpointsTest extends TestCase
     {
         parent::setUp();
 
-        $adminType = UserType::create(['name' => 'admin']);
-        $this->delegateType = UserType::create(['name' => 'delegate']);
-        UserType::create(['name' => 'super_admin']);
-        UserType::create(['name' => 'cafe']);
+        $adminType = UserType::firstOrCreate(['name' => 'admin']);
+        $this->delegateType = UserType::firstOrCreate(['name' => 'delegate']);
+        UserType::firstOrCreate(['name' => 'super_admin']);
+        UserType::firstOrCreate(['name' => 'customer']);
 
         $codes = ['DELEGATES_VIEW', 'DELEGATES_CREATE', 'DELEGATES_EDIT', 'DELEGATES_DELETE'];
-        $permissions = collect($codes)->map(fn ($code) => Permission::create(['code' => $code]));
+        $permissions = collect($codes)->map(fn ($code) => Permission::firstOrCreate(['code' => $code]));
         $adminType->permissions()->sync($permissions->pluck('id'));
 
         $this->adminUser = AppUser::create([

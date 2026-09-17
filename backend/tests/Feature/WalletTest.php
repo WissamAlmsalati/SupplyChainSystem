@@ -60,7 +60,7 @@ class WalletTest extends TestCase
     // Customer bank-transfer request with a receipt; returns the top-up id.
     private function requestTransfer(float $amount): int
     {
-        return $this->post('/api/v1/cafe/wallet/topups', [
+        return $this->post('/api/v1/customer/wallet/topups', [
             'amount' => $amount,
             'method' => 'bank_transfer',
             'reference_number' => 'TRX-' . random_int(1000, 9999),
@@ -76,7 +76,7 @@ class WalletTest extends TestCase
 
     private function placeOrder(string $method, int $qty = 1)
     {
-        return $this->postJson('/api/v1/cafe/orders', [
+        return $this->postJson('/api/v1/customer/orders', [
             'address_id' => $this->address->id,
             'items' => [['product_variant_id' => $this->variant->id, 'quantity' => $qty]],
             'payment_method' => $method,
@@ -88,7 +88,7 @@ class WalletTest extends TestCase
         $this->assertDatabaseHas('wallets', ['user_id' => $this->customer->id, 'balance' => 0]);
         $this->assertDatabaseMissing('wallets', ['user_id' => $this->admin->id]);
 
-        $this->getJson('/api/v1/cafe/wallet', $this->as($this->customer))
+        $this->getJson('/api/v1/customer/wallet', $this->as($this->customer))
             ->assertOk()->assertJsonPath('data.balance', '0.00')->assertJsonPath('data.currency', 'LYD');
     }
 
@@ -96,7 +96,7 @@ class WalletTest extends TestCase
     {
         Storage::fake('public');
 
-        $res = $this->post('/api/v1/cafe/wallet/topups', [
+        $res = $this->post('/api/v1/customer/wallet/topups', [
             'amount' => 300, 'method' => 'bank_transfer', 'reference_number' => 'TRX-1',
             'receipt' => UploadedFile::fake()->image('r.jpg'),
         ], $this->as($this->customer) + ['Accept' => 'application/json'])->assertCreated();
@@ -120,11 +120,11 @@ class WalletTest extends TestCase
         $headers = $this->as($this->customer) + ['Accept' => 'application/json'];
         $base = ['amount' => 100, 'method' => 'bank_transfer', 'reference_number' => 'TRX-9'];
 
-        $this->post('/api/v1/cafe/wallet/topups', $base, $headers)->assertUnprocessable()->assertJsonValidationErrors('receipt');
-        $this->post('/api/v1/cafe/wallet/topups', $base + ['receipt' => UploadedFile::fake()->create('x.exe', 10, 'application/octet-stream')], $headers)
+        $this->post('/api/v1/customer/wallet/topups', $base, $headers)->assertUnprocessable()->assertJsonValidationErrors('receipt');
+        $this->post('/api/v1/customer/wallet/topups', $base + ['receipt' => UploadedFile::fake()->create('x.exe', 10, 'application/octet-stream')], $headers)
             ->assertUnprocessable()->assertJsonValidationErrors('receipt');
 
-        $res = $this->post('/api/v1/cafe/wallet/topups', $base + ['receipt' => UploadedFile::fake()->create('receipt.pdf', 200, 'application/pdf')], $headers)
+        $res = $this->post('/api/v1/customer/wallet/topups', $base + ['receipt' => UploadedFile::fake()->create('receipt.pdf', 200, 'application/pdf')], $headers)
             ->assertCreated()->assertJsonPath('data.receipt_type', 'pdf');
         Storage::disk('public')->assertExists(WalletTopup::find($res->json('data.id'))->receipt_path);
 
@@ -135,15 +135,15 @@ class WalletTest extends TestCase
     public function test_cash_at_office_and_other_methods_cannot_be_requested(): void
     {
         foreach (['cash', 'delegate_cash', 'gateway'] as $method) {
-            $this->postJson('/api/v1/cafe/wallet/topups', ['amount' => 100, 'method' => $method], $this->as($this->customer))
+            $this->postJson('/api/v1/customer/wallet/topups', ['amount' => 100, 'method' => $method], $this->as($this->customer))
                 ->assertUnprocessable()->assertJsonValidationErrors('method');
         }
     }
 
     public function test_bank_transfer_needs_reference_and_amount_limits_apply(): void
     {
-        $this->postJson('/api/v1/cafe/wallet/topups', ['amount' => 100, 'method' => 'bank_transfer'], $this->as($this->customer))->assertUnprocessable();
-        $this->post('/api/v1/cafe/wallet/topups', [
+        $this->postJson('/api/v1/customer/wallet/topups', ['amount' => 100, 'method' => 'bank_transfer'], $this->as($this->customer))->assertUnprocessable();
+        $this->post('/api/v1/customer/wallet/topups', [
             'amount' => 1, 'method' => 'bank_transfer', 'reference_number' => 'TRX-1', 'receipt' => UploadedFile::fake()->image('r.jpg'),
         ], $this->as($this->customer) + ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('amount');
     }
@@ -154,7 +154,7 @@ class WalletTest extends TestCase
         $b = $this->requestTransfer(100);
 
         $this->postJson("/api/v1/wallet-topups/{$a}/reject", ['reason' => 'لم يصل التحويل'], $this->as($this->admin))->assertOk()->assertJsonPath('status', 'rejected');
-        $this->postJson("/api/v1/cafe/wallet/topups/{$b}/cancel", [], $this->as($this->customer))->assertOk();
+        $this->postJson("/api/v1/customer/wallet/topups/{$b}/cancel", [], $this->as($this->customer))->assertOk();
         $this->postJson("/api/v1/wallet-topups/{$b}/approve", [], $this->as($this->admin))->assertUnprocessable();
 
         $this->assertSame(0.0, $this->balance());
@@ -163,7 +163,7 @@ class WalletTest extends TestCase
 
     public function test_gateway_checkout_credits_on_signed_callback_and_ignores_bad_or_repeated_ones(): void
     {
-        $data = $this->postJson('/api/v1/cafe/wallet/topups/gateway', ['amount' => 150], $this->as($this->customer))->assertCreated()->json('data');
+        $data = $this->postJson('/api/v1/customer/wallet/topups/gateway', ['amount' => 150], $this->as($this->customer))->assertCreated()->json('data');
         $token = WalletTopup::find($data['topup']['id'])->gateway_token;
         $this->assertStringContainsString($token, $data['checkout_url']);
 
@@ -182,7 +182,7 @@ class WalletTest extends TestCase
 
     public function test_failed_gateway_payment_does_not_credit(): void
     {
-        $id = $this->postJson('/api/v1/cafe/wallet/topups/gateway', ['amount' => 150], $this->as($this->customer))->json('data.topup.id');
+        $id = $this->postJson('/api/v1/customer/wallet/topups/gateway', ['amount' => 150], $this->as($this->customer))->json('data.topup.id');
         $token = WalletTopup::find($id)->gateway_token;
 
         $this->postJson('/api/v1/wallet/gateway/callback', ['token' => $token, 'status' => 'failed', 'reference' => null, 'signature' => SandboxGateway::sign($token, 'failed', null)])
@@ -260,7 +260,7 @@ class WalletTest extends TestCase
     public function test_customer_cannot_use_admin_wallet_endpoints(): void
     {
         $wallet = Wallet::where('user_id', $this->customer->id)->first();
-        \App\Models\Permission::create(['code' => 'WALLETS_EDIT']);
+        \App\Models\Permission::firstOrCreate(['code' => 'WALLETS_EDIT']);
 
         $this->postJson("/api/v1/wallets/{$wallet->id}/adjust", ['amount' => 1000, 'note' => 'x'], $this->as($this->customer))->assertForbidden();
         $this->assertSame(0.0, $this->balance());

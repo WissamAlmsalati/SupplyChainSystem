@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class Order extends Model
 {
@@ -56,6 +57,22 @@ class Order extends Model
             $order->order_number ??= self::generateOrderNumber();
             $order->status ??= OrderStatus::Pending;
             $order->placed_at ??= now();
+        });
+
+        // Only the moves in OrderStatus::transitions() are allowed, whoever asks
+        // (dashboard, delegate app, customer app): delivered never goes back to
+        // pending, and cancelled/received are final.
+        static::updating(function (Order $order) {
+            if (! $order->isDirty('status')) {
+                return;
+            }
+            $from = $order->getOriginal('status');
+            $from = $from instanceof OrderStatus ? $from : OrderStatus::from($from);
+            if (! $from->canTransitionTo($order->status)) {
+                throw ValidationException::withMessages([
+                    'status' => "لا يمكن نقل الطلب من «{$from->label()}» إلى «{$order->status->label()}»",
+                ]);
+            }
         });
 
         // Every status change is written to order_status_logs.

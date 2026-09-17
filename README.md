@@ -16,7 +16,7 @@ Cafe supply-chain platform split into independent projects. Each project owns it
 │   ├── docker-compose.yml
 │   ├── docker-compose.prod.yml
 │   └── Dockerfile
-├── frontend-cafe/        # Cafe mobile/web app (React + Vite)
+├── frontend-customer/        # Customer mobile/web app (React + Vite)
 │   ├── docker-compose.yml
 │   ├── docker-compose.prod.yml
 │   └── Dockerfile
@@ -50,6 +50,9 @@ The backend stack includes its own Nginx reverse proxy, so you get:
 - MySQL: localhost:3306
 - Redis: localhost:6379
 
+The stack also runs a queue worker and a scheduler container (`schedule:work`), both selected
+through `CONTAINER_ROLE` in `docker-entrypoint.sh`.
+
 ### Admin dashboard
 
 ```bash
@@ -59,10 +62,10 @@ docker compose up -d --build
 
 Dev server: http://localhost:5173
 
-### Cafe app
+### Customer app
 
 ```bash
-cd frontend-cafe
+cd frontend-customer
 docker compose up -d --build
 ```
 
@@ -85,7 +88,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 cd ../frontend-admin
 docker compose -f docker-compose.prod.yml up -d --build
 
-cd ../frontend-cafe
+cd ../frontend-customer
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 

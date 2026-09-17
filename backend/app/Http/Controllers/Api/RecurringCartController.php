@@ -28,13 +28,13 @@ class RecurringCartController extends BaseApiController
     {
         $cart->load('items.productVariant.product');
         $cart->setAttribute('subtotal', $cart->subtotal());
-        CafeMobileController::markFavorites($cart->items);
+        CustomerMobileController::markFavorites($cart->items);
 
         return $cart;
     }
 
     /**
-     * @OA\Get(path="/cafe/recurring-carts", tags={"Cafe Recurring Carts"}, summary="List own recurring carts",
+     * @OA\Get(path="/customer/recurring-carts", tags={"Customer Recurring Carts"}, summary="List own recurring carts",
      *     @OA\Response(response=200, description="Carts with items and current subtotal"))
      */
     public function index(): JsonResponse
@@ -45,7 +45,7 @@ class RecurringCartController extends BaseApiController
     }
 
     /**
-     * @OA\Post(path="/cafe/recurring-carts", tags={"Cafe Recurring Carts"}, summary="Create a recurring cart",
+     * @OA\Post(path="/customer/recurring-carts", tags={"Customer Recurring Carts"}, summary="Create a recurring cart",
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/RecurringCartRequest")),
      *     @OA\Response(response=201, description="Cart created"))
      */
@@ -68,7 +68,7 @@ class RecurringCartController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/recurring-carts/{id}", tags={"Cafe Recurring Carts"}, summary="Recurring cart details",
+     * @OA\Get(path="/customer/recurring-carts/{id}", tags={"Customer Recurring Carts"}, summary="Recurring cart details",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Cart"))
      */
@@ -78,7 +78,7 @@ class RecurringCartController extends BaseApiController
     }
 
     /**
-     * @OA\Put(path="/cafe/recurring-carts/{id}", tags={"Cafe Recurring Carts"}, summary="Rename and/or replace the items",
+     * @OA\Put(path="/customer/recurring-carts/{id}", tags={"Customer Recurring Carts"}, summary="Rename and/or replace the items",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/RecurringCartRequest")),
      *     @OA\Response(response=200, description="Cart updated"))
@@ -102,7 +102,7 @@ class RecurringCartController extends BaseApiController
     }
 
     /**
-     * @OA\Delete(path="/cafe/recurring-carts/{id}", tags={"Cafe Recurring Carts"}, summary="Delete a recurring cart",
+     * @OA\Delete(path="/customer/recurring-carts/{id}", tags={"Customer Recurring Carts"}, summary="Delete a recurring cart",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Cart deleted"))
      */
@@ -114,7 +114,7 @@ class RecurringCartController extends BaseApiController
     }
 
     /**
-     * @OA\Post(path="/cafe/recurring-carts/{id}/order", tags={"Cafe Recurring Carts"}, summary="Place an order from a recurring cart",
+     * @OA\Post(path="/customer/recurring-carts/{id}/order", tags={"Customer Recurring Carts"}, summary="Place an order from a recurring cart",
      *     description="The cart is kept as-is so it can be ordered again; prices are the current ones.",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\RequestBody(required=true, @OA\JsonContent(required={"address_id"}, @OA\Property(property="address_id", type="integer"), @OA\Property(property="payment_method", type="string", enum={"cash","wallet"}, default="cash"))),

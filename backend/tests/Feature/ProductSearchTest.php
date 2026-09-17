@@ -63,7 +63,7 @@ class ProductSearchTest extends TestCase
     {
         $this->app['auth']->forgetGuards();
 
-        return $this->getJson('/api/v1/cafe/products?' . http_build_query($params), ['Authorization' => 'Bearer ' . $this->customer->createToken('t')->plainTextToken])->assertOk();
+        return $this->getJson('/api/v1/customer/products?' . http_build_query($params), ['Authorization' => 'Bearer ' . $this->customer->createToken('t')->plainTextToken])->assertOk();
     }
 
     private function names(array $params): array
@@ -104,7 +104,7 @@ class ProductSearchTest extends TestCase
     public function test_favorites_filter_and_card_fields(): void
     {
         $this->app['auth']->forgetGuards();
-        $this->postJson('/api/v1/cafe/favorites', ['product_id' => $this->p['cake']->id], ['Authorization' => 'Bearer ' . $this->customer->createToken('t')->plainTextToken])->assertCreated();
+        $this->postJson('/api/v1/customer/favorites', ['product_id' => $this->p['cake']->id], ['Authorization' => 'Bearer ' . $this->customer->createToken('t')->plainTextToken])->assertCreated();
 
         $res = $this->search(['favorites' => 1]);
         $res->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'كيكة')->assertJsonPath('data.0.is_favorite', true);
@@ -131,7 +131,7 @@ class ProductSearchTest extends TestCase
     public function test_facets_count_each_option_without_its_own_filter(): void
     {
         $this->app['auth']->forgetGuards();
-        $res = $this->getJson('/api/v1/cafe/products/filters?' . http_build_query(['category_id' => $this->coffee->id, 'in_stock' => 1]),
+        $res = $this->getJson('/api/v1/customer/products/filters?' . http_build_query(['category_id' => $this->coffee->id, 'in_stock' => 1]),
             ['Authorization' => 'Bearer ' . $this->customer->createToken('t')->plainTextToken])->assertOk();
 
         // Price range ignores the price filter but keeps the others (coffee + in stock = بن عربي only).

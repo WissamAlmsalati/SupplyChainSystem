@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 class WalletGatewayController extends BaseApiController
 {
     /**
-     * @OA\Post(path="/wallet/gateway/callback", tags={"Cafe Wallet"}, summary="Payment gateway callback (signed); credits the wallet on success",
+     * @OA\Post(path="/wallet/gateway/callback", tags={"Customer Wallet"}, summary="Payment gateway callback (signed); credits the wallet on success",
      *     @OA\RequestBody(required=true, @OA\JsonContent(
      *         @OA\Property(property="token", type="string"), @OA\Property(property="status", type="string", enum={"paid","failed"}),
      *         @OA\Property(property="reference", type="string"), @OA\Property(property="signature", type="string"))),

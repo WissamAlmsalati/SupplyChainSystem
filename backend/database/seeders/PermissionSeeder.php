@@ -11,8 +11,8 @@ class PermissionSeeder extends Seeder
     public function run(): void
     {
         $modules = [
-            // addresses routes check the historic CAFE_BRANCHES_* codes (see CheckPermission)
-            'cafe_branches',
+            // addresses routes check the historic CUSTOMER_BRANCHES_* codes (see CheckPermission)
+            'customer_branches',
             'categories',
             'products',
             'product_variants',
@@ -35,13 +35,22 @@ class PermissionSeeder extends Seeder
             'activity_logs',
         ];
 
+        // Read-only admin views (their rows are written by the order workflows).
+        $viewOnly = ['carts', 'cart_items', 'order_items', 'order_status_logs'];
+
         $codes = [
             'ORDER_ASSIGN',
             'ZONE_MANAGE',
             'DASHBOARD_VIEW',
-            'CAFE_REGISTRATIONS_VIEW',
-            'CAFE_REGISTRATIONS_APPROVE',
+            'CUSTOMER_REGISTRATIONS_VIEW',
+            'CUSTOMER_REGISTRATIONS_APPROVE',
+            'PREMIUM_FEATURES_VIEW',
+            'PREMIUM_FEATURES_EDIT',
         ];
+
+        foreach ($viewOnly as $module) {
+            $codes[] = strtoupper($module) . '_VIEW';
+        }
 
         foreach ($modules as $module) {
             foreach (['view', 'create', 'edit', 'delete'] as $op) {
@@ -57,14 +66,14 @@ class PermissionSeeder extends Seeder
         UserType::where('name', 'super_admin')->first()?->permissions()->sync($all);
         UserType::where('name', 'admin')->first()?->permissions()->sync($all);
 
-        UserType::where('name', 'cafe')->first()?->permissions()->sync(
+        UserType::where('name', 'customer')->first()?->permissions()->sync(
             Permission::whereIn('code', [
                 'ORDERS_VIEW',
                 'ORDERS_CREATE',
-                'CAFE_BRANCHES_VIEW',
-                'CAFE_BRANCHES_CREATE',
-                'CAFE_BRANCHES_EDIT',
-                'CAFE_BRANCHES_DELETE',
+                'CUSTOMER_BRANCHES_VIEW',
+                'CUSTOMER_BRANCHES_CREATE',
+                'CUSTOMER_BRANCHES_EDIT',
+                'CUSTOMER_BRANCHES_DELETE',
                 'INVENTORY_VIEW',
             ])->pluck('id')
         );

@@ -55,16 +55,16 @@ return [
             ],
         ],
 
-        'cafe' => [
+        'customer' => [
             'api' => [
-                'title' => 'Cafe Mobile API',
+                'title' => 'Customer Mobile API',
             ],
 
             'routes' => [
-                'api' => 'api/documentation/cafe',
-                'docs' => 'docs/cafe/json',
-                'asset' => 'docs/cafe/asset',
-                'oauth2_callback' => 'api/oauth2-callback/cafe',
+                'api' => 'api/documentation/customer',
+                'docs' => 'docs/customer/json',
+                'asset' => 'docs/customer/asset',
+                'oauth2_callback' => 'api/oauth2-callback/customer',
                 'middleware' => [
                     'api' => [],
                     'asset' => [],
@@ -75,8 +75,8 @@ return [
             'paths' => [
                 'use_absolute_path' => env('L5_SWAGGER_USE_ABSOLUTE_PATH', true),
                 'swagger_ui_assets_path' => env('L5_SWAGGER_UI_ASSETS_PATH', 'vendor/swagger-api/swagger-ui/dist/'),
-                'docs_json' => 'api-docs-cafe.json',
-                'docs_yaml' => 'api-docs-cafe.yaml',
+                'docs_json' => 'api-docs-customer.json',
+                'docs_yaml' => 'api-docs-customer.yaml',
                 'format_to_use_for_docs' => env('L5_FORMAT_TO_USE_FOR_DOCS', 'json'),
                 'annotations' => [
                     base_path('app'),
@@ -85,8 +85,8 @@ return [
             'scanOptions' => [
                 'default_processors_configuration' => [
                     'pathFilter' => [
-                        // Every customer-app tag: Cafe Mobile, Cafe Wallet, Cafe Favorites, Cafe Recurring Carts…
-                        'tags' => ['/^Cafe /', '/^Auth$/', '/^Notifications$/'],
+                        // Every customer-app tag: Customer Mobile, Customer Wallet, Customer Favorites, Customer Recurring Carts…
+                        'tags' => ['/^Customer /', '/^Auth$/', '/^Notifications$/'],
                     ],
                 ],
             ],

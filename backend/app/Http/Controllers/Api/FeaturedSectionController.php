@@ -140,7 +140,7 @@ class FeaturedSectionController extends BaseApiController
 
     private function adminCard(Product $product): array
     {
-        return CafeMobileController::productCard($product) + [
+        return CustomerMobileController::productCard($product) + [
             'sold_quantity' => (int) $product->getAttribute('sold_quantity'),
             'category' => $product->category?->only(['id', 'name']),
         ];

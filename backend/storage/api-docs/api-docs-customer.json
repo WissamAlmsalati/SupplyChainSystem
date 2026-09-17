@@ -1,0 +1,3301 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Al-Sahel Cafe Supplies API",
+        "description": "REST API documentation split by platform: Admin Dashboard, Customer Mobile App, and Public Storefront.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/api/v1",
+            "description": "Local development server"
+        }
+    ],
+    "paths": {
+        "/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Log in and receive an access token",
+                "description": "Customer users must login with phone_number and password. The response is a bare bearer token with no permissions. Admin and delegate users may use email instead of phone_number and will receive permissions in the response.",
+                "operationId": "67d6d0fdd54fba132e1b6f55ca254183",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AuthLoginRequest"
+                            },
+                            "example": {
+                                "phone_number": "0912345678",
+                                "password": "password"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                },
+                                "example": {
+                                    "token": "1|laravel_sanctum_bearer_token_here"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials"
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/customer/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register a customer account (OTP verification required before login)",
+                "description": "Creates an inactive customer user and sends a 6-digit OTP. Verify it via POST /customer/verify-otp: when customer_auto_approve is active a bearer token is returned immediately, otherwise the account waits for admin approval and only a message is returned.",
+                "operationId": "5fdcf00a4d49844f954264bacd03b093",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CustomerRegisterRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Account created"
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/customer/verify-otp": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verify registration OTP",
+                "description": "When customer_auto_approve is active the user is activated and a bearer token is returned immediately. Otherwise the account stays inactive until an admin approves it, and only a message is returned.",
+                "operationId": "46d4285aa3fc850aff931977e2feb433",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "token": {
+                                        "type": "string"
+                                    },
+                                    "otp": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Verified: token (auto-approve) or pending-approval message"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/customer/resend-otp": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Resend the registration OTP",
+                "operationId": "41a92368bead96bd7ef21e906c134b82",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "mobile_number": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP resent"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get the authenticated user",
+                "operationId": "bc2032a379aa97707ccc61511897c120",
+                "responses": {
+                    "200": {
+                        "description": "Authenticated user details. has_addresses is true when the user has at least one address (branch); addresses_count gives the number."
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/orders": {
+            "get": {
+                "tags": [
+                    "Customer Orders"
+                ],
+                "summary": "List own orders",
+                "operationId": "b92b4e1cf359693c5b434456dced7b90",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "address_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated orders"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Customer Orders"
+                ],
+                "summary": "Place an order directly (without the cart)",
+                "operationId": "1ee4d6befb1fd246d11f31c1eb6aa60c",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CustomerOrderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Order created"
+                    },
+                    "409": {
+                        "description": "Insufficient stock"
+                    }
+                }
+            }
+        },
+        "/customer/addresses/{id}/orders": {
+            "get": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "Orders of one address (branch), paginated",
+                "description": "Light order cards for one address. Address details are at GET /customer/addresses/{id}. meta.counts gives the number per tab (all / active / completed / cancelled) and per status; it honours from, to and q but not status or group, so tab badges stay stable. Open GET /customer/orders/{id} for the full order.",
+                "operationId": "369b86f14fcf8526e991abebf268ce27",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "group",
+                        "in": "query",
+                        "description": "Tab: active (pending, confirmed, preparing, out_for_delivery, cancellation_requested), completed (delivered, received), cancelled",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "completed",
+                                "cancelled"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "One or more statuses, comma-separated",
+                        "schema": {
+                            "type": "string",
+                            "example": "pending,confirmed"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Order number search",
+                        "schema": {
+                            "type": "string",
+                            "example": "00039"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15,
+                            "maximum": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "data + meta",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/CustomerOrderCard"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "example": 15
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 6
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "counts": {
+                                                    "properties": {
+                                                        "all": {
+                                                            "type": "integer",
+                                                            "example": 6
+                                                        },
+                                                        "active": {
+                                                            "type": "integer",
+                                                            "example": 2
+                                                        },
+                                                        "completed": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        },
+                                                        "cancelled": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "by_status": {
+                                                            "type": "object",
+                                                            "example": {
+                                                                "pending": 1,
+                                                                "confirmed": 1,
+                                                                "received": 3,
+                                                                "cancelled": 1
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "applied": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Address not found or not yours"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/orders/{id}": {
+            "get": {
+                "tags": [
+                    "Customer Orders"
+                ],
+                "summary": "Own order details",
+                "operationId": "daf0ae801f9c66f33c6cd3477d51cde6",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Order"
+                    }
+                }
+            }
+        },
+        "/customer/orders/{id}/status": {
+            "put": {
+                "tags": [
+                    "Customer Orders"
+                ],
+                "summary": "Confirm receipt of a delivered order",
+                "operationId": "9c8aaa7f8993a1fae9c25a25dd2651d6",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "received"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Order updated"
+                    },
+                    "422": {
+                        "description": "Order is not delivered yet"
+                    }
+                }
+            }
+        },
+        "/customer/orders/{id}/cancel-request": {
+            "post": {
+                "tags": [
+                    "Customer Orders"
+                ],
+                "summary": "Ask the admins to cancel a pending order",
+                "operationId": "a7eb35d087351dff979919fe4afbde83",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cancellation requested"
+                    },
+                    "422": {
+                        "description": "Order is not pending"
+                    }
+                }
+            }
+        },
+        "/customer/addresses": {
+            "get": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "List own addresses (branches)",
+                "description": "Address details with delivery zone and price. Orders of an address are a separate call: GET /customer/addresses/{id}/orders. data.delivery_price is the price at the customer's registered location (used when there are no addresses yet).",
+                "operationId": "512db4fb20218463b67bcb38eff27a63",
+                "responses": {
+                    "200": {
+                        "description": "Addresses",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "addresses": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/CustomerAddressDetail"
+                                                    }
+                                                },
+                                                "delivery_price": {
+                                                    "type": "number",
+                                                    "example": 6,
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "Create an address",
+                "operationId": "0f7447dfdd2c7c95bbb4da0fc3884949",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddressRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Address created"
+                    }
+                }
+            }
+        },
+        "/customer/addresses/{id}": {
+            "get": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "Own address details",
+                "operationId": "4238f3e858f8830c455fa43365f42a4b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Address with delivery zone and price",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CustomerAddressDetail"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Address not found or not yours"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "Update an address",
+                "operationId": "43a08025906ca92c6789f59727f74afe",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddressRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Address updated"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "Delete an address",
+                "description": "Soft delete; past orders keep their own copy of the delivery address.",
+                "operationId": "f71f3542a22f71956cfff5e19e40f5b2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Address deleted"
+                    }
+                }
+            }
+        },
+        "/customer/profile": {
+            "get": {
+                "tags": [
+                    "Customer Profile"
+                ],
+                "summary": "Customer profile",
+                "operationId": "fb275a65453665cfdfed8bef50d6f834",
+                "responses": {
+                    "200": {
+                        "description": "User fields merged with the customer profile, plus addresses. user.has_addresses is true once the customer has at least one address (branch); user.addresses_count gives the number.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "user": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "mobile_number": {
+                                                    "type": "string",
+                                                    "example": "0910000001"
+                                                },
+                                                "business_name": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "has_addresses": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "addresses_count": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "addresses": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Customer Profile"
+                ],
+                "summary": "Update customer profile",
+                "operationId": "4a1305212bace0792642ef5c0f545475",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "mobile_number": {
+                                        "type": "string"
+                                    },
+                                    "business_name": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "nullable": true
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated profile"
+                    }
+                }
+            }
+        },
+        "/customer/delivery-zones": {
+            "get": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "Active delivery zones for the map",
+                "operationId": "a809740a051a792ac3a7e51d05a7382b",
+                "responses": {
+                    "200": {
+                        "description": "Zones"
+                    }
+                }
+            }
+        },
+        "/customer/categories": {
+            "get": {
+                "tags": [
+                    "Customer Products"
+                ],
+                "summary": "List categories",
+                "description": "Each category carries image_url (its own picture, or the shared default) and image_type (uploaded / placeholder).",
+                "operationId": "3a8dcf5c5b049434464039820edfef06",
+                "responses": {
+                    "200": {
+                        "description": "Categories"
+                    }
+                }
+            }
+        },
+        "/customer/products": {
+            "get": {
+                "tags": [
+                    "Customer Products"
+                ],
+                "summary": "Search and filter products (paginated)",
+                "description": "Text search covers product name, brand, description, tags, category and size name / SKU / barcode. Filters combine with AND; list filters accept comma-separated values. Use GET /customer/products/filters for the available options and counts.",
+                "operationId": "c60791cd7dc34e3830d4a4db104bb208",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Search text (alias: search)",
+                        "schema": {
+                            "type": "string",
+                            "example": "قهوة"
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "description": "One or more category ids, e.g. 1,4 (sub-categories included)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "brand",
+                        "in": "query",
+                        "description": "One or more brands, comma-separated",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_price",
+                        "in": "query",
+                        "description": "Products with at least one size at or above this price",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "max_price",
+                        "in": "query",
+                        "description": "Products with at least one size at or below this price",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "in_stock",
+                        "in": "query",
+                        "description": "Only products with stock",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "favorites",
+                        "in": "query",
+                        "description": "Only my favorites",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "Default: relevance when q is given, otherwise newest",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "relevance",
+                                "newest",
+                                "price_asc",
+                                "price_desc",
+                                "name_asc",
+                                "popular"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "data: product cards; meta: pagination + applied filters",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "brand": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "image_url": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "min_price": {
+                                                        "type": "string"
+                                                    },
+                                                    "max_price": {
+                                                        "type": "string"
+                                                    },
+                                                    "in_stock": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "category_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "default_variant_id": {
+                                                        "description": "The matched size when the query matched a size/SKU/barcode",
+                                                        "type": "integer"
+                                                    },
+                                                    "matched_variant": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "price": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "type": "object",
+                                                        "nullable": true
+                                                    },
+                                                    "is_favorite": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                },
+                                                "applied": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/products/filters": {
+            "get": {
+                "tags": [
+                    "Customer Products"
+                ],
+                "summary": "Filter options with counts for the current search",
+                "description": "Accepts the same parameters as GET /customer/products. Each facet is counted as if its own filter were not applied, so users can switch between options.",
+                "operationId": "9ffb7ca824676de3d7515e87760c7853",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "brand",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_price",
+                        "in": "query",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "max_price",
+                        "in": "query",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "in_stock",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "favorites",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Facets",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "in_stock_count": {
+                                                    "type": "integer"
+                                                },
+                                                "categories": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "parent_category_id": {
+                                                                "type": "integer",
+                                                                "nullable": true
+                                                            },
+                                                            "count": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "brands": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "count": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "price": {
+                                                    "properties": {
+                                                        "min": {
+                                                            "type": "number"
+                                                        },
+                                                        "max": {
+                                                            "type": "number"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "sort_options": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "value": {
+                                                                "type": "string"
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "applied": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/featured-sections": {
+            "get": {
+                "tags": [
+                    "Customer Products"
+                ],
+                "summary": "Home-screen product sections (paginated): title + first products in one object",
+                "description": "Each section shows up to its products_limit products. Sections are either hand-picked by the admin (source=manual, admin order) or rule-based (source=filter, e.g. sort=popular for best sellers or price_asc for cheapest). Sections without available products are left out of the page.\n\n**View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /customer/featured-sections/{id}/products` (see the guide at the top of Customer Products).",
+                "operationId": "f05c788bf54b143a2df152702791e131",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Sections per page",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "maximum": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sections",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "title": {
+                                                        "type": "string",
+                                                        "example": "الأكثر مبيعاً"
+                                                    },
+                                                    "source": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "manual",
+                                                            "filter"
+                                                        ]
+                                                    },
+                                                    "sort": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "popular",
+                                                            "price_asc",
+                                                            "price_desc",
+                                                            "newest",
+                                                            "name_asc"
+                                                        ],
+                                                        "nullable": true
+                                                    },
+                                                    "products_total": {
+                                                        "type": "integer"
+                                                    },
+                                                    "has_more": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "products": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "brand": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                },
+                                                                "image_url": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                },
+                                                                "min_price": {
+                                                                    "type": "string"
+                                                                },
+                                                                "max_price": {
+                                                                    "type": "string"
+                                                                },
+                                                                "in_stock": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "category_id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "default_variant_id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "is_favorite": {
+                                                                    "type": "boolean"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/featured-sections/{id}/products": {
+            "get": {
+                "tags": [
+                    "Customer Products"
+                ],
+                "summary": "All products of a section (paginated) for 'view all'",
+                "description": "Screen opened from a section's «عرض الكل» button.\n\n1. Request `page=1` and show `section.title` and `meta.total`.\n2. On scroll end, while `meta.current_page < meta.last_page`, request the next `page` and append the results.\n\nPage 1 starts from the beginning of the section (it repeats the products already shown on the home screen, in the same order) — render the response as-is. The order is fixed by the section type. Returns 404 when the section is hidden or deleted.",
+                "operationId": "3e6816fbda006e319b933132cdca6644",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "section {id,title,source,sort}, data: product cards in the section's order, meta: pagination"
+                    },
+                    "404": {
+                        "description": "Section not found or hidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/products/{id}": {
+            "get": {
+                "tags": [
+                    "Customer Products"
+                ],
+                "summary": "Product details",
+                "operationId": "003745051cf503bef315d494b0a0cf7c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product with its own images"
+                    }
+                }
+            }
+        },
+        "/customer/products/{id}/variants": {
+            "get": {
+                "tags": [
+                    "Customer Products"
+                ],
+                "summary": "Active sizes of a product",
+                "operationId": "3afc7a273931a5e06a60725c06e5d0ef",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Variants with images and stock"
+                    }
+                }
+            }
+        },
+        "/customer/cart": {
+            "get": {
+                "tags": [
+                    "Customer Cart"
+                ],
+                "summary": "Current shopping cart (null when none)",
+                "operationId": "62389058b6a3a0b377521dfe6138c3ba",
+                "responses": {
+                    "200": {
+                        "description": "Cart"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Customer Cart"
+                ],
+                "summary": "Empty the shopping cart",
+                "operationId": "63d23f2f07617277661ea43f8f3ede3a",
+                "responses": {
+                    "200": {
+                        "description": "Cart emptied"
+                    }
+                }
+            }
+        },
+        "/customer/cart/check-stock": {
+            "get": {
+                "tags": [
+                    "Customer Cart"
+                ],
+                "summary": "Stock availability for the cart items",
+                "operationId": "40dd972358ad0cb1e44d537137fcfbde",
+                "responses": {
+                    "200": {
+                        "description": "Per-item availability"
+                    },
+                    "400": {
+                        "description": "Cart is empty"
+                    }
+                }
+            }
+        },
+        "/customer/cart/items": {
+            "post": {
+                "tags": [
+                    "Customer Cart"
+                ],
+                "summary": "Add an item to the shopping cart (sets its quantity)",
+                "operationId": "62560e16dab1fd0af69ee053d08f52e1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "product_variant_id": {
+                                        "type": "integer"
+                                    },
+                                    "quantity": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Item saved"
+                    }
+                }
+            }
+        },
+        "/customer/cart/items/{id}": {
+            "put": {
+                "tags": [
+                    "Customer Cart"
+                ],
+                "summary": "Change a cart item quantity",
+                "operationId": "2d964fa65ca75b14875a8ac2fbdd0ba7",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "quantity": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cart"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Customer Cart"
+                ],
+                "summary": "Remove a cart item",
+                "operationId": "e6b1314e0edf3702a4e68b3fd68a87d1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cart"
+                    }
+                }
+            }
+        },
+        "/customer/cart/checkout": {
+            "post": {
+                "tags": [
+                    "Customer Cart"
+                ],
+                "summary": "Turn the shopping cart into an order",
+                "operationId": "30aa9bad8ed1e6302d0a07f1aadeb196",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "address_id"
+                                ],
+                                "properties": {
+                                    "address_id": {
+                                        "type": "integer"
+                                    },
+                                    "payment_method": {
+                                        "description": "wallet = pay the full total from the wallet now",
+                                        "type": "string",
+                                        "default": "cash",
+                                        "enum": [
+                                            "cash",
+                                            "wallet"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Order created"
+                    },
+                    "400": {
+                        "description": "Cart is empty"
+                    },
+                    "422": {
+                        "description": "Insufficient wallet balance"
+                    },
+                    "409": {
+                        "description": "Insufficient stock"
+                    }
+                }
+            }
+        },
+        "/customer/orders/{id}/delegate": {
+            "get": {
+                "tags": [
+                    "Customer Orders"
+                ],
+                "summary": "Live location of the order's delegate",
+                "operationId": "839c055fc87726d5a2b8299be9bf5cd9",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Delegate location"
+                    },
+                    "404": {
+                        "description": "No delegate assigned"
+                    }
+                }
+            }
+        },
+        "/customer/wallet": {
+            "get": {
+                "tags": [
+                    "Customer Wallet"
+                ],
+                "summary": "Wallet balance with latest transactions",
+                "operationId": "b3fc7cecf45c44d83b91dc1e06063785",
+                "responses": {
+                    "200": {
+                        "description": "balance, currency, recent_transactions, pending_topups"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/wallet/transactions": {
+            "get": {
+                "tags": [
+                    "Customer Wallet"
+                ],
+                "summary": "Wallet transactions",
+                "operationId": "0391119d7579974d08aedae4b6292b04",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "topup",
+                                "payment",
+                                "refund",
+                                "adjustment"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated transactions"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/wallet/topups": {
+            "get": {
+                "tags": [
+                    "Customer Wallet"
+                ],
+                "summary": "My top-up requests",
+                "operationId": "73c3a2941a4d33b1839cb0067d48a43d",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "approved",
+                                "rejected",
+                                "cancelled",
+                                "failed"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated top-ups"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Customer Wallet"
+                ],
+                "summary": "Request a bank-transfer top-up with its receipt; an admin approves it",
+                "operationId": "04d71d2bc31e3737cb8a1847a5224ac9",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "amount",
+                                    "method",
+                                    "reference_number",
+                                    "receipt"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number",
+                                        "example": 100
+                                    },
+                                    "method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "bank_transfer"
+                                        ]
+                                    },
+                                    "reference_number": {
+                                        "description": "Transfer reference",
+                                        "type": "string"
+                                    },
+                                    "receipt": {
+                                        "description": "Transfer receipt: jpg/png/webp/heic or pdf, max 5MB",
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Pending top-up created"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/wallet/topups/{id}/cancel": {
+            "post": {
+                "tags": [
+                    "Customer Wallet"
+                ],
+                "summary": "Cancel my pending top-up request",
+                "operationId": "d57ac64e32b6be13244e845f2889bf32",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cancelled"
+                    },
+                    "422": {
+                        "description": "Already processed"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/wallet/topups/gateway": {
+            "post": {
+                "tags": [
+                    "Customer Wallet"
+                ],
+                "summary": "Start an online top-up; open checkout_url to pay",
+                "operationId": "9eb295695bd25f4e39432fa26ae9eea0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "amount"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "type": "number",
+                                        "example": 150
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "topup + checkout_url; the wallet is credited when the gateway confirms"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/favorites": {
+            "get": {
+                "tags": [
+                    "Customer Favorites"
+                ],
+                "summary": "My favorite products (paginated, newest first)",
+                "operationId": "93d677d77faa3824c33a64cb2809a0e0",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "data: product cards with favorited_at; meta: current_page, per_page, total, last_page"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Customer Favorites"
+                ],
+                "summary": "Add a product to favorites (idempotent)",
+                "operationId": "661f67e27f4c8a8aac5e9cf646a27b88",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "product_id"
+                                ],
+                                "properties": {
+                                    "product_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "product_id, is_favorite=true, favorites_count"
+                    },
+                    "422": {
+                        "description": "Unknown or inactive product"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/favorites/ids": {
+            "get": {
+                "tags": [
+                    "Customer Favorites"
+                ],
+                "summary": "Ids of my favorite products (to mark hearts in lists)",
+                "operationId": "628b168fc2715b7a927e82735aea668c",
+                "responses": {
+                    "200": {
+                        "description": "data: [product ids]"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/favorites/{productId}": {
+            "delete": {
+                "tags": [
+                    "Customer Favorites"
+                ],
+                "summary": "Remove a product from favorites (idempotent)",
+                "operationId": "f1a31857ab641e9a6af245488de81d4d",
+                "parameters": [
+                    {
+                        "name": "productId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "product_id, is_favorite=false, favorites_count"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List current user notifications",
+                "operationId": "b1274a2aaae8a4295a7e1925e8d8090f",
+                "parameters": [
+                    {
+                        "name": "unread_only",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of notifications"
+                    }
+                }
+            }
+        },
+        "/notifications/unread-count": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get unread notification count",
+                "operationId": "85697ee523a5dace428185c95efb9f2f",
+                "responses": {
+                    "200": {
+                        "description": "Unread count"
+                    }
+                }
+            }
+        },
+        "/notifications/{id}": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get a single notification",
+                "operationId": "6293e7ffc395913cd17da6467e486699",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification details"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Delete a notification",
+                "operationId": "0f28a0400610f81f01e2d25ce4e0edff",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    }
+                }
+            }
+        },
+        "/notifications/{id}/read": {
+            "put": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark a notification as read",
+                "operationId": "a28a3f705edbab5a620d9b567f97d739",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Marked as read"
+                    }
+                }
+            }
+        },
+        "/notifications/mark-all-read": {
+            "put": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "operationId": "4d53e3eb9d0e49c14388b10eed7f8b18",
+                "responses": {
+                    "200": {
+                        "description": "All marked as read"
+                    }
+                }
+            }
+        },
+        "/customer/forgot-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Request password reset OTP for customer user",
+                "operationId": "be36d04f2f97a4d40ea443a08c86ce77",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "mobile_number": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP sent"
+                    },
+                    "404": {
+                        "description": "Mobile number not found"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/customer/reset-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Reset customer user password with OTP",
+                "operationId": "c6b9a98d29abc64a44614827ff126f4d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "token": {
+                                        "type": "string"
+                                    },
+                                    "otp": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password reset successfully"
+                    },
+                    "422": {
+                        "description": "Invalid or expired token/OTP"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/placeholder/{kind}": {
+            "get": {
+                "tags": [
+                    "Customer Products"
+                ],
+                "summary": "Default image used when a record has no picture",
+                "description": "Public SVG placeholder. image_url falls back to this URL, so clients can always render an image. Kinds: product.svg, promo.svg, category.svg, customer.svg, user.svg.",
+                "operationId": "09559bfdfa91e17fe6696fcf5c203e66",
+                "parameters": [
+                    {
+                        "name": "kind",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "product.svg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SVG image"
+                    }
+                }
+            }
+        },
+        "/customer/recurring-carts": {
+            "get": {
+                "tags": [
+                    "Customer Recurring Carts"
+                ],
+                "summary": "List own recurring carts",
+                "operationId": "099c4a6795c2b406357c45d308413e5e",
+                "responses": {
+                    "200": {
+                        "description": "Carts with items and current subtotal"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Customer Recurring Carts"
+                ],
+                "summary": "Create a recurring cart",
+                "operationId": "838151c8d2d3bdc10c33ab6dd568e1ac",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecurringCartRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Cart created"
+                    }
+                }
+            }
+        },
+        "/customer/recurring-carts/{id}": {
+            "get": {
+                "tags": [
+                    "Customer Recurring Carts"
+                ],
+                "summary": "Recurring cart details",
+                "operationId": "72f3d1150f9a27f711296bf5255f256d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cart"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Customer Recurring Carts"
+                ],
+                "summary": "Rename and/or replace the items",
+                "operationId": "0453895c2cbf9ba588e8fb9b8e251a12",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecurringCartRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cart updated"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Customer Recurring Carts"
+                ],
+                "summary": "Delete a recurring cart",
+                "operationId": "9fd2c2aa5d911bb0c3a5c060a29a9c81",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cart deleted"
+                    }
+                }
+            }
+        },
+        "/customer/recurring-carts/{id}/order": {
+            "post": {
+                "tags": [
+                    "Customer Recurring Carts"
+                ],
+                "summary": "Place an order from a recurring cart",
+                "description": "The cart is kept as-is so it can be ordered again; prices are the current ones.",
+                "operationId": "f69d292697aa0bd0c388b61990b19ca8",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "address_id"
+                                ],
+                                "properties": {
+                                    "address_id": {
+                                        "type": "integer"
+                                    },
+                                    "payment_method": {
+                                        "type": "string",
+                                        "default": "cash",
+                                        "enum": [
+                                            "cash",
+                                            "wallet"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Order created"
+                    },
+                    "409": {
+                        "description": "Insufficient stock"
+                    }
+                }
+            }
+        },
+        "/wallet/gateway/callback": {
+            "post": {
+                "tags": [
+                    "Customer Wallet"
+                ],
+                "summary": "Payment gateway callback (signed); credits the wallet on success",
+                "operationId": "3a67379bce0bb66ad98d1f565ae63730",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "token": {
+                                        "type": "string"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "paid",
+                                            "failed"
+                                        ]
+                                    },
+                                    "reference": {
+                                        "type": "string"
+                                    },
+                                    "signature": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Processed"
+                    },
+                    "403": {
+                        "description": "Invalid signature"
+                    }
+                }
+            }
+        },
+        "/customer/dashboard": {
+            "get": {
+                "tags": [
+                    "Customer Profile"
+                ],
+                "summary": "Customer dashboard stats",
+                "operationId": "b4440e8210908ec2e514ef6203ffd70e",
+                "responses": {
+                    "200": {
+                        "description": "Stats"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Revoke the current token",
+                "operationId": "1ea30e94456bf034568c7ef70006bce7",
+                "responses": {
+                    "200": {
+                        "description": "Logged out"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/premium-features": {
+            "get": {
+                "tags": [
+                    "Customer Profile"
+                ],
+                "summary": "Feature flags for the app UI",
+                "operationId": "41cfe76764a8b549980b945af016d5c9",
+                "responses": {
+                    "200": {
+                        "description": "Features"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/promos": {
+            "get": {
+                "tags": [
+                    "Customer Promos"
+                ],
+                "summary": "Active promo banners",
+                "operationId": "95ae2c49b484b90e89c7a6af5731fb75",
+                "responses": {
+                    "200": {
+                        "description": "Promos"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "CustomerAddressDetail": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "فرع طرابلس الرئيسي"
+                    },
+                    "city": {
+                        "type": "string",
+                        "example": "طرابلس"
+                    },
+                    "street": {
+                        "type": "string",
+                        "example": "شارع الجمهورية"
+                    },
+                    "full_address": {
+                        "type": "string",
+                        "example": "شارع الجمهورية، طرابلس"
+                    },
+                    "contact_phones": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "0910000001"
+                        },
+                        "nullable": true
+                    },
+                    "latitude": {
+                        "type": "string",
+                        "example": "32.88720000"
+                    },
+                    "longitude": {
+                        "type": "string",
+                        "example": "13.19130000"
+                    },
+                    "delivery_zone_id": {
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "deleted_at": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "delivery_zone": {
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "example": 1
+                            },
+                            "name": {
+                                "type": "string",
+                                "example": "منطقة طرابلس"
+                            },
+                            "delivery_price": {
+                                "type": "string",
+                                "example": "6.00"
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "delivery_price": {
+                        "type": "number",
+                        "example": 6,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CustomerOrderCard": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 39
+                    },
+                    "order_number": {
+                        "type": "string",
+                        "example": "ORD-2026-00039"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "confirmed",
+                            "preparing",
+                            "out_for_delivery",
+                            "delivered",
+                            "received",
+                            "cancellation_requested",
+                            "cancelled"
+                        ],
+                        "example": "received"
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "example": "مستلم"
+                    },
+                    "source": {
+                        "type": "string",
+                        "enum": [
+                            "app",
+                            "dashboard"
+                        ]
+                    },
+                    "items_count": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "subtotal": {
+                        "type": "string",
+                        "example": "137.00"
+                    },
+                    "delivery_fee": {
+                        "type": "string",
+                        "example": "6.00"
+                    },
+                    "total_amount": {
+                        "type": "string",
+                        "example": "143.00"
+                    },
+                    "payment": {
+                        "properties": {
+                            "method": {
+                                "type": "string",
+                                "enum": [
+                                    "cash",
+                                    "card",
+                                    "bank_transfer",
+                                    "wallet"
+                                ]
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "pending",
+                                    "paid",
+                                    "failed",
+                                    "refunded"
+                                ]
+                            },
+                            "amount": {
+                                "type": "string",
+                                "example": "143.00"
+                            },
+                            "paid_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "delegate": {
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "example": 8
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "mobile_number": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "can_cancel": {
+                        "description": "Pending: POST /customer/orders/{id}/cancel-request is allowed",
+                        "type": "boolean"
+                    },
+                    "can_confirm_receipt": {
+                        "description": "Delivered: PUT /customer/orders/{id}/status received is allowed",
+                        "type": "boolean"
+                    },
+                    "placed_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "AddressRequest": {
+                "required": [
+                    "name",
+                    "latitude",
+                    "longitude"
+                ],
+                "properties": {
+                    "user_id": {
+                        "description": "Required for admin requests; customers always create addresses for themselves.",
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "city": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "street": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "nullable": true
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "delivery_zone_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "contact_phones": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 20
+                        },
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "DeliveryZoneRequest": {
+                "required": [
+                    "hex_id",
+                    "delivery_price"
+                ],
+                "properties": {
+                    "warehouse_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "hex_id": {
+                        "type": "string",
+                        "maxLength": 40
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "delivery_price": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "CategoryRequest": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "image": {
+                        "description": "Category picture; send as multipart/form-data. Leave it out to keep the current one.",
+                        "type": "string",
+                        "format": "binary",
+                        "nullable": true
+                    },
+                    "parent_category_id": {
+                        "type": "integer",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ProductRequest": {
+                "required": [
+                    "category_id",
+                    "name"
+                ],
+                "properties": {
+                    "category_id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150
+                    },
+                    "brand": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "image": {
+                        "description": "Stored as the product's primary image",
+                        "type": "string",
+                        "format": "binary",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ProductVariantRequest": {
+                "description": "A sellable size of a product. Stock lives in inventories; expiry dates on purchase order items.",
+                "required": [
+                    "product_id",
+                    "name",
+                    "price"
+                ],
+                "properties": {
+                    "product_id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "example": "500 جم"
+                    },
+                    "sku": {
+                        "description": "Generated when empty",
+                        "type": "string",
+                        "maxLength": 50,
+                        "nullable": true
+                    },
+                    "barcode": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "price": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "cost_price": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "WarehouseRequest": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "city": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "InventoryRequest": {
+                "description": "POST receives goods (adds to stock, purchase movement); PUT sets the counted on-hand quantity (adjustment movement).",
+                "required": [
+                    "warehouse_id",
+                    "product_variant_id",
+                    "quantity"
+                ],
+                "properties": {
+                    "warehouse_id": {
+                        "description": "POST only",
+                        "type": "integer"
+                    },
+                    "product_variant_id": {
+                        "description": "POST only",
+                        "type": "integer"
+                    },
+                    "quantity": {
+                        "type": "integer"
+                    },
+                    "note": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "nullable": true
+                    },
+                    "unit_cost": {
+                        "description": "POST only",
+                        "type": "number",
+                        "nullable": true
+                    },
+                    "manufacturing_year": {
+                        "description": "POST only",
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "expiry_date": {
+                        "description": "POST only",
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "AuthLoginRequest": {
+                "description": "Customer users must login with phone_number and password only. Email is allowed for admin and delegate users only.",
+                "required": [
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "description": "Use for admin/delegate login only. Customer users must NOT use email.",
+                        "type": "string",
+                        "format": "email",
+                        "nullable": true
+                    },
+                    "phone_number": {
+                        "description": "Required for customer users. Example: 0912345678",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password"
+                    }
+                },
+                "type": "object"
+            },
+            "AuthRegisterRequest": {
+                "required": [
+                    "name",
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 150
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "minLength": 6
+                    },
+                    "mobile_number": {
+                        "type": "string",
+                        "maxLength": 20,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CustomerRegisterRequest": {
+                "required": [
+                    "name",
+                    "phone_number",
+                    "password"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "phone_number": {
+                        "type": "string",
+                        "maxLength": 20
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 150,
+                        "nullable": true
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "minLength": 6
+                    }
+                },
+                "type": "object"
+            },
+            "AuthResponse": {
+                "description": "For customer users the response contains only the bearer token. Admin and delegate responses also include permissions.",
+                "properties": {
+                    "token": {
+                        "description": "Bearer token to use in the Authorization header",
+                        "type": "string"
+                    },
+                    "permissions": {
+                        "description": "Included for admin/delegate users only. Omitted for customer users.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "AppUserRequest": {
+                "required": [
+                    "name",
+                    "email",
+                    "password",
+                    "user_type_id"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 150
+                    },
+                    "mobile_number": {
+                        "type": "string",
+                        "maxLength": 20,
+                        "nullable": true
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password"
+                    },
+                    "user_type_id": {
+                        "type": "integer"
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "DelegateRequest": {
+                "required": [
+                    "name",
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 150
+                    },
+                    "mobile_number": {
+                        "type": "string",
+                        "maxLength": 20,
+                        "nullable": true
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "minLength": 6
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "latitude": {
+                        "description": "Stored on delegate_profiles",
+                        "type": "number",
+                        "nullable": true
+                    },
+                    "longitude": {
+                        "description": "Stored on delegate_profiles",
+                        "type": "number",
+                        "nullable": true
+                    },
+                    "is_available": {
+                        "description": "Stored on delegate_profiles",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "OrderItemRequest": {
+                "description": "Unit price is always taken from the variant on the server.",
+                "required": [
+                    "product_variant_id",
+                    "quantity"
+                ],
+                "properties": {
+                    "product_variant_id": {
+                        "type": "integer"
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "minimum": 1
+                    }
+                },
+                "type": "object"
+            },
+            "OrderRequest": {
+                "description": "Totals, delivery fee and the delivery address snapshot are computed on the server.",
+                "required": [
+                    "user_id",
+                    "address_id",
+                    "items"
+                ],
+                "properties": {
+                    "user_id": {
+                        "description": "The customer the order is for",
+                        "type": "integer"
+                    },
+                    "address_id": {
+                        "description": "Must belong to the customer",
+                        "type": "integer"
+                    },
+                    "delegate_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderItemRequest"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "CustomerOrderRequest": {
+                "required": [
+                    "address_id",
+                    "items"
+                ],
+                "properties": {
+                    "address_id": {
+                        "type": "integer"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderItemRequest"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "RecurringCartRequest": {
+                "required": [
+                    "name",
+                    "items"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "example": "الطلبية الأسبوعية"
+                    },
+                    "items": {
+                        "description": "On update, replaces all items",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderItemRequest"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "DelegateLocationRequest": {
+                "required": [
+                    "latitude",
+                    "longitude"
+                ],
+                "properties": {
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "maximum": 90,
+                        "minimum": -90
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "maximum": 180,
+                        "minimum": -180
+                    }
+                },
+                "type": "object"
+            },
+            "DelegateAvailabilityRequest": {
+                "required": [
+                    "is_available"
+                ],
+                "properties": {
+                    "is_available": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "ValidationError": {
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "الدخول، التسجيل برقم الهاتف والتحقق (OTP)، استعادة كلمة المرور، `me` والخروج."
+        },
+        {
+            "name": "Customer Profile",
+            "description": "الملف الشخصي للمقهى، لوحة الإحصائيات، والميزات المفعّلة في التطبيق."
+        },
+        {
+            "name": "Customer Promos",
+            "description": "بانرات العروض النشطة للصفحة الرئيسية."
+        },
+        {
+            "name": "Customer Products",
+            "description": "التصنيفات، المنتجات والبحث بالفلاتر، تفاصيل المنتج وأحجامه، والأقسام المميزة.\n\n## أقسام الرئيسية و«عرض الكل»\n\n**1. الرئيسية** — `GET /customer/featured-sections`\n\nكل قسم يرجع أول N منتج فقط (N يحدده الأدمن) مع:\n- `products_total`: عدد كل منتجات القسم\n- `has_more`: `true` إذا كان هناك منتجات أكثر من المعروضة\n\nاعرض عنوان القسم ومنتجاته، وإذا كان `has_more = true` أضف زر **«عرض الكل (products_total)»**.\n\n**2. شاشة «عرض الكل»** — `GET /customer/featured-sections/{id}/products?page=1&per_page=20`\n\n```json\n{\n  \"section\": { \"id\": 1, \"title\": \"الأكثر مبيعاً\", \"source\": \"filter\", \"sort\": \"popular\" },\n  \"data\": [ \"...كروت المنتجات...\" ],\n  \"meta\": { \"current_page\": 1, \"per_page\": 20, \"total\": 12, \"last_page\": 1 }\n}\n```\n\nالعنوان من `section.title` والعدد من `meta.total`.\n\n**3. تحميل المزيد (infinite scroll)** — عند الوصول لآخر القائمة وطالما `meta.current_page < meta.last_page` اطلب `page` التالية وأضف النتائج تحت الموجودة.\n\n**ملاحظات**\n- الصفحة الأولى تبدأ من بداية القسم (تشمل منتجات الرئيسية نفسها بنفس الترتيب) — اعرض الرد كما هو ولا تدمجه مع منتجات الرئيسية.\n- الترتيب ثابت حسب نوع القسم: الأكثر مبيعاً بالمبيعات، الأقل سعراً بالسعر، واليدوي بترتيب الأدمن.\n- القسم المخفي أو المحذوف يرجع `404` — ارجع للرئيسية أو اعرض «القسم غير متاح».\n- الكارت نفسه في كل الشاشات: `is_favorite` للقلب، `in_stock` للتوفر، و`default_variant_id` لإضافة سريعة عبر `POST /customer/cart/items`.\n- `per_page` الافتراضي 20 والحد الأقصى 100."
+        },
+        {
+            "name": "Customer Favorites",
+            "description": "إضافة المنتجات للمفضلة وإزالتها وعرضها.\n\n## القلب الأحمر `is_favorite`\n\nكل منتج يرجع للتطبيق يحمل `is_favorite` (`true` = اعرض القلب أحمر) للمستخدم الحالي:\n\n| المكان | الحقل |\n|---|---|\n| قائمة المنتجات والبحث `GET /customer/products` | `data[].is_favorite` |\n| تفاصيل المنتج `GET /customer/products/{id}` | `is_favorite` |\n| أقسام الرئيسية `GET /customer/featured-sections` | `data[].products[].is_favorite` |\n| عرض الكل `GET /customer/featured-sections/{id}/products` | `data[].is_favorite` |\n| المفضلة `GET /customer/favorites` | `data[].is_favorite` (دائماً `true`) |\n| السلة `GET /customer/cart` | `data.items[].product_variant.product.is_favorite` |\n| الطلبيات المتكررة `GET /customer/recurring-carts` و `/{id}` | `items[].product_variant.product.is_favorite` |\n\n**عند الضغط على القلب:** `POST /customer/favorites` بـ `{ \"product_id\": 5 }` للإضافة، و `DELETE /customer/favorites/{productId}` للإزالة. الاستدعاءان آمنان للتكرار ويرجعان `is_favorite` و `favorites_count`، فحدّث القلب محلياً مباشرة دون إعادة تحميل القائمة.\n\nلتلوين القلوب في شاشة لا تحمل الحقل يمكن جلب الأرقام مرة واحدة من `GET /customer/favorites/ids`."
+        },
+        {
+            "name": "Customer Cart",
+            "description": "سلة المشتريات: الإضافة والتعديل، فحص المخزون، وإتمام الطلب (نقداً عند الاستلام أو من المحفظة)."
+        },
+        {
+            "name": "Customer Recurring Carts",
+            "description": "الطلبيات المتكررة: سلال بأسماء يعاد طلبها بضغطة واحدة."
+        },
+        {
+            "name": "Customer Orders",
+            "description": "الطلبات: الإنشاء المباشر، القائمة والتفاصيل، تأكيد الاستلام، طلب الإلغاء وموقع المندوب."
+        },
+        {
+            "name": "Customer Addresses",
+            "description": "عناوين التوصيل ومناطق التوصيل على الخريطة."
+        },
+        {
+            "name": "Customer Wallet",
+            "description": "المحفظة: الرصيد والحركات، الشحن بتحويل بنكي (مع الإيصال) أو إلكترونياً عبر البوابة."
+        },
+        {
+            "name": "Notifications",
+            "description": "إشعارات المستخدم: القائمة، غير المقروءة، وتحديدها كمقروءة."
+        }
+    ],
+    "security": [
+        {
+            "bearerAuth": []
+        }
+    ]
+}

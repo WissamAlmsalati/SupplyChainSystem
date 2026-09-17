@@ -3,7 +3,7 @@
 namespace App\OpenApi;
 
 /**
- * @OA\Schema(schema="CafeAddressDetail", type="object",
+ * @OA\Schema(schema="CustomerAddressDetail", type="object",
  *     @OA\Property(property="id", type="integer", example=1),
  *     @OA\Property(property="user_id", type="integer", example=3),
  *     @OA\Property(property="name", type="string", example="فرع طرابلس الرئيسي"),
@@ -24,7 +24,7 @@ namespace App\OpenApi;
  *     @OA\Property(property="delivery_price", type="number", nullable=true, example=6)
  * )
  *
- * @OA\Schema(schema="CafeOrderCard", type="object",
+ * @OA\Schema(schema="CustomerOrderCard", type="object",
  *     @OA\Property(property="id", type="integer", example=39),
  *     @OA\Property(property="order_number", type="string", example="ORD-2026-00039"),
  *     @OA\Property(property="status", type="string", example="received", enum={"pending","confirmed","preparing","out_for_delivery","delivered","received","cancellation_requested","cancelled"}),
@@ -43,8 +43,8 @@ namespace App\OpenApi;
  *         @OA\Property(property="id", type="integer", example=8),
  *         @OA\Property(property="name", type="string"),
  *         @OA\Property(property="mobile_number", type="string")),
- *     @OA\Property(property="can_cancel", type="boolean", description="Pending: POST /cafe/orders/{id}/cancel-request is allowed"),
- *     @OA\Property(property="can_confirm_receipt", type="boolean", description="Delivered: PUT /cafe/orders/{id}/status received is allowed"),
+ *     @OA\Property(property="can_cancel", type="boolean", description="Pending: POST /customer/orders/{id}/cancel-request is allowed"),
+ *     @OA\Property(property="can_confirm_receipt", type="boolean", description="Delivered: PUT /customer/orders/{id}/status received is allowed"),
  *     @OA\Property(property="placed_at", type="string", format="date-time")
  * )
  *
@@ -137,9 +137,9 @@ namespace App\OpenApi;
  *     schema="AuthLoginRequest",
  *     type="object",
  *     required={"password"},
- *     description="Cafe users must login with phone_number and password only. Email is allowed for admin and delegate users only.",
- *     @OA\Property(property="email", type="string", format="email", nullable=true, description="Use for admin/delegate login only. Cafe users must NOT use email."),
- *     @OA\Property(property="phone_number", type="string", nullable=true, description="Required for cafe users. Example: 0912345678"),
+ *     description="Customer users must login with phone_number and password only. Email is allowed for admin and delegate users only.",
+ *     @OA\Property(property="email", type="string", format="email", nullable=true, description="Use for admin/delegate login only. Customer users must NOT use email."),
+ *     @OA\Property(property="phone_number", type="string", nullable=true, description="Required for customer users. Example: 0912345678"),
  *     @OA\Property(property="password", type="string", format="password"),
  * )
  *
@@ -154,7 +154,7 @@ namespace App\OpenApi;
  * )
  *
  * @OA\Schema(
- *     schema="CafeRegisterRequest",
+ *     schema="CustomerRegisterRequest",
  *     type="object",
  *     required={"name", "phone_number", "password"},
  *     @OA\Property(property="name", type="string", maxLength=100),
@@ -166,9 +166,9 @@ namespace App\OpenApi;
  * @OA\Schema(
  *     schema="AuthResponse",
  *     type="object",
- *     description="For cafe users the response contains only the bearer token. Admin and delegate responses also include permissions.",
+ *     description="For customer users the response contains only the bearer token. Admin and delegate responses also include permissions.",
  *     @OA\Property(property="token", type="string", description="Bearer token to use in the Authorization header"),
- *     @OA\Property(property="permissions", type="array", nullable=true, @OA\Items(type="string"), description="Included for admin/delegate users only. Omitted for cafe users."),
+ *     @OA\Property(property="permissions", type="array", nullable=true, @OA\Items(type="string"), description="Included for admin/delegate users only. Omitted for customer users."),
  * )
  *
  * @OA\Schema(
@@ -222,7 +222,7 @@ namespace App\OpenApi;
  * )
  *
  * @OA\Schema(
- *     schema="CafeOrderRequest",
+ *     schema="CustomerOrderRequest",
  *     type="object",
  *     required={"address_id", "items"},
  *     @OA\Property(property="address_id", type="integer"),

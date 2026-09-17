@@ -2,7 +2,7 @@ include:
   - backend/docker-compose.yml
 
 services:
-  # One container for both frontends: admin at /, cafe at /cafe/
+  # One container for both frontends: admin at /, customer at /customer/
   frontend:
     build:
       context: .

@@ -26,7 +26,7 @@ const initial = {
 export default function Addresses() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const isCafe = user?.user_type?.name === 'cafe'
+  const isCustomer = user?.user_type?.name === 'customer'
   const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [filterUser, setFilterUser] = useState(searchParams.get('user_id') || '')
@@ -38,10 +38,10 @@ export default function Addresses() {
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
-  const { canCreate, canEdit, canDelete } = useModulePermission('CAFE_BRANCHES')
+  const { canCreate, canEdit, canDelete } = useModulePermission('CUSTOMER_BRANCHES')
 
   const openCreate = () => {
-    setForm({ ...initial, user_id: isCafe ? user?.id ?? '' : '' })
+    setForm({ ...initial, user_id: isCustomer ? user?.id ?? '' : '' })
     setEditing(null)
     setModal(true)
   }
@@ -161,7 +161,7 @@ export default function Addresses() {
       />
       <Modal title={editing ? 'تعديل عنوان' : 'إضافة عنوان'} open={modal} onClose={close}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!isCafe && (
+          {!isCustomer && (
             <div>
               <label className="mb-1.5 block text-sm font-medium text-muted">المستخدم</label>
               <select

@@ -1,13 +1,13 @@
 ---
 title: "الساحل لمستلزمات المقاهي"
 date: 2026-08-21
-tags: [project, supply-chain, cafe, laravel, react]
+tags: [project, supply-chain, customer, laravel, react]
 status: growing
 goal: "Enhance AI results for the cafe supply-chain platform by keeping structured context, decisions, and code docs in one place."
 context: |
   This is an existing cafe supply-chain software project at /Users/wissamalmsalati/cafe-supply-chain.
-  Stack: Laravel backend, React + Vite frontends (admin and cafe), Docker, MySQL, Redis, Reverb WebSocket.
-  Docs live in docs/. The project already has backend, frontend-admin, frontend-cafe, and Docker setup.
+  Stack: Laravel backend, React + Vite frontends (admin and customer), Docker, MySQL, Redis, Reverb WebSocket.
+  Docs live in docs/. The project already has backend, frontend-admin, frontend-customer, and Docker setup.
   We are using Obsidian + AI to improve decision-making, documentation, and feature planning.
 ---
 
@@ -25,13 +25,13 @@ Enhance AI results for the cafe supply-chain platform by keeping structured cont
 
 - `backend/` — Laravel API, DB, Redis, queue worker, Reverb, Nginx.
 - `frontend-admin/` — Admin dashboard (React + Vite).
-- `frontend-cafe/` — Cafe mobile/web app (React + Vite).
+- `frontend-customer/` — Customer mobile/web app (React + Vite).
 - `docs/` — Documentation and diagrams.
 - `vendor/` — Third-party dependencies.
 
 ## Docs
 
-- `docs/cafe-endpoints-demo.md` — API endpoints demo.
+- `docs/customer-endpoints-demo.md` — API endpoints demo.
 - `docs/sequence-diagrams.md` — Sequence diagrams.
 
 ## Development quickstart
@@ -45,7 +45,7 @@ docker compose up -d --build
 cd ../frontend-admin
 docker compose up -d --build
 
-cd ../frontend-cafe
+cd ../frontend-customer
 docker compose up -d --build
 ```
 

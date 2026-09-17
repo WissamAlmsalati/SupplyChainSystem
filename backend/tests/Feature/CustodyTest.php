@@ -55,13 +55,14 @@ class CustodyTest extends TestCase
 
     private function order(string $method = 'cash'): int
     {
-        $id = $this->postJson('/api/v1/cafe/orders', [
+        $id = $this->postJson('/api/v1/customer/orders', [
             'address_id' => $this->address->id,
             'items' => [['product_variant_id' => $this->variant->id, 'quantity' => 1]],
             'payment_method' => $method,
         ], $this->as($this->customer))->assertCreated()->json('data.id');
 
-        Order::whereKey($id)->update(['delegate_id' => $this->delegate->id]);
+        // Assigned and already on the road, so the delegate may mark it delivered.
+        Order::whereKey($id)->update(['delegate_id' => $this->delegate->id, 'status' => 'out_for_delivery']);
 
         return $id;
     }
@@ -155,7 +156,7 @@ class CustodyTest extends TestCase
     {
         $wallet = Wallet::where('user_id', $this->customer->id)->first();
         $this->postJson("/api/v1/wallets/{$wallet->id}/adjust", ['amount' => 100, 'note' => 'رصيد'], $this->as($this->admin))->assertOk();
-        $this->post('/api/v1/cafe/wallet/topups', [
+        $this->post('/api/v1/customer/wallet/topups', [
             'amount' => 70, 'method' => 'bank_transfer', 'reference_number' => 'TRX-70',
             'receipt' => \Illuminate\Http\UploadedFile::fake()->image('r.jpg'),
         ], $this->as($this->customer) + ['Accept' => 'application/json'])->assertCreated();
@@ -185,7 +186,7 @@ class CustodyTest extends TestCase
     public function test_other_users_cannot_use_custody_endpoints(): void
     {
         $this->getJson('/api/v1/delegate/custody', $this->as($this->customer))->assertForbidden();
-        \App\Models\Permission::create(['code' => 'CUSTODY_EDIT']);
+        \App\Models\Permission::firstOrCreate(['code' => 'CUSTODY_EDIT']);
         $this->postJson("/api/v1/custody/{$this->delegate->id}/settle", ['amount' => 1], $this->as($this->delegate))->assertForbidden();
     }
 }

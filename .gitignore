@@ -15,12 +15,12 @@
 /auth.json
 .composer
 /admin/node_modules
-/cafe/node_modules
+/customer/node_modules
 /bruno/node_modules
 /frontend-admin/node_modules
 /frontend-admin/dist
-/frontend-cafe/node_modules
-/frontend-cafe/dist
+/frontend-customer/node_modules
+/frontend-customer/dist
 /vendor
 /backend/vendor
 /backend/node_modules

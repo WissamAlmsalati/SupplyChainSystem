@@ -8,7 +8,7 @@ import Addresses from './pages/Addresses'
 import AddressDetail from './pages/AddressDetail'
 import Users from './pages/Users'
 import UserDetail from './pages/UserDetail'
-import Cafes from './pages/Cafes'
+import Customers from './pages/Customers'
 import Delegates from './pages/Delegates'
 import DelegateDetail from './pages/DelegateDetail'
 import Categories from './pages/Categories'
@@ -41,7 +41,7 @@ import NotFound from './pages/NotFound'
 
 function HomeRedirect() {
   const { user } = useAuth()
-  if (user?.user_type?.name === 'cafe') {
+  if (user?.user_type?.name === 'customer') {
     return <Navigate to="/orders" replace />
   }
   return <Dashboard />
@@ -56,14 +56,14 @@ function App() {
         <Route path="/statistics/:yearMonth" element={<RequirePermission permission="DASHBOARD_VIEW"><MonthlyStats /></RequirePermission>} />
         <Route path="/users" element={<RequirePermission permission="USERS_VIEW"><Users /></RequirePermission>} />
         <Route path="/users/:id" element={<RequirePermission permission="USERS_VIEW"><UserDetail /></RequirePermission>} />
-        <Route path="/cafes" element={<RequirePermission permission="USERS_VIEW"><Cafes /></RequirePermission>} />
+        <Route path="/customers" element={<RequirePermission permission="USERS_VIEW"><Customers /></RequirePermission>} />
         <Route path="/delegates" element={<RequirePermission permission="DELEGATES_VIEW"><Delegates /></RequirePermission>} />
         <Route path="/delegates/:id" element={<RequirePermission permission="DELEGATES_VIEW"><DelegateDetail /></RequirePermission>} />
         <Route path="/categories" element={<RequirePermission permission="CATEGORIES_VIEW"><Categories /></RequirePermission>} />
         <Route path="/warehouses" element={<RequirePermission permission="WAREHOUSES_VIEW"><Warehouses /></RequirePermission>} />
         <Route path="/warehouses/:id" element={<RequirePermission permission="WAREHOUSES_VIEW"><WarehouseDetail /></RequirePermission>} />
-        <Route path="/addresses" element={<RequirePermission permission="CAFE_BRANCHES_VIEW"><Addresses /></RequirePermission>} />
-        <Route path="/addresses/:id" element={<RequirePermission permission="CAFE_BRANCHES_VIEW"><AddressDetail /></RequirePermission>} />
+        <Route path="/addresses" element={<RequirePermission permission="CUSTOMER_BRANCHES_VIEW"><Addresses /></RequirePermission>} />
+        <Route path="/addresses/:id" element={<RequirePermission permission="CUSTOMER_BRANCHES_VIEW"><AddressDetail /></RequirePermission>} />
         <Route path="/products" element={<RequirePermission permission="PRODUCTS_VIEW"><Products /></RequirePermission>} />
         <Route path="/products/:id" element={<RequirePermission permission="PRODUCTS_VIEW"><ProductDetail /></RequirePermission>} />
         <Route path="/product-variants/:id" element={<RequirePermission permission="PRODUCTS_VIEW"><VariantDetail /></RequirePermission>} />

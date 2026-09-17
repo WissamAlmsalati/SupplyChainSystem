@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Al-Sahel Cafe Supplies API",
-        "description": "REST API documentation split by platform: Admin Dashboard, Cafe Mobile App, and Public Storefront.",
+        "description": "REST API documentation split by platform: Admin Dashboard, Customer Mobile App, and Public Storefront.",
         "version": "1.0.0"
     },
     "servers": [
@@ -155,7 +155,7 @@
                     "Auth"
                 ],
                 "summary": "Log in and receive an access token",
-                "description": "Cafe users must login with phone_number and password. The response is a bare bearer token with no permissions. Admin and delegate users may use email instead of phone_number and will receive permissions in the response.",
+                "description": "Customer users must login with phone_number and password. The response is a bare bearer token with no permissions. Admin and delegate users may use email instead of phone_number and will receive permissions in the response.",
                 "operationId": "67d6d0fdd54fba132e1b6f55ca254183",
                 "requestBody": {
                     "required": true,
@@ -207,7 +207,7 @@
                 "tags": [
                     "Admin Users"
                 ],
-                "summary": "Register a new cafe user (admin only)",
+                "summary": "Register a new customer user (admin only)",
                 "operationId": "5d4fa5d5607ed675ba93907e1fc94534",
                 "requestBody": {
                     "required": true,
@@ -246,20 +246,20 @@
                 }
             }
         },
-        "/cafe/register": {
+        "/customer/register": {
             "post": {
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Register a cafe account (OTP verification required before login)",
-                "description": "Creates an inactive cafe user and sends a 6-digit OTP. Verify it via POST /cafe/verify-otp: when cafe_auto_approve is active a bearer token is returned immediately, otherwise the account waits for admin approval and only a message is returned.",
-                "operationId": "caaf1719c560e5070b1899f6815484ff",
+                "summary": "Register a customer account (OTP verification required before login)",
+                "description": "Creates an inactive customer user and sends a 6-digit OTP. Verify it via POST /customer/verify-otp: when customer_auto_approve is active a bearer token is returned immediately, otherwise the account waits for admin approval and only a message is returned.",
+                "operationId": "5fdcf00a4d49844f954264bacd03b093",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/CafeRegisterRequest"
+                                "$ref": "#/components/schemas/CustomerRegisterRequest"
                             }
                         }
                     }
@@ -282,14 +282,14 @@
                 "security": []
             }
         },
-        "/cafe/verify-otp": {
+        "/customer/verify-otp": {
             "post": {
                 "tags": [
                     "Auth"
                 ],
                 "summary": "Verify registration OTP",
-                "description": "When cafe_auto_approve is active the user is activated and a bearer token is returned immediately. Otherwise the account stays inactive until an admin approves it, and only a message is returned.",
-                "operationId": "a585743c6d8da4b15d2cbc53333d4924",
+                "description": "When customer_auto_approve is active the user is activated and a bearer token is returned immediately. Otherwise the account stays inactive until an admin approves it, and only a message is returned.",
+                "operationId": "46d4285aa3fc850aff931977e2feb433",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -316,13 +316,13 @@
                 "security": []
             }
         },
-        "/cafe/resend-otp": {
+        "/customer/resend-otp": {
             "post": {
                 "tags": [
                     "Auth"
                 ],
                 "summary": "Resend the registration OTP",
-                "operationId": "6ef9155b58786aa49be4e578daf78162",
+                "operationId": "41a92368bead96bd7ef21e906c134b82",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -368,13 +368,152 @@
                 ]
             }
         },
-        "/cafe/orders": {
+        "/categories": {
             "get": {
                 "tags": [
-                    "Cafe Orders"
+                    "Admin Categories"
+                ],
+                "summary": "List categories",
+                "operationId": "b1b247b2b491b0491c3c728dc33f23f0",
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of categories"
+                    }
+                },
+                "security": []
+            },
+            "post": {
+                "tags": [
+                    "Admin Categories"
+                ],
+                "summary": "Create a category",
+                "operationId": "c86cd7a85ad06a4fe905bfab62146952",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Category created"
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/categories/{id}": {
+            "get": {
+                "tags": [
+                    "Admin Categories"
+                ],
+                "summary": "Get a category",
+                "operationId": "486849467f411ec5e4bdf111f50ede87",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Category details"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                },
+                "security": []
+            },
+            "put": {
+                "tags": [
+                    "Admin Categories"
+                ],
+                "summary": "Update a category",
+                "operationId": "b648463d94e0caf7b8d842a1008789b2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Category updated"
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Admin Categories"
+                ],
+                "summary": "Delete a category",
+                "operationId": "491dfe5b6b58b480181690ede6550e44",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Category deleted"
+                    }
+                }
+            }
+        },
+        "/customer/orders": {
+            "get": {
+                "tags": [
+                    "Customer Orders"
                 ],
                 "summary": "List own orders",
-                "operationId": "df333eb5fb03206b34e826eea2c6b5be",
+                "operationId": "b92b4e1cf359693c5b434456dced7b90",
                 "parameters": [
                     {
                         "name": "status",
@@ -415,16 +554,16 @@
             },
             "post": {
                 "tags": [
-                    "Cafe Orders"
+                    "Customer Orders"
                 ],
                 "summary": "Place an order directly (without the cart)",
-                "operationId": "4c7d655b789460acf5478b0a6871bed7",
+                "operationId": "1ee4d6befb1fd246d11f31c1eb6aa60c",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/CafeOrderRequest"
+                                "$ref": "#/components/schemas/CustomerOrderRequest"
                             }
                         }
                     }
@@ -439,14 +578,14 @@
                 }
             }
         },
-        "/cafe/addresses/{id}/orders": {
+        "/customer/addresses/{id}/orders": {
             "get": {
                 "tags": [
-                    "Cafe Addresses"
+                    "Customer Addresses"
                 ],
                 "summary": "Orders of one address (branch), paginated",
-                "description": "Light order cards for one address. Address details are at GET /cafe/addresses/{id}. meta.counts gives the number per tab (all / active / completed / cancelled) and per status; it honours from, to and q but not status or group, so tab badges stay stable. Open GET /cafe/orders/{id} for the full order.",
-                "operationId": "3b61e53ce5f991ac0854a881739366dd",
+                "description": "Light order cards for one address. Address details are at GET /customer/addresses/{id}. meta.counts gives the number per tab (all / active / completed / cancelled) and per status; it honours from, to and q but not status or group, so tab badges stay stable. Open GET /customer/orders/{id} for the full order.",
+                "operationId": "369b86f14fcf8526e991abebf268ce27",
                 "parameters": [
                     {
                         "name": "id",
@@ -531,7 +670,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/CafeOrderCard"
+                                                "$ref": "#/components/schemas/CustomerOrderCard"
                                             }
                                         },
                                         "meta": {
@@ -605,13 +744,13 @@
                 ]
             }
         },
-        "/cafe/orders/{id}": {
+        "/customer/orders/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Orders"
+                    "Customer Orders"
                 ],
                 "summary": "Own order details",
-                "operationId": "ddb54b10046cd006c29ffb454b880dfe",
+                "operationId": "daf0ae801f9c66f33c6cd3477d51cde6",
                 "parameters": [
                     {
                         "name": "id",
@@ -629,13 +768,13 @@
                 }
             }
         },
-        "/cafe/orders/{id}/status": {
+        "/customer/orders/{id}/status": {
             "put": {
                 "tags": [
-                    "Cafe Orders"
+                    "Customer Orders"
                 ],
                 "summary": "Confirm receipt of a delivered order",
-                "operationId": "766c6aac15f0b1777050785478dff042",
+                "operationId": "9c8aaa7f8993a1fae9c25a25dd2651d6",
                 "parameters": [
                     {
                         "name": "id",
@@ -674,13 +813,13 @@
                 }
             }
         },
-        "/cafe/orders/{id}/cancel-request": {
+        "/customer/orders/{id}/cancel-request": {
             "post": {
                 "tags": [
-                    "Cafe Orders"
+                    "Customer Orders"
                 ],
                 "summary": "Ask the admins to cancel a pending order",
-                "operationId": "ed7b3b9d607a603f8155adcca0cb4c83",
+                "operationId": "a7eb35d087351dff979919fe4afbde83",
                 "parameters": [
                     {
                         "name": "id",
@@ -701,14 +840,14 @@
                 }
             }
         },
-        "/cafe/addresses": {
+        "/customer/addresses": {
             "get": {
                 "tags": [
-                    "Cafe Addresses"
+                    "Customer Addresses"
                 ],
                 "summary": "List own addresses (branches)",
-                "description": "Address details with delivery zone and price. Orders of an address are a separate call: GET /cafe/addresses/{id}/orders. data.delivery_price is the price at the customer's registered location (used when there are no addresses yet).",
-                "operationId": "a07c813cdcc666e312d6fee002a20896",
+                "description": "Address details with delivery zone and price. Orders of an address are a separate call: GET /customer/addresses/{id}/orders. data.delivery_price is the price at the customer's registered location (used when there are no addresses yet).",
+                "operationId": "512db4fb20218463b67bcb38eff27a63",
                 "responses": {
                     "200": {
                         "description": "Addresses",
@@ -721,7 +860,7 @@
                                                 "addresses": {
                                                     "type": "array",
                                                     "items": {
-                                                        "$ref": "#/components/schemas/CafeAddressDetail"
+                                                        "$ref": "#/components/schemas/CustomerAddressDetail"
                                                     }
                                                 },
                                                 "delivery_price": {
@@ -747,10 +886,10 @@
             },
             "post": {
                 "tags": [
-                    "Cafe Addresses"
+                    "Customer Addresses"
                 ],
                 "summary": "Create an address",
-                "operationId": "33942d72732902c0a6e52aa3afcaa69f",
+                "operationId": "0f7447dfdd2c7c95bbb4da0fc3884949",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -768,13 +907,13 @@
                 }
             }
         },
-        "/cafe/addresses/{id}": {
+        "/customer/addresses/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Addresses"
+                    "Customer Addresses"
                 ],
                 "summary": "Own address details",
-                "operationId": "9bf8e7685614df8f03734955aa091bac",
+                "operationId": "4238f3e858f8830c455fa43365f42a4b",
                 "parameters": [
                     {
                         "name": "id",
@@ -791,7 +930,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/CafeAddressDetail"
+                                    "$ref": "#/components/schemas/CustomerAddressDetail"
                                 }
                             }
                         }
@@ -808,10 +947,10 @@
             },
             "put": {
                 "tags": [
-                    "Cafe Addresses"
+                    "Customer Addresses"
                 ],
                 "summary": "Update an address",
-                "operationId": "5f88ea85126e58bf3a13190d1b9e3ed0",
+                "operationId": "43a08025906ca92c6789f59727f74afe",
                 "parameters": [
                     {
                         "name": "id",
@@ -840,11 +979,11 @@
             },
             "delete": {
                 "tags": [
-                    "Cafe Addresses"
+                    "Customer Addresses"
                 ],
                 "summary": "Delete an address",
                 "description": "Soft delete; past orders keep their own copy of the delivery address.",
-                "operationId": "09a6b02d13c972073081a82a49f118d4",
+                "operationId": "f71f3542a22f71956cfff5e19e40f5b2",
                 "parameters": [
                     {
                         "name": "id",
@@ -862,16 +1001,16 @@
                 }
             }
         },
-        "/cafe/profile": {
+        "/customer/profile": {
             "get": {
                 "tags": [
-                    "Cafe Profile"
+                    "Customer Profile"
                 ],
                 "summary": "Customer profile",
-                "operationId": "b61a587e42e4a65a611e9ce586ebe1f0",
+                "operationId": "fb275a65453665cfdfed8bef50d6f834",
                 "responses": {
                     "200": {
-                        "description": "User fields merged with the customer profile, plus addresses. user.has_addresses is true once the cafe has at least one address (branch); user.addresses_count gives the number.",
+                        "description": "User fields merged with the customer profile, plus addresses. user.has_addresses is true once the customer has at least one address (branch); user.addresses_count gives the number.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -920,10 +1059,10 @@
             },
             "put": {
                 "tags": [
-                    "Cafe Profile"
+                    "Customer Profile"
                 ],
                 "summary": "Update customer profile",
-                "operationId": "6d026f2b75cdcbd36744e80489abf60f",
+                "operationId": "4a1305212bace0792642ef5c0f545475",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -960,13 +1099,13 @@
                 }
             }
         },
-        "/cafe/delivery-zones": {
+        "/customer/delivery-zones": {
             "get": {
                 "tags": [
-                    "Cafe Addresses"
+                    "Customer Addresses"
                 ],
                 "summary": "Active delivery zones for the map",
-                "operationId": "b15b8a190b3b5da333be486589960f5c",
+                "operationId": "a809740a051a792ac3a7e51d05a7382b",
                 "responses": {
                     "200": {
                         "description": "Zones"
@@ -974,14 +1113,14 @@
                 }
             }
         },
-        "/cafe/categories": {
+        "/customer/categories": {
             "get": {
                 "tags": [
-                    "Cafe Products"
+                    "Customer Products"
                 ],
                 "summary": "List categories",
                 "description": "Each category carries image_url (its own picture, or the shared default) and image_type (uploaded / placeholder).",
-                "operationId": "a4cb49242b76128b80cc01f04488b6b9",
+                "operationId": "3a8dcf5c5b049434464039820edfef06",
                 "responses": {
                     "200": {
                         "description": "Categories"
@@ -989,14 +1128,14 @@
                 }
             }
         },
-        "/cafe/products": {
+        "/customer/products": {
             "get": {
                 "tags": [
-                    "Cafe Products"
+                    "Customer Products"
                 ],
                 "summary": "Search and filter products (paginated)",
-                "description": "Text search covers product name, brand, description, tags, category and size name / SKU / barcode. Filters combine with AND; list filters accept comma-separated values. Use GET /cafe/products/filters for the available options and counts.",
-                "operationId": "46d95a00fca533270cd7255284e834f8",
+                "description": "Text search covers product name, brand, description, tags, category and size name / SKU / barcode. Filters combine with AND; list filters accept comma-separated values. Use GET /customer/products/filters for the available options and counts.",
+                "operationId": "c60791cd7dc34e3830d4a4db104bb208",
                 "parameters": [
                     {
                         "name": "q",
@@ -1186,14 +1325,14 @@
                 ]
             }
         },
-        "/cafe/products/filters": {
+        "/customer/products/filters": {
             "get": {
                 "tags": [
-                    "Cafe Products"
+                    "Customer Products"
                 ],
                 "summary": "Filter options with counts for the current search",
-                "description": "Accepts the same parameters as GET /cafe/products. Each facet is counted as if its own filter were not applied, so users can switch between options.",
-                "operationId": "738b56589c4b0119177d894ca965e879",
+                "description": "Accepts the same parameters as GET /customer/products. Each facet is counted as if its own filter were not applied, so users can switch between options.",
+                "operationId": "9ffb7ca824676de3d7515e87760c7853",
                 "parameters": [
                     {
                         "name": "q",
@@ -1340,14 +1479,14 @@
                 ]
             }
         },
-        "/cafe/featured-sections": {
+        "/customer/featured-sections": {
             "get": {
                 "tags": [
-                    "Cafe Products"
+                    "Customer Products"
                 ],
                 "summary": "Home-screen product sections (paginated): title + first products in one object",
-                "description": "Each section shows up to its products_limit products. Sections are either hand-picked by the admin (source=manual, admin order) or rule-based (source=filter, e.g. sort=popular for best sellers or price_asc for cheapest). Sections without available products are left out of the page.\n\n**View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /cafe/featured-sections/{id}/products` (see the guide at the top of Cafe Products).",
-                "operationId": "a6f681d9f21a5448e350d119c7ead111",
+                "description": "Each section shows up to its products_limit products. Sections are either hand-picked by the admin (source=manual, admin order) or rule-based (source=filter, e.g. sort=popular for best sellers or price_asc for cheapest). Sections without available products are left out of the page.\n\n**View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /customer/featured-sections/{id}/products` (see the guide at the top of Customer Products).",
+                "operationId": "f05c788bf54b143a2df152702791e131",
                 "parameters": [
                     {
                         "name": "page",
@@ -1485,14 +1624,14 @@
                 ]
             }
         },
-        "/cafe/featured-sections/{id}/products": {
+        "/customer/featured-sections/{id}/products": {
             "get": {
                 "tags": [
-                    "Cafe Products"
+                    "Customer Products"
                 ],
                 "summary": "All products of a section (paginated) for 'view all'",
                 "description": "Screen opened from a section's «عرض الكل» button.\n\n1. Request `page=1` and show `section.title` and `meta.total`.\n2. On scroll end, while `meta.current_page < meta.last_page`, request the next `page` and append the results.\n\nPage 1 starts from the beginning of the section (it repeats the products already shown on the home screen, in the same order) — render the response as-is. The order is fixed by the section type. Returns 404 when the section is hidden or deleted.",
-                "operationId": "796886bedae59b65c81fbe6ef97dae63",
+                "operationId": "3e6816fbda006e319b933132cdca6644",
                 "parameters": [
                     {
                         "name": "id",
@@ -1535,13 +1674,13 @@
                 ]
             }
         },
-        "/cafe/products/{id}": {
+        "/customer/products/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Products"
+                    "Customer Products"
                 ],
                 "summary": "Product details",
-                "operationId": "7cdda903aaa51527f8fd6dbf56255e3b",
+                "operationId": "003745051cf503bef315d494b0a0cf7c",
                 "parameters": [
                     {
                         "name": "id",
@@ -1559,13 +1698,13 @@
                 }
             }
         },
-        "/cafe/products/{id}/variants": {
+        "/customer/products/{id}/variants": {
             "get": {
                 "tags": [
-                    "Cafe Products"
+                    "Customer Products"
                 ],
                 "summary": "Active sizes of a product",
-                "operationId": "0386483cda431404339ea7082d639ecc",
+                "operationId": "3afc7a273931a5e06a60725c06e5d0ef",
                 "parameters": [
                     {
                         "name": "id",
@@ -1583,13 +1722,13 @@
                 }
             }
         },
-        "/cafe/cart": {
+        "/customer/cart": {
             "get": {
                 "tags": [
-                    "Cafe Cart"
+                    "Customer Cart"
                 ],
                 "summary": "Current shopping cart (null when none)",
-                "operationId": "6060ee36043911b3bf78c0e8124264cb",
+                "operationId": "62389058b6a3a0b377521dfe6138c3ba",
                 "responses": {
                     "200": {
                         "description": "Cart"
@@ -1598,10 +1737,10 @@
             },
             "delete": {
                 "tags": [
-                    "Cafe Cart"
+                    "Customer Cart"
                 ],
                 "summary": "Empty the shopping cart",
-                "operationId": "3d1c3c31061f190c715e27a63812ac78",
+                "operationId": "63d23f2f07617277661ea43f8f3ede3a",
                 "responses": {
                     "200": {
                         "description": "Cart emptied"
@@ -1609,13 +1748,13 @@
                 }
             }
         },
-        "/cafe/cart/check-stock": {
+        "/customer/cart/check-stock": {
             "get": {
                 "tags": [
-                    "Cafe Cart"
+                    "Customer Cart"
                 ],
                 "summary": "Stock availability for the cart items",
-                "operationId": "5e5d6d84d3c86dc7872e628ccd5881a9",
+                "operationId": "40dd972358ad0cb1e44d537137fcfbde",
                 "responses": {
                     "200": {
                         "description": "Per-item availability"
@@ -1626,13 +1765,13 @@
                 }
             }
         },
-        "/cafe/cart/items": {
+        "/customer/cart/items": {
             "post": {
                 "tags": [
-                    "Cafe Cart"
+                    "Customer Cart"
                 ],
                 "summary": "Add an item to the shopping cart (sets its quantity)",
-                "operationId": "794d9d7b496382a657bffa19d118ea51",
+                "operationId": "62560e16dab1fd0af69ee053d08f52e1",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -1658,13 +1797,13 @@
                 }
             }
         },
-        "/cafe/cart/items/{id}": {
+        "/customer/cart/items/{id}": {
             "put": {
                 "tags": [
-                    "Cafe Cart"
+                    "Customer Cart"
                 ],
                 "summary": "Change a cart item quantity",
-                "operationId": "521658b853f50f47b5ca429cb284d5f9",
+                "operationId": "2d964fa65ca75b14875a8ac2fbdd0ba7",
                 "parameters": [
                     {
                         "name": "id",
@@ -1698,10 +1837,10 @@
             },
             "delete": {
                 "tags": [
-                    "Cafe Cart"
+                    "Customer Cart"
                 ],
                 "summary": "Remove a cart item",
-                "operationId": "6923636b1fd67f8b3030e0bf36169f2a",
+                "operationId": "e6b1314e0edf3702a4e68b3fd68a87d1",
                 "parameters": [
                     {
                         "name": "id",
@@ -1719,13 +1858,13 @@
                 }
             }
         },
-        "/cafe/cart/checkout": {
+        "/customer/cart/checkout": {
             "post": {
                 "tags": [
-                    "Cafe Cart"
+                    "Customer Cart"
                 ],
                 "summary": "Turn the shopping cart into an order",
-                "operationId": "79b4162afa1df0c7ae1dd0acddcde684",
+                "operationId": "30aa9bad8ed1e6302d0a07f1aadeb196",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -1769,13 +1908,13 @@
                 }
             }
         },
-        "/cafe/orders/{id}/delegate": {
+        "/customer/orders/{id}/delegate": {
             "get": {
                 "tags": [
-                    "Cafe Orders"
+                    "Customer Orders"
                 ],
                 "summary": "Live location of the order's delegate",
-                "operationId": "02a3ac627b7c11bde9239ee5916d1a8c",
+                "operationId": "839c055fc87726d5a2b8299be9bf5cd9",
                 "parameters": [
                     {
                         "name": "id",
@@ -1796,13 +1935,13 @@
                 }
             }
         },
-        "/cafe/wallet": {
+        "/customer/wallet": {
             "get": {
                 "tags": [
-                    "Cafe Wallet"
+                    "Customer Wallet"
                 ],
                 "summary": "Wallet balance with latest transactions",
-                "operationId": "a0f33c021d19162852897fe9dd67934f",
+                "operationId": "b3fc7cecf45c44d83b91dc1e06063785",
                 "responses": {
                     "200": {
                         "description": "balance, currency, recent_transactions, pending_topups"
@@ -1815,13 +1954,13 @@
                 ]
             }
         },
-        "/cafe/wallet/transactions": {
+        "/customer/wallet/transactions": {
             "get": {
                 "tags": [
-                    "Cafe Wallet"
+                    "Customer Wallet"
                 ],
                 "summary": "Wallet transactions",
-                "operationId": "114681462902ee57527405816c77248c",
+                "operationId": "0391119d7579974d08aedae4b6292b04",
                 "parameters": [
                     {
                         "name": "type",
@@ -1849,13 +1988,13 @@
                 ]
             }
         },
-        "/cafe/wallet/topups": {
+        "/customer/wallet/topups": {
             "get": {
                 "tags": [
-                    "Cafe Wallet"
+                    "Customer Wallet"
                 ],
                 "summary": "My top-up requests",
-                "operationId": "65ca1227bf02dfdc007fa1c0435fce4a",
+                "operationId": "73c3a2941a4d33b1839cb0067d48a43d",
                 "parameters": [
                     {
                         "name": "status",
@@ -1885,10 +2024,10 @@
             },
             "post": {
                 "tags": [
-                    "Cafe Wallet"
+                    "Customer Wallet"
                 ],
                 "summary": "Request a bank-transfer top-up with its receipt; an admin approves it",
-                "operationId": "ad6d31ce206703b58099758d280c32d4",
+                "operationId": "04d71d2bc31e3737cb8a1847a5224ac9",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -1944,13 +2083,13 @@
                 ]
             }
         },
-        "/cafe/wallet/topups/{id}/cancel": {
+        "/customer/wallet/topups/{id}/cancel": {
             "post": {
                 "tags": [
-                    "Cafe Wallet"
+                    "Customer Wallet"
                 ],
                 "summary": "Cancel my pending top-up request",
-                "operationId": "b633bce21c992cfcdf05a00a2604e189",
+                "operationId": "d57ac64e32b6be13244e845f2889bf32",
                 "parameters": [
                     {
                         "name": "id",
@@ -1976,13 +2115,13 @@
                 ]
             }
         },
-        "/cafe/wallet/topups/gateway": {
+        "/customer/wallet/topups/gateway": {
             "post": {
                 "tags": [
-                    "Cafe Wallet"
+                    "Customer Wallet"
                 ],
                 "summary": "Start an online top-up; open checkout_url to pay",
-                "operationId": "1b3a8d33f44cc6bc7e2c01043c0790b1",
+                "operationId": "9eb295695bd25f4e39432fa26ae9eea0",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -2012,145 +2151,6 @@
                         "bearerAuth": []
                     }
                 ]
-            }
-        },
-        "/categories": {
-            "get": {
-                "tags": [
-                    "Admin Categories"
-                ],
-                "summary": "List categories",
-                "operationId": "b1b247b2b491b0491c3c728dc33f23f0",
-                "responses": {
-                    "200": {
-                        "description": "Paginated list of categories"
-                    }
-                },
-                "security": []
-            },
-            "post": {
-                "tags": [
-                    "Admin Categories"
-                ],
-                "summary": "Create a category",
-                "operationId": "c86cd7a85ad06a4fe905bfab62146952",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CategoryRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Category created"
-                    },
-                    "422": {
-                        "description": "Validation error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/categories/{id}": {
-            "get": {
-                "tags": [
-                    "Admin Categories"
-                ],
-                "summary": "Get a category",
-                "operationId": "486849467f411ec5e4bdf111f50ede87",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Category details"
-                    },
-                    "404": {
-                        "description": "Not found"
-                    }
-                },
-                "security": []
-            },
-            "put": {
-                "tags": [
-                    "Admin Categories"
-                ],
-                "summary": "Update a category",
-                "operationId": "b648463d94e0caf7b8d842a1008789b2",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CategoryRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Category updated"
-                    },
-                    "422": {
-                        "description": "Validation error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Admin Categories"
-                ],
-                "summary": "Delete a category",
-                "operationId": "491dfe5b6b58b480181690ede6550e44",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Category deleted"
-                    }
-                }
             }
         },
         "/delegates": {
@@ -2443,7 +2443,7 @@
                 "tags": [
                     "Delegate Mobile"
                 ],
-                "summary": "Mark an assigned order delivered",
+                "summary": "Move an assigned order to out_for_delivery or delivered",
                 "operationId": "45ff765c6dc091e5c2f6db889aac118b",
                 "parameters": [
                     {
@@ -2464,6 +2464,7 @@
                                     "status": {
                                         "type": "string",
                                         "enum": [
+                                            "out_for_delivery",
                                             "delivered"
                                         ]
                                     }
@@ -2476,6 +2477,9 @@
                 "responses": {
                     "200": {
                         "description": "Order updated"
+                    },
+                    "422": {
+                        "description": "Move not allowed from the current status"
                     }
                 }
             }
@@ -2688,13 +2692,13 @@
                 }
             }
         },
-        "/cafe/favorites": {
+        "/customer/favorites": {
             "get": {
                 "tags": [
-                    "Cafe Favorites"
+                    "Customer Favorites"
                 ],
                 "summary": "My favorite products (paginated, newest first)",
-                "operationId": "cccdcd09cb028b38b63949bedf4c3458",
+                "operationId": "93d677d77faa3824c33a64cb2809a0e0",
                 "parameters": [
                     {
                         "name": "page",
@@ -2727,10 +2731,10 @@
             },
             "post": {
                 "tags": [
-                    "Cafe Favorites"
+                    "Customer Favorites"
                 ],
                 "summary": "Add a product to favorites (idempotent)",
-                "operationId": "e1d2f452e0f5038cdc81042c13e34f2b",
+                "operationId": "661f67e27f4c8a8aac5e9cf646a27b88",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -2764,13 +2768,13 @@
                 ]
             }
         },
-        "/cafe/favorites/ids": {
+        "/customer/favorites/ids": {
             "get": {
                 "tags": [
-                    "Cafe Favorites"
+                    "Customer Favorites"
                 ],
                 "summary": "Ids of my favorite products (to mark hearts in lists)",
-                "operationId": "644bc8ac850ee6ba899b1d7697b1edeb",
+                "operationId": "628b168fc2715b7a927e82735aea668c",
                 "responses": {
                     "200": {
                         "description": "data: [product ids]"
@@ -2783,13 +2787,13 @@
                 ]
             }
         },
-        "/cafe/favorites/{productId}": {
+        "/customer/favorites/{productId}": {
             "delete": {
                 "tags": [
-                    "Cafe Favorites"
+                    "Customer Favorites"
                 ],
                 "summary": "Remove a product from favorites (idempotent)",
-                "operationId": "06a0d8923a5cc814088b6d9058056660",
+                "operationId": "f1a31857ab641e9a6af245488de81d4d",
                 "parameters": [
                     {
                         "name": "productId",
@@ -3138,13 +3142,13 @@
                 }
             }
         },
-        "/cafe/forgot-password": {
+        "/customer/forgot-password": {
             "post": {
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Request password reset OTP for cafe user",
-                "operationId": "e072038abf86ac865ba8dba534094253",
+                "summary": "Request password reset OTP for customer user",
+                "operationId": "be36d04f2f97a4d40ea443a08c86ce77",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -3171,13 +3175,13 @@
                 "security": []
             }
         },
-        "/cafe/reset-password": {
+        "/customer/reset-password": {
             "post": {
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Reset cafe user password with OTP",
-                "operationId": "b9a24c3608851164857dc221491aacf1",
+                "summary": "Reset customer user password with OTP",
+                "operationId": "c6b9a98d29abc64a44614827ff126f4d",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -3216,10 +3220,10 @@
         "/placeholder/{kind}": {
             "get": {
                 "tags": [
-                    "Cafe Products"
+                    "Customer Products"
                 ],
                 "summary": "Default image used when a record has no picture",
-                "description": "Public SVG placeholder. image_url falls back to this URL, so clients can always render an image. Kinds: product.svg, promo.svg, category.svg, cafe.svg, user.svg.",
+                "description": "Public SVG placeholder. image_url falls back to this URL, so clients can always render an image. Kinds: product.svg, promo.svg, category.svg, customer.svg, user.svg.",
                 "operationId": "09559bfdfa91e17fe6696fcf5c203e66",
                 "parameters": [
                     {
@@ -3292,13 +3296,13 @@
                 }
             }
         },
-        "/cafe/recurring-carts": {
+        "/customer/recurring-carts": {
             "get": {
                 "tags": [
-                    "Cafe Recurring Carts"
+                    "Customer Recurring Carts"
                 ],
                 "summary": "List own recurring carts",
-                "operationId": "bf075ff5575644e2e3010638d473ffe2",
+                "operationId": "099c4a6795c2b406357c45d308413e5e",
                 "responses": {
                     "200": {
                         "description": "Carts with items and current subtotal"
@@ -3307,10 +3311,10 @@
             },
             "post": {
                 "tags": [
-                    "Cafe Recurring Carts"
+                    "Customer Recurring Carts"
                 ],
                 "summary": "Create a recurring cart",
-                "operationId": "a7e2da9b9dd4b22f8756aec4829c5b32",
+                "operationId": "838151c8d2d3bdc10c33ab6dd568e1ac",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -3328,13 +3332,13 @@
                 }
             }
         },
-        "/cafe/recurring-carts/{id}": {
+        "/customer/recurring-carts/{id}": {
             "get": {
                 "tags": [
-                    "Cafe Recurring Carts"
+                    "Customer Recurring Carts"
                 ],
                 "summary": "Recurring cart details",
-                "operationId": "1d5c37d6c52328a2906a103625ecfbe8",
+                "operationId": "72f3d1150f9a27f711296bf5255f256d",
                 "parameters": [
                     {
                         "name": "id",
@@ -3353,10 +3357,10 @@
             },
             "put": {
                 "tags": [
-                    "Cafe Recurring Carts"
+                    "Customer Recurring Carts"
                 ],
                 "summary": "Rename and/or replace the items",
-                "operationId": "5c01bf7d38ab9ca5471da6d44037b134",
+                "operationId": "0453895c2cbf9ba588e8fb9b8e251a12",
                 "parameters": [
                     {
                         "name": "id",
@@ -3385,10 +3389,10 @@
             },
             "delete": {
                 "tags": [
-                    "Cafe Recurring Carts"
+                    "Customer Recurring Carts"
                 ],
                 "summary": "Delete a recurring cart",
-                "operationId": "c66a4a93f4f26c3a8b4d0a82cedb88a3",
+                "operationId": "9fd2c2aa5d911bb0c3a5c060a29a9c81",
                 "parameters": [
                     {
                         "name": "id",
@@ -3406,14 +3410,14 @@
                 }
             }
         },
-        "/cafe/recurring-carts/{id}/order": {
+        "/customer/recurring-carts/{id}/order": {
             "post": {
                 "tags": [
-                    "Cafe Recurring Carts"
+                    "Customer Recurring Carts"
                 ],
                 "summary": "Place an order from a recurring cart",
                 "description": "The cart is kept as-is so it can be ordered again; prices are the current ones.",
-                "operationId": "7855da88c93ae7873c25e8bffbdf9ab3",
+                "operationId": "f69d292697aa0bd0c388b61990b19ca8",
                 "parameters": [
                     {
                         "name": "id",
@@ -3463,7 +3467,7 @@
         "/wallet/gateway/callback": {
             "post": {
                 "tags": [
-                    "Cafe Wallet"
+                    "Customer Wallet"
                 ],
                 "summary": "Payment gateway callback (signed); credits the wallet on success",
                 "operationId": "3a67379bce0bb66ad98d1f565ae63730",
@@ -3661,7 +3665,7 @@
                     {
                         "name": "user_type",
                         "in": "query",
-                        "description": "Comma-separated type names, e.g. cafe,delegate",
+                        "description": "Comma-separated type names, e.g. customer,delegate",
                         "schema": {
                             "type": "string"
                         }
@@ -3944,13 +3948,13 @@
                 ]
             }
         },
-        "/cafe/dashboard": {
+        "/customer/dashboard": {
             "get": {
                 "tags": [
-                    "Cafe Profile"
+                    "Customer Profile"
                 ],
                 "summary": "Customer dashboard stats",
-                "operationId": "3d170e11c2b4501249702f4987b969d8",
+                "operationId": "b4440e8210908ec2e514ef6203ffd70e",
                 "responses": {
                     "200": {
                         "description": "Stats"
@@ -5701,13 +5705,13 @@
                 ]
             }
         },
-        "/cafe/premium-features": {
+        "/customer/premium-features": {
             "get": {
                 "tags": [
-                    "Cafe Profile"
+                    "Customer Profile"
                 ],
                 "summary": "Feature flags for the app UI",
-                "operationId": "c9261beb1459a025abb1d769b50fbcff",
+                "operationId": "41cfe76764a8b549980b945af016d5c9",
                 "responses": {
                     "200": {
                         "description": "Features"
@@ -5720,13 +5724,13 @@
                 ]
             }
         },
-        "/cafe/promos": {
+        "/customer/promos": {
             "get": {
                 "tags": [
-                    "Cafe Promos"
+                    "Customer Promos"
                 ],
                 "summary": "Active promo banners",
-                "operationId": "faea1a5dd4eee5922c1342eac2b3a2c5",
+                "operationId": "95ae2c49b484b90e89c7a6af5731fb75",
                 "responses": {
                     "200": {
                         "description": "Promos"
@@ -6567,7 +6571,7 @@
     },
     "components": {
         "schemas": {
-            "CafeAddressDetail": {
+            "CustomerAddressDetail": {
                 "properties": {
                     "id": {
                         "type": "integer",
@@ -6652,7 +6656,7 @@
                 },
                 "type": "object"
             },
-            "CafeOrderCard": {
+            "CustomerOrderCard": {
                 "properties": {
                     "id": {
                         "type": "integer",
@@ -6753,11 +6757,11 @@
                         "nullable": true
                     },
                     "can_cancel": {
-                        "description": "Pending: POST /cafe/orders/{id}/cancel-request is allowed",
+                        "description": "Pending: POST /customer/orders/{id}/cancel-request is allowed",
                         "type": "boolean"
                     },
                     "can_confirm_receipt": {
-                        "description": "Delivered: PUT /cafe/orders/{id}/status received is allowed",
+                        "description": "Delivered: PUT /customer/orders/{id}/status received is allowed",
                         "type": "boolean"
                     },
                     "placed_at": {
@@ -7020,19 +7024,19 @@
                 "type": "object"
             },
             "AuthLoginRequest": {
-                "description": "Cafe users must login with phone_number and password only. Email is allowed for admin and delegate users only.",
+                "description": "Customer users must login with phone_number and password only. Email is allowed for admin and delegate users only.",
                 "required": [
                     "password"
                 ],
                 "properties": {
                     "email": {
-                        "description": "Use for admin/delegate login only. Cafe users must NOT use email.",
+                        "description": "Use for admin/delegate login only. Customer users must NOT use email.",
                         "type": "string",
                         "format": "email",
                         "nullable": true
                     },
                     "phone_number": {
-                        "description": "Required for cafe users. Example: 0912345678",
+                        "description": "Required for customer users. Example: 0912345678",
                         "type": "string",
                         "nullable": true
                     },
@@ -7072,7 +7076,7 @@
                 },
                 "type": "object"
             },
-            "CafeRegisterRequest": {
+            "CustomerRegisterRequest": {
                 "required": [
                     "name",
                     "phone_number",
@@ -7102,14 +7106,14 @@
                 "type": "object"
             },
             "AuthResponse": {
-                "description": "For cafe users the response contains only the bearer token. Admin and delegate responses also include permissions.",
+                "description": "For customer users the response contains only the bearer token. Admin and delegate responses also include permissions.",
                 "properties": {
                     "token": {
                         "description": "Bearer token to use in the Authorization header",
                         "type": "string"
                     },
                     "permissions": {
-                        "description": "Included for admin/delegate users only. Omitted for cafe users.",
+                        "description": "Included for admin/delegate users only. Omitted for customer users.",
                         "type": "array",
                         "items": {
                             "type": "string"
@@ -7246,7 +7250,7 @@
                 },
                 "type": "object"
             },
-            "CafeOrderRequest": {
+            "CustomerOrderRequest": {
                 "required": [
                     "address_id",
                     "items"
@@ -7425,39 +7429,39 @@
             "description": "الدخول، التسجيل برقم الهاتف والتحقق (OTP)، استعادة كلمة المرور، `me` والخروج."
         },
         {
-            "name": "Cafe Profile",
+            "name": "Customer Profile",
             "description": "الملف الشخصي للمقهى، لوحة الإحصائيات، والميزات المفعّلة في التطبيق."
         },
         {
-            "name": "Cafe Promos",
+            "name": "Customer Promos",
             "description": "بانرات العروض النشطة للصفحة الرئيسية."
         },
         {
-            "name": "Cafe Products",
-            "description": "التصنيفات، المنتجات والبحث بالفلاتر، تفاصيل المنتج وأحجامه، والأقسام المميزة.\n\n## أقسام الرئيسية و«عرض الكل»\n\n**1. الرئيسية** — `GET /cafe/featured-sections`\n\nكل قسم يرجع أول N منتج فقط (N يحدده الأدمن) مع:\n- `products_total`: عدد كل منتجات القسم\n- `has_more`: `true` إذا كان هناك منتجات أكثر من المعروضة\n\nاعرض عنوان القسم ومنتجاته، وإذا كان `has_more = true` أضف زر **«عرض الكل (products_total)»**.\n\n**2. شاشة «عرض الكل»** — `GET /cafe/featured-sections/{id}/products?page=1&per_page=20`\n\n```json\n{\n  \"section\": { \"id\": 1, \"title\": \"الأكثر مبيعاً\", \"source\": \"filter\", \"sort\": \"popular\" },\n  \"data\": [ \"...كروت المنتجات...\" ],\n  \"meta\": { \"current_page\": 1, \"per_page\": 20, \"total\": 12, \"last_page\": 1 }\n}\n```\n\nالعنوان من `section.title` والعدد من `meta.total`.\n\n**3. تحميل المزيد (infinite scroll)** — عند الوصول لآخر القائمة وطالما `meta.current_page < meta.last_page` اطلب `page` التالية وأضف النتائج تحت الموجودة.\n\n**ملاحظات**\n- الصفحة الأولى تبدأ من بداية القسم (تشمل منتجات الرئيسية نفسها بنفس الترتيب) — اعرض الرد كما هو ولا تدمجه مع منتجات الرئيسية.\n- الترتيب ثابت حسب نوع القسم: الأكثر مبيعاً بالمبيعات، الأقل سعراً بالسعر، واليدوي بترتيب الأدمن.\n- القسم المخفي أو المحذوف يرجع `404` — ارجع للرئيسية أو اعرض «القسم غير متاح».\n- الكارت نفسه في كل الشاشات: `is_favorite` للقلب، `in_stock` للتوفر، و`default_variant_id` لإضافة سريعة عبر `POST /cafe/cart/items`.\n- `per_page` الافتراضي 20 والحد الأقصى 100."
+            "name": "Customer Products",
+            "description": "التصنيفات، المنتجات والبحث بالفلاتر، تفاصيل المنتج وأحجامه، والأقسام المميزة.\n\n## أقسام الرئيسية و«عرض الكل»\n\n**1. الرئيسية** — `GET /customer/featured-sections`\n\nكل قسم يرجع أول N منتج فقط (N يحدده الأدمن) مع:\n- `products_total`: عدد كل منتجات القسم\n- `has_more`: `true` إذا كان هناك منتجات أكثر من المعروضة\n\nاعرض عنوان القسم ومنتجاته، وإذا كان `has_more = true` أضف زر **«عرض الكل (products_total)»**.\n\n**2. شاشة «عرض الكل»** — `GET /customer/featured-sections/{id}/products?page=1&per_page=20`\n\n```json\n{\n  \"section\": { \"id\": 1, \"title\": \"الأكثر مبيعاً\", \"source\": \"filter\", \"sort\": \"popular\" },\n  \"data\": [ \"...كروت المنتجات...\" ],\n  \"meta\": { \"current_page\": 1, \"per_page\": 20, \"total\": 12, \"last_page\": 1 }\n}\n```\n\nالعنوان من `section.title` والعدد من `meta.total`.\n\n**3. تحميل المزيد (infinite scroll)** — عند الوصول لآخر القائمة وطالما `meta.current_page < meta.last_page` اطلب `page` التالية وأضف النتائج تحت الموجودة.\n\n**ملاحظات**\n- الصفحة الأولى تبدأ من بداية القسم (تشمل منتجات الرئيسية نفسها بنفس الترتيب) — اعرض الرد كما هو ولا تدمجه مع منتجات الرئيسية.\n- الترتيب ثابت حسب نوع القسم: الأكثر مبيعاً بالمبيعات، الأقل سعراً بالسعر، واليدوي بترتيب الأدمن.\n- القسم المخفي أو المحذوف يرجع `404` — ارجع للرئيسية أو اعرض «القسم غير متاح».\n- الكارت نفسه في كل الشاشات: `is_favorite` للقلب، `in_stock` للتوفر، و`default_variant_id` لإضافة سريعة عبر `POST /customer/cart/items`.\n- `per_page` الافتراضي 20 والحد الأقصى 100."
         },
         {
-            "name": "Cafe Favorites",
-            "description": "إضافة المنتجات للمفضلة وإزالتها وعرضها.\n\n## القلب الأحمر `is_favorite`\n\nكل منتج يرجع للتطبيق يحمل `is_favorite` (`true` = اعرض القلب أحمر) للمستخدم الحالي:\n\n| المكان | الحقل |\n|---|---|\n| قائمة المنتجات والبحث `GET /cafe/products` | `data[].is_favorite` |\n| تفاصيل المنتج `GET /cafe/products/{id}` | `is_favorite` |\n| أقسام الرئيسية `GET /cafe/featured-sections` | `data[].products[].is_favorite` |\n| عرض الكل `GET /cafe/featured-sections/{id}/products` | `data[].is_favorite` |\n| المفضلة `GET /cafe/favorites` | `data[].is_favorite` (دائماً `true`) |\n| السلة `GET /cafe/cart` | `data.items[].product_variant.product.is_favorite` |\n| الطلبيات المتكررة `GET /cafe/recurring-carts` و `/{id}` | `items[].product_variant.product.is_favorite` |\n\n**عند الضغط على القلب:** `POST /cafe/favorites` بـ `{ \"product_id\": 5 }` للإضافة، و `DELETE /cafe/favorites/{productId}` للإزالة. الاستدعاءان آمنان للتكرار ويرجعان `is_favorite` و `favorites_count`، فحدّث القلب محلياً مباشرة دون إعادة تحميل القائمة.\n\nلتلوين القلوب في شاشة لا تحمل الحقل يمكن جلب الأرقام مرة واحدة من `GET /cafe/favorites/ids`."
+            "name": "Customer Favorites",
+            "description": "إضافة المنتجات للمفضلة وإزالتها وعرضها.\n\n## القلب الأحمر `is_favorite`\n\nكل منتج يرجع للتطبيق يحمل `is_favorite` (`true` = اعرض القلب أحمر) للمستخدم الحالي:\n\n| المكان | الحقل |\n|---|---|\n| قائمة المنتجات والبحث `GET /customer/products` | `data[].is_favorite` |\n| تفاصيل المنتج `GET /customer/products/{id}` | `is_favorite` |\n| أقسام الرئيسية `GET /customer/featured-sections` | `data[].products[].is_favorite` |\n| عرض الكل `GET /customer/featured-sections/{id}/products` | `data[].is_favorite` |\n| المفضلة `GET /customer/favorites` | `data[].is_favorite` (دائماً `true`) |\n| السلة `GET /customer/cart` | `data.items[].product_variant.product.is_favorite` |\n| الطلبيات المتكررة `GET /customer/recurring-carts` و `/{id}` | `items[].product_variant.product.is_favorite` |\n\n**عند الضغط على القلب:** `POST /customer/favorites` بـ `{ \"product_id\": 5 }` للإضافة، و `DELETE /customer/favorites/{productId}` للإزالة. الاستدعاءان آمنان للتكرار ويرجعان `is_favorite` و `favorites_count`، فحدّث القلب محلياً مباشرة دون إعادة تحميل القائمة.\n\nلتلوين القلوب في شاشة لا تحمل الحقل يمكن جلب الأرقام مرة واحدة من `GET /customer/favorites/ids`."
         },
         {
-            "name": "Cafe Cart",
+            "name": "Customer Cart",
             "description": "سلة المشتريات: الإضافة والتعديل، فحص المخزون، وإتمام الطلب (نقداً عند الاستلام أو من المحفظة)."
         },
         {
-            "name": "Cafe Recurring Carts",
+            "name": "Customer Recurring Carts",
             "description": "الطلبيات المتكررة: سلال بأسماء يعاد طلبها بضغطة واحدة."
         },
         {
-            "name": "Cafe Orders",
+            "name": "Customer Orders",
             "description": "الطلبات: الإنشاء المباشر، القائمة والتفاصيل، تأكيد الاستلام، طلب الإلغاء وموقع المندوب."
         },
         {
-            "name": "Cafe Addresses",
+            "name": "Customer Addresses",
             "description": "عناوين التوصيل ومناطق التوصيل على الخريطة."
         },
         {
-            "name": "Cafe Wallet",
+            "name": "Customer Wallet",
             "description": "المحفظة: الرصيد والحركات، الشحن بتحويل بنكي (مع الإيصال) أو إلكترونياً عبر البوابة."
         },
         {

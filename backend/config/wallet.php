@@ -14,6 +14,6 @@ return [
         // HMAC key used to sign gateway callbacks.
         'secret' => env('WALLET_GATEWAY_SECRET', env('APP_KEY')),
         // Where the customer lands after checkout (relative to the site root).
-        'return_url' => env('WALLET_GATEWAY_RETURN_URL', '/cafe/wallet'),
+        'return_url' => env('WALLET_GATEWAY_RETURN_URL', '/customer/wallet'),
     ],
 ];

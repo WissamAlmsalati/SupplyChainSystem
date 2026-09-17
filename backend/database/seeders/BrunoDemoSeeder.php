@@ -20,7 +20,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Self-contained demo data for the Bruno Cafe API collection.
+ * Self-contained demo data for the Bruno Customer API collection.
  *
  * Run before executing the Bruno collection:
  *   php artisan db:seed --class=BrunoDemoSeeder
@@ -36,7 +36,7 @@ class BrunoDemoSeeder extends Seeder
 
         $permissions = collect([
             'ORDERS_VIEW', 'ORDERS_CREATE',
-            'CAFE_BRANCHES_VIEW', 'CAFE_BRANCHES_CREATE', 'CAFE_BRANCHES_EDIT', 'CAFE_BRANCHES_DELETE',
+            'CUSTOMER_BRANCHES_VIEW', 'CUSTOMER_BRANCHES_CREATE', 'CUSTOMER_BRANCHES_EDIT', 'CUSTOMER_BRANCHES_DELETE',
             'INVENTORY_VIEW',
         ])->map(fn ($code) => Permission::firstOrCreate(['code' => $code]));
         $customerType->permissions()->syncWithoutDetaching($permissions->pluck('id'));
@@ -44,15 +44,15 @@ class BrunoDemoSeeder extends Seeder
         $user = AppUser::firstOrCreate(
             ['mobile_number' => '0911111111'],
             [
-                'name' => 'Cafe Owner',
-                'email' => 'cafe@bruno.test',
+                'name' => 'Customer Owner',
+                'email' => 'customer@bruno.test',
                 'password' => Hash::make('password'),
                 'user_type_id' => $customerType->id,
                 'is_active' => true,
             ]
         );
         $user->customerProfile()->updateOrCreate(['user_id' => $user->id], [
-            'business_name' => 'Bruno Cafe',
+            'business_name' => 'Bruno Customer',
             'latitude' => 27.0,
             'longitude' => 17.0,
         ]);

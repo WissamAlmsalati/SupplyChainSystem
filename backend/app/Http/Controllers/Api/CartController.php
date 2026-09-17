@@ -6,7 +6,7 @@ use App\Models\Cart;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-// Read-only admin view of customer carts; customers manage carts via /cafe endpoints.
+// Read-only admin view of customer carts; customers manage carts via /customer endpoints.
 class CartController extends BaseApiController
 {
     public function index(Request $request): JsonResponse

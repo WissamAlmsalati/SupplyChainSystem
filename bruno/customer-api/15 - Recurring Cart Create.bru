@@ -1,0 +1,47 @@
+meta {
+  name: Recurring Cart - Create
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/customer/recurring-carts
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "الطلبية الأسبوعية",
+    "items": [
+      { "product_variant_id": {{variantId}}, "quantity": 2 }
+    ]
+  }
+}
+
+script:post-response {
+  const json = res.getBody();
+  if (json.data && json.data.id) {
+    bru.setVar("recurringCartId", json.data.id);
+  }
+}
+
+tests {
+  test("status is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("recurring cart created", function() {
+    const json = res.getBody();
+    expect(json.data.type).to.equal("recurring");
+  });
+}
+
+docs {
+  Named cart the customer re-orders from. Order it with
+  POST /customer/recurring-carts/{id}/order { "address_id": ... } — the cart is kept.
+}

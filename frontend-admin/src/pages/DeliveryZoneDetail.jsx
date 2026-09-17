@@ -18,7 +18,7 @@ export default function DeliveryZoneDetail() {
   const [error, setError] = useState('')
   const [form, setForm] = useState({ name: '', delivery_price: '', is_active: true })
   const { canEdit: canEditZone } = useModulePermission('DELIVERY_ZONES')
-  const { canEdit: canEditAddress } = useModulePermission('CAFE_BRANCHES')
+  const { canEdit: canEditAddress } = useModulePermission('CUSTOMER_BRANCHES')
   const [addingAddress, setAddingAddress] = useState(false)
   const [availableAddresses, setAvailableAddresses] = useState([])
   const [branchesLoading, setBranchesLoading] = useState(false)

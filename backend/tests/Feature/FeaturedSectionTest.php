@@ -98,7 +98,7 @@ class FeaturedSectionTest extends TestCase
         $first->syncProducts($this->ids('إسبريسو', 'بن عربي'));
         FeaturedSection::create(['title' => 'مخفي', 'is_active' => false])->syncProducts($this->ids('شاي'));
 
-        $this->getJson('/api/v1/cafe/featured-sections', $this->as($this->customer))
+        $this->getJson('/api/v1/customer/featured-sections', $this->as($this->customer))
             ->assertOk()
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.0.title', 'الأكثر طلباً')
@@ -109,7 +109,7 @@ class FeaturedSectionTest extends TestCase
             ->assertJsonPath('data.1.title', 'مستلزمات');
 
         $this->postJson('/api/v1/featured-sections/reorder', ['ids' => [$second->id, $first->id]], $this->as($this->admin))->assertOk();
-        $this->getJson('/api/v1/cafe/featured-sections', $this->as($this->customer))->assertJsonPath('data.0.title', 'مستلزمات');
+        $this->getJson('/api/v1/customer/featured-sections', $this->as($this->customer))->assertJsonPath('data.0.title', 'مستلزمات');
     }
 
     public function test_unavailable_products_are_hidden_and_empty_sections_skipped(): void
@@ -119,16 +119,16 @@ class FeaturedSectionTest extends TestCase
         $this->products['شاي']->update(['is_active' => false]);
         $this->products['سكر']->variants()->update(['is_active' => false]);
 
-        $this->getJson('/api/v1/cafe/featured-sections', $this->as($this->customer))->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/customer/featured-sections', $this->as($this->customer))->assertOk()->assertJsonCount(0, 'data');
 
         $this->products['سكر']->variants()->update(['is_active' => true]);
-        $this->getJson('/api/v1/cafe/featured-sections', $this->as($this->customer))
+        $this->getJson('/api/v1/customer/featured-sections', $this->as($this->customer))
             ->assertJsonCount(1, 'data.0.products')->assertJsonPath('data.0.products.0.name', 'سكر');
     }
 
     public function test_customers_cannot_manage_sections(): void
     {
-        \App\Models\Permission::create(['code' => 'FEATURED_SECTIONS_CREATE']);
+        \App\Models\Permission::firstOrCreate(['code' => 'FEATURED_SECTIONS_CREATE']);
         $this->postJson('/api/v1/featured-sections', ['title' => 'x', 'product_ids' => $this->ids('شاي')], $this->as($this->customer))->assertForbidden();
     }
 
@@ -154,7 +154,7 @@ class FeaturedSectionTest extends TestCase
         $this->postJson('/api/v1/featured-sections/preview', ['sort' => 'price_desc', 'products_limit' => 2], $h)
             ->assertOk()->assertJsonPath('total', 4)->assertJsonCount(2, 'products')->assertJsonPath('products.0.name', 'سكر');
 
-        $app = $this->getJson('/api/v1/cafe/featured-sections', $this->as($this->customer))->assertOk();
+        $app = $this->getJson('/api/v1/customer/featured-sections', $this->as($this->customer))->assertOk();
         $best = collect($app->json('data'))->firstWhere('title', 'الأكثر مبيعاً');
         $this->assertSame(['شاي', 'بن عربي', 'سكر'], array_column($best['products'], 'name'));
         $this->assertSame([4, true, 'popular'], [$best['products_total'], $best['has_more'], $best['sort']]);
@@ -163,7 +163,7 @@ class FeaturedSectionTest extends TestCase
     public function test_rule_sections_update_automatically_with_new_sales(): void
     {
         $section = FeaturedSection::create(['title' => 'الأكثر مبيعاً', 'source' => 'filter', 'sort' => 'popular']);
-        $first = fn () => $this->getJson("/api/v1/cafe/featured-sections/{$section->id}/products", $this->as($this->customer))->json('data.0.name');
+        $first = fn () => $this->getJson("/api/v1/customer/featured-sections/{$section->id}/products", $this->as($this->customer))->json('data.0.name');
         $this->assertSame('شاي', $first());
 
         OrderItem::create(['order_id' => Order::factory()->create()->id, 'product_variant_id' => $this->products['سكر']->variants()->first()->id, 'product_name' => 'سكر', 'quantity' => 100, 'unit_price' => 1]);
@@ -177,17 +177,17 @@ class FeaturedSectionTest extends TestCase
         }
         $h = $this->as($this->customer);
 
-        $this->getJson('/api/v1/cafe/featured-sections?per_page=2&page=2', $h)->assertOk()
+        $this->getJson('/api/v1/customer/featured-sections?per_page=2&page=2', $h)->assertOk()
             ->assertJsonCount(1, 'data')->assertJsonPath('data.0.title', 'قسم 3')
             ->assertJsonPath('meta.total', 3)->assertJsonPath('meta.last_page', 2)
             ->assertJsonCount(2, 'data.0.products')->assertJsonPath('data.0.has_more', true);
 
         $id = FeaturedSection::where('title', 'قسم 1')->value('id');
-        $this->getJson("/api/v1/cafe/featured-sections/{$id}/products?per_page=3&page=2", $h)->assertOk()
+        $this->getJson("/api/v1/customer/featured-sections/{$id}/products?per_page=3&page=2", $h)->assertOk()
             ->assertJsonPath('section.title', 'قسم 1')->assertJsonCount(1, 'data')
             ->assertJsonPath('meta.total', 4)->assertJsonPath('meta.last_page', 2);
 
         FeaturedSection::whereKey($id)->update(['is_active' => false]);
-        $this->getJson("/api/v1/cafe/featured-sections/{$id}/products", $h)->assertNotFound();
+        $this->getJson("/api/v1/customer/featured-sections/{$id}/products", $h)->assertNotFound();
     }
 }

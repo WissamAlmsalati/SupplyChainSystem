@@ -64,9 +64,9 @@ class AddressController extends BaseApiController
      */
     public function store(AddressRequest $request): JsonResponse
     {
-        // ponytail: cafe_branches premium feature gates address creation for everyone;
+        // ponytail: customer_branches premium feature gates address creation for everyone;
         // frontend hides the add button, this guard blocks direct API calls.
-        if (!PremiumFeature::isActive('cafe_branches')) {
+        if (!PremiumFeature::isActive('customer_branches')) {
             return $this->jsonResponse(['message' => 'إضافة عناوين غير متاحة — الميزة معطلة'], 403);
         }
 

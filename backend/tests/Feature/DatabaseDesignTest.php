@@ -156,7 +156,7 @@ class DatabaseDesignTest extends TestCase
     {
         $this->receiveStock(50);
 
-        $cart = $this->postJson('/api/v1/cafe/recurring-carts', [
+        $cart = $this->postJson('/api/v1/customer/recurring-carts', [
             'name' => 'الطلبية الأسبوعية',
             'items' => [['product_variant_id' => $this->variant->id, 'quantity' => 3]],
         ], $this->asCustomer())->assertCreated()
@@ -165,7 +165,7 @@ class DatabaseDesignTest extends TestCase
             ->json('data');
 
         foreach ([1, 2] as $_) {
-            $this->postJson("/api/v1/cafe/recurring-carts/{$cart['id']}/order", [
+            $this->postJson("/api/v1/customer/recurring-carts/{$cart['id']}/order", [
                 'address_id' => $this->address->id,
             ], $this->asCustomer())->assertCreated();
         }
@@ -173,7 +173,7 @@ class DatabaseDesignTest extends TestCase
         $this->assertSame(2, Order::where('cart_id', $cart['id'])->count());
         $this->assertDatabaseHas('cart_items', ['cart_id' => $cart['id'], 'quantity' => 3]);
         $this->assertSame(44, $this->stockOnHand());
-        $this->getJson('/api/v1/cafe/recurring-carts', $this->asCustomer())->assertOk()->assertJsonCount(1, 'data');
+        $this->getJson('/api/v1/customer/recurring-carts', $this->asCustomer())->assertOk()->assertJsonCount(1, 'data');
     }
 
     public function test_recurring_order_uses_current_price(): void
@@ -184,7 +184,7 @@ class DatabaseDesignTest extends TestCase
 
         $this->variant->update(['price' => 25]);
 
-        $this->postJson("/api/v1/cafe/recurring-carts/{$cart->id}/order", [
+        $this->postJson("/api/v1/customer/recurring-carts/{$cart->id}/order", [
             'address_id' => $this->address->id,
         ], $this->asCustomer())->assertCreated()->assertJsonPath('data.total_amount', '30.00');
     }
@@ -193,7 +193,7 @@ class DatabaseDesignTest extends TestCase
     {
         $this->receiveStock(10);
 
-        $orderId = $this->postJson('/api/v1/cafe/orders', [
+        $orderId = $this->postJson('/api/v1/customer/orders', [
             'address_id' => $this->address->id,
             'items' => [['product_variant_id' => $this->variant->id, 'quantity' => 2]],
         ], $this->asCustomer())->assertCreated()->json('data.id');
@@ -210,7 +210,7 @@ class DatabaseDesignTest extends TestCase
     {
         $this->receiveStock(1);
 
-        $this->postJson('/api/v1/cafe/orders', [
+        $this->postJson('/api/v1/customer/orders', [
             'address_id' => $this->address->id,
             'items' => [['product_variant_id' => $this->variant->id, 'quantity' => 5]],
         ], $this->asCustomer())->assertStatus(409)->assertJsonPath('shortages.0.available', 1);
@@ -223,7 +223,7 @@ class DatabaseDesignTest extends TestCase
     {
         $this->receiveStock(10);
 
-        $orderId = $this->postJson('/api/v1/cafe/orders', [
+        $orderId = $this->postJson('/api/v1/customer/orders', [
             'address_id' => $this->address->id,
             'items' => [['product_variant_id' => $this->variant->id, 'quantity' => 4]],
         ], $this->asCustomer())->assertCreated()->json('data.id');
@@ -272,7 +272,7 @@ class DatabaseDesignTest extends TestCase
     public function test_soft_deleted_catalog_rows_stay_linked_to_orders(): void
     {
         $this->receiveStock(5);
-        $orderId = $this->postJson('/api/v1/cafe/orders', [
+        $orderId = $this->postJson('/api/v1/customer/orders', [
             'address_id' => $this->address->id,
             'items' => [['product_variant_id' => $this->variant->id, 'quantity' => 1]],
         ], $this->asCustomer())->assertCreated()->json('data.id');

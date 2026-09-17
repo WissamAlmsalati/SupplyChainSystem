@@ -14,7 +14,7 @@ class FeaturedSection extends Model
 {
     use LogsActivity;
 
-    // Filter keys a rule-based section may store (same meaning as /cafe/products).
+    // Filter keys a rule-based section may store (same meaning as /customer/products).
     public const FILTER_KEYS = ['category_id', 'brand', 'min_price', 'max_price', 'in_stock'];
 
     protected $fillable = [

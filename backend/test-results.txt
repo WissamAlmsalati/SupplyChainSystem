@@ -2,20 +2,20 @@
    PASS  Tests\Unit\ExampleTest
   ✓ that true is true
 
-   FAIL  Tests\Feature\CafeMobileEndpointsTest
-  ⨯ cafe login returns token and permissions
-  ⨯ cafe me returns user
-  ⨯ cafe profile
-  ⨯ cafe branches list
-  ⨯ cafe branch create
-  ⨯ cafe branch orders
-  ⨯ cafe orders list
-  ⨯ cafe order create
-  ⨯ cafe categories list
-  ⨯ cafe products list
-  ⨯ cafe product variants
-  ⨯ cafe inventory list
-  ⨯ cafe can list delivery zones for map
+   FAIL  Tests\Feature\CustomerMobileEndpointsTest
+  ⨯ customer login returns token and permissions
+  ⨯ customer me returns user
+  ⨯ customer profile
+  ⨯ customer branches list
+  ⨯ customer branch create
+  ⨯ customer branch orders
+  ⨯ customer orders list
+  ⨯ customer order create
+  ⨯ customer categories list
+  ⨯ customer products list
+  ⨯ customer product variants
+  ⨯ customer inventory list
+  ⨯ customer can list delivery zones for map
 
    FAIL  Tests\Feature\DelegateEndpointsTest
   ⨯ admin can list delegates
@@ -43,7 +43,7 @@
   ⨯ admin can assign delegate to order
   ⨯ cannot assign inactive delegate
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe logi…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer logi…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -58,10 +58,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe me r…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer me r…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -76,10 +76,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe prof…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer prof…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -94,10 +94,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe bran…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer bran…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -112,10 +112,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe bran…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer bran…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -130,10 +130,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe bran…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer bran…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -148,10 +148,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe orde…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer orde…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -166,10 +166,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe orde…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer orde…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -184,10 +184,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe cate…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer cate…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -202,10 +202,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe prod…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer prod…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -220,10 +220,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe prod…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer prod…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -238,10 +238,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe inve…  QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer inve…  QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -256,10 +256,10 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
-   FAILED  Tests\Feature\CafeMobileEndpointsTest > cafe can…   QueryException   
+   FAILED  Tests\Feature\CustomerMobileEndpointsTest > customer can…   QueryException   
   SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for db failed: nodename nor servname provided, or not known (Connection: mysql, Host: db, Port: 3306, Database: cafe_supply_chain_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'migrations' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)
 
   at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
@@ -274,7 +274,7 @@
     842▕                 $e,
 
       [2m+53 vendor frames [22m
-  54  tests/Feature/CafeMobileEndpointsTest.php:31
+  54  tests/Feature/CustomerMobileEndpointsTest.php:31
 
   ────────────────────────────────────────────────────────────────────────────  
    FAILED  Tests\Feature\DelegateEndpointsTest > admin can l…  QueryException   

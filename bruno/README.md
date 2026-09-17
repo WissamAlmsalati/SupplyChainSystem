@@ -1,6 +1,6 @@
 # Bruno API Collection
 
-GUI + CLI collection to test the Cafe Mobile API endpoints.
+GUI + CLI collection to test the Customer Mobile API endpoints.
 
 ## Quick start (GUI)
 
@@ -37,7 +37,7 @@ npm run run:local:reporter
    php artisan db:seed --class=BrunoDemoSeeder
    ```
 
-The demo seeder creates a cafe user with:
+The demo seeder creates a customer user with:
 - Phone: `0911111111`
 - Password: `password`
 
@@ -45,4 +45,4 @@ The demo seeder creates a cafe user with:
 
 - `local`: `http://localhost:8000/api/v1`
 
-Edit `cafe-api/environments/local.bru` if your backend runs on a different URL.
+Edit `customer-api/environments/local.bru` if your backend runs on a different URL.

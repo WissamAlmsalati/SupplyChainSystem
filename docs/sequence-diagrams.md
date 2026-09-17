@@ -7,7 +7,7 @@ These Mermaid diagrams describe the main business flows exposed by the API docum
 ```mermaid
 sequenceDiagram
     autonumber
-    actor U as Cafe User
+    actor U as Customer User
     participant C as CartController
     participant CI as CartItemController
     participant O as OrderController

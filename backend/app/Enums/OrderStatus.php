@@ -41,4 +41,36 @@ enum OrderStatus: string
     {
         return array_column(self::cases(), 'value');
     }
+
+    /**
+     * Allowed next statuses. The lifecycle only moves forward; the one
+     * backward step is an admin rejecting a customer's cancellation request.
+     * Cancelling is allowed up to delivery; received (customer-confirmed) is final.
+     *
+     * @return self[]
+     */
+    public function transitions(): array
+    {
+        return match ($this) {
+            self::Pending => [self::Confirmed, self::CancellationRequested, self::Cancelled],
+            self::Confirmed => [self::Preparing, self::OutForDelivery, self::Cancelled],
+            self::Preparing => [self::OutForDelivery, self::Cancelled],
+            self::OutForDelivery => [self::Delivered, self::Cancelled],
+            // Cancelling a delivered order is a return: stock and wallet are refunded.
+            self::Delivered => [self::Received, self::Cancelled],
+            self::CancellationRequested => [self::Cancelled, self::Pending],
+            self::Received, self::Cancelled => [],
+        };
+    }
+
+    public function canTransitionTo(self $to): bool
+    {
+        return in_array($to, $this->transitions(), true);
+    }
+
+    /** @return string[] */
+    public function nextValues(): array
+    {
+        return array_map(fn (self $status) => $status->value, $this->transitions());
+    }
 }

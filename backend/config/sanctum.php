@@ -50,7 +50,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    // ponytail: tokens used to live forever; 30 days by default, tune per env.
+    'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION_MINUTES', 43200),
 
     /*
     |--------------------------------------------------------------------------

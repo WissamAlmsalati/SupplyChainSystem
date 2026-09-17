@@ -6,7 +6,7 @@ namespace App\OpenApi;
  * @OA\Info(
  *     version="1.0.0",
  *     title="Al-Sahel Cafe Supplies API",
- *     description="REST API documentation split by platform: Admin Dashboard, Cafe Mobile App, and Public Storefront.",
+ *     description="REST API documentation split by platform: Admin Dashboard, Customer Mobile App, and Public Storefront.",
  * )
  *
  * @OA\Server(
@@ -16,7 +16,7 @@ namespace App\OpenApi;
  *
  * @OA\Tag(name="Admin Dashboard", description="Admin platform analytics"),
  * @OA\Tag(name="Admin Users", description="Admin platform user management"),
- * @OA\Tag(name="Admin Cafes", description="Admin platform cafe management"),
+ * @OA\Tag(name="Admin Customers", description="Admin platform customer management"),
  * @OA\Tag(name="Admin Branches", description="Admin platform branch management"),
  * @OA\Tag(name="Admin Orders", description="Admin platform order management"),
  * @OA\Tag(name="Admin Inventory", description="Admin platform inventory management"),

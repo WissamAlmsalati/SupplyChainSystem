@@ -32,7 +32,7 @@ class LibyanDataSeeder extends Seeder
         ['name' => 'اجدابيا', 'lat' => 30.7554, 'lng' => 20.2263],
     ];
 
-    private array $cafeNames = [
+    private array $customerNames = [
         'مقهى طرابلس',
         'مقهى بنغازي',
         'مقهى مصراتة',
@@ -137,20 +137,20 @@ class LibyanDataSeeder extends Seeder
             ->syncProducts(Product::whereIn('name', $picked)->get()->sortBy(fn ($p) => array_search($p->name, $picked))->pluck('id')->all());
 
         $customerType = UserType::where('name', UserRole::Customer->value)->firstOrFail();
-        foreach ($this->cafeNames as $i => $cafeName) {
+        foreach ($this->customerNames as $i => $customerName) {
             $city = $this->cities[$i];
             $secondaryCity = $this->cities[($i + 1) % count($this->cities)];
 
             $customer = AppUser::create([
-                'name' => $cafeName,
-                'email' => 'cafe' . ($i + 1) . '@example.com',
+                'name' => $customerName,
+                'email' => 'customer' . ($i + 1) . '@example.com',
                 'mobile_number' => '091000000' . ($i + 1),
                 'user_type_id' => $customerType->id,
                 'password' => Hash::make('password'),
                 'is_active' => true,
             ]);
             $customer->customerProfile->update([
-                'business_name' => $cafeName,
+                'business_name' => $customerName,
                 'latitude' => $city['lat'],
                 'longitude' => $city['lng'],
             ]);

@@ -70,8 +70,8 @@
                 <h2>Admin Dashboard</h2>
                 <span>لوحة تحكم الأدمن</span>
             </a>
-            <a class="card" href="/docs/cafe">
-                <h2>Cafe Mobile App</h2>
+            <a class="card" href="/docs/customer">
+                <h2>Customer Mobile App</h2>
                 <span>تطبيق المقاهي</span>
             </a>
             <a class="card" href="/docs/delegate-scalar">

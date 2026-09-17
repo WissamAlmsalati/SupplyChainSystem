@@ -115,14 +115,21 @@ class DelegateMobileController extends BaseApiController
             ->where('delegate_id', auth()->id())
             ->findOrFail($id);
 
+        // Moves the delegate app may offer next (subset of the order lifecycle).
+        $order->setAttribute('next_statuses', array_values(array_intersect(
+            $order->status->nextValues(),
+            [OrderStatus::OutForDelivery->value, OrderStatus::Delivered->value],
+        )));
+
         return $this->jsonResponse($order);
     }
 
     /**
-     * @OA\Post(path="/delegate/orders/{id}/status", tags={"Delegate Mobile"}, summary="Mark an assigned order delivered",
+     * @OA\Post(path="/delegate/orders/{id}/status", tags={"Delegate Mobile"}, summary="Move an assigned order to out_for_delivery or delivered",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="status", type="string", enum={"delivered"}))),
-     *     @OA\Response(response=200, description="Order updated"))
+     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="status", type="string", enum={"out_for_delivery", "delivered"}))),
+     *     @OA\Response(response=200, description="Order updated"),
+     *     @OA\Response(response=422, description="Move not allowed from the current status"))
      */
     public function updateOrderStatus(Request $request, int $id): JsonResponse
     {
@@ -131,14 +138,15 @@ class DelegateMobileController extends BaseApiController
         }
 
         $request->validate([
-            'status' => ['required', 'string', Rule::in([OrderStatus::Delivered->value])],
+            'status' => ['required', 'string', Rule::in([OrderStatus::OutForDelivery->value, OrderStatus::Delivered->value])],
         ]);
 
         $order = Order::where('delegate_id', auth()->id())->findOrFail($id);
+        $target = OrderStatus::from($request->input('status'));
         $wasDelivered = $order->status === OrderStatus::Delivered;
-        $order->update(['status' => OrderStatus::Delivered]);
+        $order->update(['status' => $target]);
 
-        $collected = $wasDelivered ? 0 : (float) $order->payments()->where('collected_by', auth()->id())->sum('amount');
+        $collected = ($wasDelivered || $target !== OrderStatus::Delivered) ? 0 : (float) $order->payments()->where('collected_by', auth()->id())->sum('amount');
 
         return $this->jsonResponse([
             'id' => $order->id,

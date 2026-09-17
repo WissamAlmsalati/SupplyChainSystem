@@ -21,7 +21,7 @@ namespace App\OpenApi;
  * ---------------- Users ----------------
  * @OA\Get(path="/users", tags={"Users"}, summary="List users", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
- *     @OA\Parameter(name="user_type", in="query", description="Comma-separated type names, e.g. cafe,delegate", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="user_type", in="query", description="Comma-separated type names, e.g. customer,delegate", @OA\Schema(type="string")),
  *     @OA\Parameter(name="is_active", in="query", @OA\Schema(type="boolean")),
  *     @OA\Response(response=200, description="Paginated users"))
  * @OA\Post(path="/users", tags={"Users"}, summary="Create a user (matching profile row is created automatically)", security={{"bearerAuth":{}}},
@@ -48,7 +48,7 @@ namespace App\OpenApi;
  * @OA\Get(path="/dashboard/monthly/{year}/{month}", tags={"Dashboard"}, summary="Stats for one month", security={{"bearerAuth":{}}},
  *     @OA\Parameter(name="year", in="path", required=true, @OA\Schema(type="integer")),
  *     @OA\Parameter(name="month", in="path", required=true, @OA\Schema(type="integer")), @OA\Response(response=200, description="Stats"))
- * @OA\Get(path="/cafe/dashboard", tags={"Cafe Profile"}, summary="Customer dashboard stats", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Stats"))
+ * @OA\Get(path="/customer/dashboard", tags={"Customer Profile"}, summary="Customer dashboard stats", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Stats"))
  *
  * ---------------- Catalog ----------------
  * @OA\Get(path="/products", tags={"Catalog"}, summary="List products (public)",
@@ -213,8 +213,8 @@ namespace App\OpenApi;
  *     @OA\Parameter(name="user_id", in="query", @OA\Schema(type="integer")), @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
  *     @OA\Response(response=200, description="Paginated log"))
  * @OA\Post(path="/logout", tags={"Auth"}, summary="Revoke the current token", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Logged out"))
- * @OA\Get(path="/cafe/premium-features", tags={"Cafe Profile"}, summary="Feature flags for the app UI", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Features"))
- * @OA\Get(path="/cafe/promos", tags={"Cafe Promos"}, summary="Active promo banners", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Promos"))
+ * @OA\Get(path="/customer/premium-features", tags={"Customer Profile"}, summary="Feature flags for the app UI", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Features"))
+ * @OA\Get(path="/customer/promos", tags={"Customer Promos"}, summary="Active promo banners", security={{"bearerAuth":{}}}, @OA\Response(response=200, description="Promos"))
  *
  * ---------------- Wallets (admin) ----------------
  * @OA\Get(path="/wallets", tags={"Wallets"}, summary="Customer wallets with balances", security={{"bearerAuth":{}}},

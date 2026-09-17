@@ -7,12 +7,28 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    // Guarded routes are fail-closed (see CheckPermission), so every test run
+    // starts with the real roles and permission codes, seeded once per process.
+    protected $seed = true;
+
+    protected $seeder = \Database\Seeders\AccessControlSeeder::class;
+
     /**
-     * Create the application with test-only database config so the dev
-     * database (and its seeded admin user) survives test runs.
+     * Create the application with test-only config. phpunit.xml forces values
+     * with <env force="true">, which writes $_ENV and putenv() only, while
+     * Laravel's env() reads $_SERVER first and the Docker containers export
+     * DB_*, CACHE_STORE, QUEUE_CONNECTION… there. Mirror the forced values into
+     * $_SERVER so tests never touch the dev MySQL or the shared Redis.
      */
     public function createApplication(): Application
     {
+        foreach ($_ENV as $key => $value) {
+            if (is_string($value) && ($_SERVER[$key] ?? null) !== $value) {
+                $_SERVER[$key] = $value;
+                putenv("{$key}={$value}");
+            }
+        }
+
         $defaults = [
             'DB_CONNECTION' => 'mysql',
             'DB_HOST' => 'db',

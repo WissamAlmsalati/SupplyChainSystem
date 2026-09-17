@@ -36,7 +36,7 @@ class PromoController extends BaseApiController
     }
 
     /**
-     * Active promos for the cafe mobile app (deep-linkable banners).
+     * Active promos for the customer mobile app (deep-linkable banners).
      */
     public function active(): JsonResponse
     {

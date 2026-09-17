@@ -26,7 +26,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
           client.get('/addresses?per_page=10000'),
           client.get('/product-variants?per_page=10000'),
         ])
-        setUsers((uRes.data?.data ?? uRes.data ?? []).filter((u) => u.user_type?.name === 'cafe'))
+        setUsers((uRes.data?.data ?? uRes.data ?? []).filter((u) => u.user_type?.name === 'customer'))
         setAddresses(aRes.data?.data ?? aRes.data ?? [])
         setVariants(vRes.data?.data ?? vRes.data ?? [])
       } catch (err) {

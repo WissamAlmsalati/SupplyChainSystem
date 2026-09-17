@@ -48,10 +48,15 @@ fi
 # Ensure storage permissions
 chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Route container role: worker or web
+# Route container role: worker, scheduler or web
 if [ "$CONTAINER_ROLE" = "worker" ]; then
   echo "Starting queue worker..."
   exec php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+fi
+
+if [ "$CONTAINER_ROLE" = "scheduler" ]; then
+  echo "Starting scheduler..."
+  exec php artisan schedule:work
 fi
 
 exec "$@"

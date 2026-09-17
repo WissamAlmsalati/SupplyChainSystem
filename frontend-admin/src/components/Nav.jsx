@@ -69,7 +69,7 @@ const groups = [
     title: 'اللوجستيات',
     links: [
       { to: '/warehouses', label: 'المستودعات', icon: 'Warehouse', permission: 'WAREHOUSES_VIEW' },
-      { to: '/addresses', label: 'العناوين', icon: 'MapPin', permission: 'CAFE_BRANCHES_VIEW' },
+      { to: '/addresses', label: 'العناوين', icon: 'MapPin', permission: 'CUSTOMER_BRANCHES_VIEW' },
       { to: '/delivery-zones', label: 'مناطق التوصيل', icon: 'Map', permission: 'DELIVERY_ZONES_VIEW' },
       { to: '/map', label: 'الخريطة', icon: 'Map' },
     ],
@@ -91,7 +91,7 @@ const groups = [
         permission: 'USERS_VIEW',
       },
       {
-        to: '/cafes',
+        to: '/customers',
         label: 'المقاهي',
         icon: 'Users',
         permission: 'USERS_VIEW',

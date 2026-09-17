@@ -3,9 +3,9 @@
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\AppUserController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\CafeDashboardController;
-use App\Http\Controllers\Api\CafeMobileController;
-use App\Http\Controllers\Api\CafeWalletController;
+use App\Http\Controllers\Api\CustomerDashboardController;
+use App\Http\Controllers\Api\CustomerMobileController;
+use App\Http\Controllers\Api\CustomerWalletController;
 use App\Http\Controllers\Api\CustodyController;
 use App\Http\Controllers\Api\DelegateCustodyController;
 use App\Http\Controllers\Api\DelegateWalletController;
@@ -52,14 +52,17 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('v1')->group(function () {
-    Route::post('login', [AuthController::class, 'login']);
+Route::prefix('v1')->middleware('throttle:api')->group(function () {
+    Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth');
     Route::get('placeholder/{kind}', [\App\Http\Controllers\Api\PlaceholderController::class, 'show'])->name('placeholder');
-    Route::post('cafe/register', [AuthController::class, 'registerCafe'])->name('cafe.register');
-    Route::post('cafe/verify-otp', [AuthController::class, 'verifyRegistrationOtp'])->name('cafe.verify-otp');
-    Route::post('cafe/resend-otp', [AuthController::class, 'resendRegistrationOtp'])->name('cafe.resend-otp');
-    Route::post('cafe/forgot-password', [PasswordResetController::class, 'sendOtp'])->name('cafe.forgot-password');
-    Route::post('cafe/reset-password', [PasswordResetController::class, 'resetPassword'])->name('cafe.reset-password');
+    // OTP endpoints share the "otp" limiter: 6-digit codes must not be guessable.
+    Route::middleware('throttle:otp')->group(function () {
+        Route::post('customer/register', [AuthController::class, 'registerCustomer'])->name('customer.register');
+        Route::post('customer/verify-otp', [AuthController::class, 'verifyRegistrationOtp'])->name('customer.verify-otp');
+        Route::post('customer/resend-otp', [AuthController::class, 'resendRegistrationOtp'])->name('customer.resend-otp');
+        Route::post('customer/forgot-password', [PasswordResetController::class, 'sendOtp'])->name('customer.forgot-password');
+        Route::post('customer/reset-password', [PasswordResetController::class, 'resetPassword'])->name('customer.reset-password');
+    });
 
     // Payment gateway: signed provider callback and the sandbox checkout page.
     Route::post('wallet/gateway/callback', [WalletGatewayController::class, 'callback'])->name('wallet.gateway.callback');
@@ -76,57 +79,57 @@ Route::prefix('v1')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('dashboard/monthly/{year}/{month}', [DashboardController::class, 'monthlyStats'])->name('dashboard.monthly');
-        Route::get('cafe/dashboard', [CafeDashboardController::class, 'index'])->name('cafe.dashboard');
+        Route::get('customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
         Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');
         Route::put('premium-features/{premiumFeature}', [PremiumFeatureController::class, 'update'])->name('premium-features.update');
 
-        Route::prefix('cafe')->name('cafe.')->group(function () {
-            // Profile endpoints stay reachable for every authenticated cafe user.
-            Route::get('profile', [CafeMobileController::class, 'profile'])->name('profile');
-            Route::put('profile', [CafeMobileController::class, 'updateProfile'])->name('profile.update');
-            // Read-only feature flags for the cafe app UI (addresses toggle, etc.)
+        Route::prefix('customer')->name('customer.')->group(function () {
+            // Profile endpoints stay reachable for every authenticated customer user.
+            Route::get('profile', [CustomerMobileController::class, 'profile'])->name('profile');
+            Route::put('profile', [CustomerMobileController::class, 'updateProfile'])->name('profile.update');
+            // Read-only feature flags for the customer app UI (addresses toggle, etc.)
             Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');
         });
 
-        Route::prefix('cafe')->name('cafe.')->group(function () {
-            Route::get('orders', [CafeMobileController::class, 'orders'])->name('orders.index');
-            Route::post('orders', [CafeMobileController::class, 'storeOrder'])->name('orders.store');
-            Route::get('orders/{id}', [CafeMobileController::class, 'showOrder'])->name('orders.show');
-            Route::put('orders/{id}/status', [CafeMobileController::class, 'updateOrderStatus'])->name('orders.status');
-            Route::post('orders/{id}/cancel-request', [CafeMobileController::class, 'requestCancellation'])->name('orders.cancel-request');
-            Route::get('addresses', [CafeMobileController::class, 'addresses'])->name('addresses.index');
-            Route::post('addresses', [CafeMobileController::class, 'storeAddress'])->name('addresses.store');
-            Route::get('addresses/{id}', [CafeMobileController::class, 'showAddress'])->name('addresses.show');
-            Route::get('addresses/{id}/orders', [CafeMobileController::class, 'addressOrders'])->name('addresses.orders');
-            Route::put('addresses/{id}', [CafeMobileController::class, 'updateAddress'])->name('addresses.update');
-            Route::delete('addresses/{id}', [CafeMobileController::class, 'destroyAddress'])->name('addresses.destroy');
-            Route::get('delivery-zones', [CafeMobileController::class, 'deliveryZones'])->name('delivery-zones.index');
-            Route::get('categories', [CafeMobileController::class, 'categories'])->name('categories.index');
-            Route::get('products', [CafeMobileController::class, 'products'])->name('products.index');
-            Route::get('products/filters', [CafeMobileController::class, 'productFilters'])->name('products.filters');
-            Route::get('featured-sections', [CafeMobileController::class, 'featuredSections'])->name('featured-sections.index');
-            Route::get('featured-sections/{id}/products', [CafeMobileController::class, 'featuredSectionProducts'])->name('featured-sections.products');
+        Route::prefix('customer')->name('customer.')->group(function () {
+            Route::get('orders', [CustomerMobileController::class, 'orders'])->name('orders.index');
+            Route::post('orders', [CustomerMobileController::class, 'storeOrder'])->name('orders.store');
+            Route::get('orders/{id}', [CustomerMobileController::class, 'showOrder'])->name('orders.show');
+            Route::put('orders/{id}/status', [CustomerMobileController::class, 'updateOrderStatus'])->name('orders.status');
+            Route::post('orders/{id}/cancel-request', [CustomerMobileController::class, 'requestCancellation'])->name('orders.cancel-request');
+            Route::get('addresses', [CustomerMobileController::class, 'addresses'])->name('addresses.index');
+            Route::post('addresses', [CustomerMobileController::class, 'storeAddress'])->name('addresses.store');
+            Route::get('addresses/{id}', [CustomerMobileController::class, 'showAddress'])->name('addresses.show');
+            Route::get('addresses/{id}/orders', [CustomerMobileController::class, 'addressOrders'])->name('addresses.orders');
+            Route::put('addresses/{id}', [CustomerMobileController::class, 'updateAddress'])->name('addresses.update');
+            Route::delete('addresses/{id}', [CustomerMobileController::class, 'destroyAddress'])->name('addresses.destroy');
+            Route::get('delivery-zones', [CustomerMobileController::class, 'deliveryZones'])->name('delivery-zones.index');
+            Route::get('categories', [CustomerMobileController::class, 'categories'])->name('categories.index');
+            Route::get('products', [CustomerMobileController::class, 'products'])->name('products.index');
+            Route::get('products/filters', [CustomerMobileController::class, 'productFilters'])->name('products.filters');
+            Route::get('featured-sections', [CustomerMobileController::class, 'featuredSections'])->name('featured-sections.index');
+            Route::get('featured-sections/{id}/products', [CustomerMobileController::class, 'featuredSectionProducts'])->name('featured-sections.products');
             Route::get('favorites', [FavoriteController::class, 'index'])->name('favorites.index');
             Route::get('favorites/ids', [FavoriteController::class, 'ids'])->name('favorites.ids');
             Route::post('favorites', [FavoriteController::class, 'store'])->name('favorites.store');
             Route::delete('favorites/{productId}', [FavoriteController::class, 'destroy'])->name('favorites.destroy');
-            Route::get('products/{id}', [CafeMobileController::class, 'showProduct'])->name('products.show');
-            Route::get('products/{id}/variants', [CafeMobileController::class, 'productVariants'])->name('products.variants');
+            Route::get('products/{id}', [CustomerMobileController::class, 'showProduct'])->name('products.show');
+            Route::get('products/{id}/variants', [CustomerMobileController::class, 'productVariants'])->name('products.variants');
 
-            Route::get('cart', [CafeMobileController::class, 'cart'])->name('cart');
-            Route::get('cart/check-stock', [CafeMobileController::class, 'checkStock'])->name('cart.check-stock');
-            Route::post('cart/items', [CafeMobileController::class, 'addCartItem'])->name('cart.items.store');
-            Route::put('cart/items/{id}', [CafeMobileController::class, 'updateCartItem'])->name('cart.items.update');
-            Route::delete('cart/items/{id}', [CafeMobileController::class, 'removeCartItem'])->name('cart.items.destroy');
-            Route::delete('cart', [CafeMobileController::class, 'clearCart'])->name('cart.clear');
-            Route::post('cart/checkout', [CafeMobileController::class, 'checkout'])->name('cart.checkout');
+            Route::get('cart', [CustomerMobileController::class, 'cart'])->name('cart');
+            Route::get('cart/check-stock', [CustomerMobileController::class, 'checkStock'])->name('cart.check-stock');
+            Route::post('cart/items', [CustomerMobileController::class, 'addCartItem'])->name('cart.items.store');
+            Route::put('cart/items/{id}', [CustomerMobileController::class, 'updateCartItem'])->name('cart.items.update');
+            Route::delete('cart/items/{id}', [CustomerMobileController::class, 'removeCartItem'])->name('cart.items.destroy');
+            Route::delete('cart', [CustomerMobileController::class, 'clearCart'])->name('cart.clear');
+            Route::post('cart/checkout', [CustomerMobileController::class, 'checkout'])->name('cart.checkout');
 
-            Route::get('wallet', [CafeWalletController::class, 'show'])->name('wallet.show');
-            Route::get('wallet/transactions', [CafeWalletController::class, 'transactions'])->name('wallet.transactions');
-            Route::get('wallet/topups', [CafeWalletController::class, 'topups'])->name('wallet.topups.index');
-            Route::post('wallet/topups', [CafeWalletController::class, 'storeTopup'])->name('wallet.topups.store');
-            Route::post('wallet/topups/gateway', [CafeWalletController::class, 'gatewayTopup'])->name('wallet.topups.gateway');
-            Route::post('wallet/topups/{id}/cancel', [CafeWalletController::class, 'cancelTopup'])->name('wallet.topups.cancel');
+            Route::get('wallet', [CustomerWalletController::class, 'show'])->name('wallet.show');
+            Route::get('wallet/transactions', [CustomerWalletController::class, 'transactions'])->name('wallet.transactions');
+            Route::get('wallet/topups', [CustomerWalletController::class, 'topups'])->name('wallet.topups.index');
+            Route::post('wallet/topups', [CustomerWalletController::class, 'storeTopup'])->name('wallet.topups.store');
+            Route::post('wallet/topups/gateway', [CustomerWalletController::class, 'gatewayTopup'])->name('wallet.topups.gateway');
+            Route::post('wallet/topups/{id}/cancel', [CustomerWalletController::class, 'cancelTopup'])->name('wallet.topups.cancel');
 
             Route::get('recurring-carts', [RecurringCartController::class, 'index'])->name('recurring-carts.index');
             Route::post('recurring-carts', [RecurringCartController::class, 'store'])->name('recurring-carts.store');
@@ -135,7 +138,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('recurring-carts/{id}', [RecurringCartController::class, 'destroy'])->name('recurring-carts.destroy');
             Route::post('recurring-carts/{id}/order', [RecurringCartController::class, 'order'])->name('recurring-carts.order');
 
-            Route::get('orders/{id}/delegate', [CafeMobileController::class, 'orderDelegate'])->name('orders.delegate');
+            Route::get('orders/{id}/delegate', [CustomerMobileController::class, 'orderDelegate'])->name('orders.delegate');
             Route::get('promos', [PromoController::class, 'active'])->name('promos.index');
         });
 

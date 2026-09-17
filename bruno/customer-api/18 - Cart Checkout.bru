@@ -1,0 +1,28 @@
+meta {
+  name: Cart Flow - Checkout
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/customer/cart/checkout
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "address_id": {{addressId}}
+  }
+}
+
+tests {
+  test("status is 201 and order created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().data).to.have.property("id");
+  });
+}

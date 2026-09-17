@@ -13,9 +13,9 @@ class PasswordResetController extends BaseApiController
 {
     /**
      * @OA\Post(
-     *     path="/cafe/forgot-password",
+     *     path="/customer/forgot-password",
      *     tags={"Auth"},
-     *     summary="Request password reset OTP for cafe user",
+     *     summary="Request password reset OTP for customer user",
      *     security={},
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="mobile_number", type="string"))),
      *     @OA\Response(response=200, description="OTP sent"),
@@ -29,7 +29,7 @@ class PasswordResetController extends BaseApiController
         ]);
 
         $user = AppUser::where('mobile_number', $data['mobile_number'])
-            ->whereHas('userType', fn ($q) => $q->where('name', 'cafe'))
+            ->whereHas('userType', fn ($q) => $q->where('name', 'customer'))
             ->first();
 
         if (! $user) {
@@ -60,9 +60,9 @@ class PasswordResetController extends BaseApiController
 
     /**
      * @OA\Post(
-     *     path="/cafe/reset-password",
+     *     path="/customer/reset-password",
      *     tags={"Auth"},
-     *     summary="Reset cafe user password with OTP",
+     *     summary="Reset customer user password with OTP",
      *     security={},
      *     @OA\RequestBody(required=true, @OA\JsonContent(
      *         @OA\Property(property="token", type="string"),
@@ -91,7 +91,7 @@ class PasswordResetController extends BaseApiController
         }
 
         $user = AppUser::where('mobile_number', $record->mobile_number)
-            ->whereHas('userType', fn ($q) => $q->where('name', 'cafe'))
+            ->whereHas('userType', fn ($q) => $q->where('name', 'customer'))
             ->first();
 
         if (! $user) {

@@ -124,6 +124,33 @@ services:
         condition: service_started
     # docker-entrypoint.sh detects CONTAINER_ROLE=worker and starts queue:work
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: cafe_supply_chain_scheduler
+    restart: unless-stopped
+    working_dir: /var/www
+    env_file:
+      - .env
+    environment:
+      <<: *app-env
+      CONTAINER_ROLE: scheduler
+    volumes:
+      - .:/var/www
+      - vendor:/var/www/vendor
+    networks:
+      - cafe_network
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started
+    command: ["php", "artisan", "schedule:work"]
+
   phpmyadmin:
     image: phpmyadmin:latest
     container_name: cafe_supply_chain_phpmyadmin

@@ -1,0 +1,226 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+A cafe supply-chain platform ("الساحل لمستلزمات المقاهي") for the Libyan market: an admin
+dashboard, a customer app (the customers are cafés), and delegate (driver) endpoints, all served
+by one Laravel API. The customer app was historically called "cafe"; that word now only survives
+in infrastructure names (`cafe_supply_chain`, `cafe_network`, the repo path) and the company name.
+The product language is Arabic — API messages, enum labels, and UI copy are Arabic, and
+`AppServiceProvider::boot()` forces `app()->setLocale('ar')`.
+
+Three independent projects, each with its own Docker setup:
+
+- `backend/` — Laravel 12 API, MySQL, Redis, queue worker, Reverb WebSocket, Nginx
+- `frontend-admin/` — admin dashboard (React 19 + Vite + Tailwind 4)
+- `frontend-customer/` — customer app, also used by delegates (React 19 + Vite + Tailwind 4)
+
+## Commands
+
+### Backend
+
+```bash
+cd backend
+cp .env.example .env            # set APP_ENV=local for dev seeding
+docker compose up -d --build    # db, redis, app, reverb, worker, scheduler, nginx, phpmyadmin
+```
+
+Dev URLs: API `http://localhost:8000/api/v1`, Swagger `http://localhost:8000/docs`,
+Telescope `http://localhost:8000/telescope`, phpMyAdmin `http://localhost:8080`,
+MySQL `localhost:3307`.
+
+`docker-entrypoint.sh` waits for MySQL and Redis, runs `migrate --force`, and seeds only when
+`APP_ENV` is `local`/`development` and `admin@example.com` does not yet exist. Dev login is
+`admin@example.com` / `password`. `CONTAINER_ROLE` selects what a container runs: `worker`
+(`queue:work`), `scheduler` (`schedule:work`, needed for OTP and expired-token pruning) or web.
+
+Tests — two configs, pick by where you run them:
+
+```bash
+docker compose exec app php artisan test                      # phpunit.xml: sqlite :memory:
+docker compose exec app php artisan test --filter=WalletTest   # single test class/method
+php artisan test -c phpunit.host.xml                          # on the host: file-backed sqlite
+```
+
+`phpunit.xml` sets every env var with `force="true"` on purpose: the app container exports
+`DB_*`, `CACHE_STORE` and friends, and without the force the suite would run `migrate:fresh`
+against the dev MySQL and count rate-limit hits in the shared Redis. PHPUnit's force only
+writes `$_ENV`, while Laravel reads `$_SERVER` first, so `tests/TestCase.php` mirrors the forced
+values into `$_SERVER` before booting. Keep that in place.
+The container's PHP lacks JPEG support in GD, so the handful of tests that upload receipt images
+(WalletTest, one CustodyTest) only pass on the host. Every test starts with roles and permission
+codes seeded once per process (`AccessControlSeeder` via `$seed` in `tests/TestCase.php`), so
+test setups must use `firstOrCreate` for user types and permissions.
+
+Other backend tasks:
+
+```bash
+docker compose exec app ./vendor/bin/pint                 # PHP formatter (the only PHP linter here)
+docker compose exec app php artisan l5-swagger:generate --all
+docker compose exec app php artisan migrate:fresh --seed
+docker compose exec app php artisan tinker
+```
+
+### Frontends
+
+```bash
+cd frontend-admin && docker compose up -d --build   # http://localhost:5173
+cd frontend-customer && docker compose up -d --build   # http://localhost:5174
+```
+
+Or run them on the host with `npm run dev`. Vite proxies `/api` to `API_PROXY_TARGET`
+(default `http://localhost`), so the frontends always call the relative path `/api/v1`.
+`frontend-admin` lints with `npm run lint` (oxlint); `frontend-cafe` has no lint script.
+
+### Combined stack
+
+The root `docker-compose.yml` includes the backend compose file and adds one Nginx container
+serving both prebuilt frontends on port 80: admin at `/`, customer at `/customer/`. Its Dockerfile
+copies `frontend-*/dist` rather than building in-container, so you must build on the host first,
+and the customer build needs `VITE_BASE_PATH=/customer/`. That is a documented workaround for stalling
+npm fetches inside containers, not the intended design.
+
+## Architecture
+
+### Authorization is derived from route names, fail-closed
+
+Every protected route sits behind `auth:sanctum` plus the `permission` middleware
+(`app/Http/Middleware/CheckPermission.php`). `codeForRoute()` splits the route name on `.` into
+`resource.action`, maps the action to a verb (`ACTION_MAP`: `index`/`show` → `VIEW`, `store` →
+`CREATE`, `update` → `EDIT`, `destroy` → `DELETE`, plus custom actions) and requires the permission
+code `RESOURCE_VERB`. `ROUTE_MAP` holds the exceptions (`orders.assign-delegate` → `ORDER_ASSIGN`,
+`dashboard.*` → `DASHBOARD_VIEW`). Consequences worth remembering:
+
+- The check is **fail-closed**: a role must hold the code, and a code nobody seeded refuses the
+  request. `PermissionCoverageTest` walks every guarded route and fails when a derived code is
+  missing from `PermissionSeeder`, so adding a resource means adding its module to the seeder
+  (existing databases get new codes through a migration, see `2026_09_17_000017`).
+- Exempt from module codes: the `customer.*`, `delegate.*` and `wallet.gateway.*` groups (their
+  controllers scope by the signed-in user), the user-owned `notifications` resource, and unnamed
+  routes (`login`, `logout`, `me`, `register`), which do their own checks.
+- `super_admin` bypasses everything. `addresses` is remapped to the historic `CUSTOMER_BRANCHES_*`
+  codes so existing roles keep working.
+
+### Response shape
+
+Controllers extend `BaseApiController`, which owns the envelope. Use `paginated()` for every
+list so responses share one `{ data, meta }` shape (`meta` carries `current_page`, `per_page`,
+`total`, `last_page`, `has_more`, plus any endpoint-specific keys). `jsonResponse()` wraps 201
+and 4xx bodies in `{ success, message, ... }` and always emits `JSON_UNESCAPED_UNICODE` so
+Arabic stays readable. Framework exceptions are converted to the same Arabic-message shape in
+`bootstrap/app.php`, so do not hand-roll 401/403/404/422 responses.
+
+`requireFeature($code)` gates an endpoint on a `PremiumFeature` flag and returns a ready 403.
+
+### Order lifecycle is a state machine
+
+`OrderStatus::transitions()` is the only definition of which status may follow which
+(pending → confirmed → preparing → out_for_delivery → delivered → received; cancellation is
+allowed up to and including delivered; rejecting a `cancellation_requested` returns to pending;
+`received` and `cancelled` are final). The `Order` model enforces it in an `updating` hook and
+throws a 422 with an Arabic message, so the dashboard, delegate and customer endpoints cannot
+disagree. `GET /orders/{id}` and the delegate's order view return `next_statuses`, and both UIs
+render only those. Delegates may set `out_for_delivery` and `delivered`; customers only
+`received` and a cancellation request.
+
+### Services own the write paths
+
+Business invariants live in `app/Services/`, not controllers. Each of these is the *only* place
+its table changes, and each wraps work in a transaction with `lockForUpdate()`:
+
+- `StockService` — the only writer of `inventories.quantity`; every change writes a
+  `stock_movements` ledger row.
+- `WalletService` — the only place wallet balances change; amounts are converted to integer
+  cents to avoid float drift, and every change writes a `wallet_transactions` entry.
+- `CustodyService` — delegate cash held for the office (عهدة) and its settlement (تسكير); the
+  only writer of `delegate_profiles.custody_balance`, also in cents.
+- `OrderPlacementService` — the single path for creating orders. It resolves prices server-side,
+  snapshots address and product data onto the order, deducts stock, auto-assigns a delegate, and
+  notifies admins. Never build an `Order` directly.
+- `DelegateAssignmentService` — nearest available delegate, where "available" means active, flag
+  set, and a location updated within the last 30 minutes.
+
+`ProductSearch` handles catalog querying, faceting, and sorting for the customer app.
+
+### Arabic-tolerant search
+
+`App\Support\ArabicText` folds alef/ta-marbuta/ya variants, strips harakat and tatweel, and maps
+Arabic-Indic digits, so "احمد" matches "أحمد" and "١٢٥" matches "125". It exposes both
+`normalize()` for PHP strings and `sqlExpression()`, which wraps a column in nested `REPLACE()`
+calls so a plain `LIKE` matches either spelling on MySQL and SQLite. Any user-facing search over
+Arabic columns should go through it.
+
+### H3 geospatial via Node subprocess
+
+Delivery zones and warehouse coverage use Uber H3 hexes. There is no PHP H3 binding here:
+`H3Service` shells out to `backend/scripts/h3.cjs` with JSON on stdin (`Process::input(...)`).
+The Node script and the `h3-js` dependency in `backend/package.json` are therefore runtime
+requirements of the PHP app, not just build tooling. The frontends use `h3-js` directly with
+Leaflet for the map UI.
+
+### Roles, tokens and rate limits
+
+`UserRole` names the built-in `user_types` rows — `super_admin`, `admin`, `customer`, `delegate` —
+and each maps to one profile table (`AdminProfile`, `CustomerProfile`, `DelegateProfile`).
+
+Sanctum tokens expire after `SANCTUM_TOKEN_EXPIRATION_MINUTES` (default 30 days) and are pruned
+by the scheduler. Rate limiters are defined in `AppServiceProvider` and backed by the cache store
+(Redis in Docker): `api` caps every client, `auth` guards `login` per IP and per account, and
+`otp` guards the registration and password-reset OTP endpoints. A 429 is rendered in the same
+Arabic envelope as other API errors.
+
+`OrderStatus` is the order lifecycle plus Arabic labels, and its `groups()` method defines the
+active/completed/cancelled tabs the apps render. Keep tab logic there rather than in the clients.
+
+### API surface
+
+`routes/api.php` is the whole surface under `/api/v1`. Open endpoints: login, customer
+registration and OTP flows, password reset, payment-gateway callback, the placeholder image route,
+and read-only `products`/`categories`. Everything else is authenticated. The routes are organized
+by client: a `customer/` group (mostly `CustomerMobileController`), a `delegate/` group, and flat
+admin resources via `apiResources`. Carts, cart items, order items, status logs, and stock movements
+are deliberately read-only, since their workflows write them.
+
+`app/OpenApi/` holds the annotations for admin endpoints in one place so CRUD controllers stay
+readable; cafe and delegate endpoints are annotated on their own controllers. Two Swagger
+documents are configured: `default` (everything) and `customer`, which filters to tags matching
+`/^Customer /`, `Auth`, and `Notifications`. The JSON under `backend/storage/api-docs/` is generated
+— edit annotations, then regenerate, never edit the JSON.
+
+### Realtime and background work
+
+Reverb runs as its own container and broadcasts `DelegateLocationUpdated` for live driver
+tracking; the admin app consumes it with laravel-echo and pusher-js. The `worker` container
+runs `queue:work` against Redis, selected by `CONTAINER_ROLE=worker` in the entrypoint.
+
+### Frontend conventions
+
+Both apps store the bearer token in `localStorage` and attach it via an axios request
+interceptor in `src/api/client.js`; a 401 response clears it and redirects to `/login`. The
+admin client adds `postForm`/`putForm` helpers — `putForm` spoofs the method with `_method=PUT`
+over POST because PHP only parses multipart bodies on POST, so real PUT leaves `$_FILES` empty.
+Use those helpers for any upload.
+
+The admin app's `useApiResource` hook is the standard way to render a paginated list: it reads
+the backend's `meta` shape and persists the current page in the URL query string by default.
+State that crosses pages lives in React context (`AuthContext`, and in the customer app `CartContext`
+and `FavoritesContext`).
+
+### Migrations
+
+Schema is grouped into domain migrations dated `2026_09_13_*` (access control, users, warehouses,
+catalog, stock, carts, orders, system, wallets, custody, featured sections, favorites). Those are
+the consolidated baseline — add new dated migrations rather than editing them. Data migrations
+are used for stored codes too: `2026_09_17_000016` renamed the `cafe` role, permission codes,
+premium-feature codes and notification types to `customer`.
+
+## Conventions
+
+Comments prefixed `ponytail:` mark deliberate non-obvious decisions and workarounds, with the
+reason. Read them before changing the surrounding code, and follow the same style when you make
+a choice the next reader would otherwise want to "fix".
+
+Docs live in `docs/` (`customer-endpoints-demo.md`, `sequence-diagrams.md`). `bruno/` holds an API
+client collection, backed by `BrunoDemoSeeder`. `PROJECT.md` tracks goals and open questions.

@@ -31,18 +31,18 @@ class DelegateMobileEndpointsTest extends TestCase
     {
         parent::setUp();
 
-        $this->delegateType = UserType::create(['name' => 'delegate']);
-        UserType::create(['name' => 'cafe']);
+        $this->delegateType = UserType::firstOrCreate(['name' => 'delegate']);
+        UserType::firstOrCreate(['name' => 'customer']);
 
-        Permission::create(['code' => 'ORDERS_CREATE']);
+        Permission::firstOrCreate(['code' => 'ORDERS_CREATE']);
         $this->delegateType->permissions()->sync([Permission::where('code', 'ORDERS_CREATE')->value('id')]);
 
-        $cafeUser = AppUser::create([
-            'name' => 'Cafe Owner',
-            'email' => 'cafeowner@test.com',
+        $customerUser = AppUser::create([
+            'name' => 'Customer Owner',
+            'email' => 'customerowner@test.com',
             'mobile_number' => '0911111111',
             'password' => bcrypt('password'),
-            'user_type_id' => UserType::where('name', 'cafe')->value('id'),
+            'user_type_id' => UserType::where('name', 'customer')->value('id'),
             'is_active' => true,
         ]);
 
@@ -56,7 +56,7 @@ class DelegateMobileEndpointsTest extends TestCase
         ]);
 
         $this->address = Address::create([
-            'user_id' => $cafeUser->id,
+            'user_id' => $customerUser->id,
             'name' => 'فرع رئيسي',
             'city' => 'طرابلس',
             'street' => 'الشارع الرئيسي',
@@ -148,10 +148,10 @@ class DelegateMobileEndpointsTest extends TestCase
 
     public function test_order_auto_assigns_nearest_delegate(): void
     {
-        $cafeType = UserType::where('name', 'cafe')->first();
-        $codes = ['ORDERS_CREATE', 'ORDERS_VIEW', 'CAFE_BRANCHES_VIEW'];
+        $customerType = UserType::where('name', 'customer')->first();
+        $codes = ['ORDERS_CREATE', 'ORDERS_VIEW', 'CUSTOMER_BRANCHES_VIEW'];
         $perms = collect($codes)->map(fn ($code) => Permission::firstOrCreate(['code' => $code]));
-        $cafeType->permissions()->syncWithoutDetaching($perms->pluck('id'));
+        $customerType->permissions()->syncWithoutDetaching($perms->pluck('id'));
 
         $res = $this->postJson('/api/v1/login', [
             'phone_number' => '0911111111',
@@ -160,7 +160,7 @@ class DelegateMobileEndpointsTest extends TestCase
         $res->assertOk();
         $token = $res->json('token');
 
-        $res = $this->postJson('/api/v1/cafe/orders', [
+        $res = $this->postJson('/api/v1/customer/orders', [
             'address_id' => $this->address->id,
             'items' => [
                 [
@@ -240,7 +240,7 @@ class DelegateMobileEndpointsTest extends TestCase
 
     public function test_delegate_can_update_assigned_order_status(): void
     {
-        $order = $this->createAssignedOrder();
+        $order = $this->createAssignedOrder(['status' => 'out_for_delivery']);
 
         $token = $this->delegateToken();
         $res = $this->postJson("/api/v1/delegate/orders/{$order->id}/status", [
@@ -266,7 +266,7 @@ class DelegateMobileEndpointsTest extends TestCase
         $res->assertNotFound();
     }
 
-    public function test_delegate_cannot_set_status_other_than_delivered(): void
+    public function test_delegate_cannot_cancel_an_order(): void
     {
         $order = $this->createAssignedOrder(['status' => 'pending']);
 
@@ -284,20 +284,20 @@ class DelegateMobileEndpointsTest extends TestCase
 
     protected function createAssignedOrder(array $overrides = []): Order
     {
-        $cafeType = UserType::where('name', 'cafe')->first();
-        $cafeUser = AppUser::firstOrCreate(
-            ['email' => 'cafeorders@test.com'],
+        $customerType = UserType::where('name', 'customer')->first();
+        $customerUser = AppUser::firstOrCreate(
+            ['email' => 'customerorders@test.com'],
             [
-                'name' => 'Cafe Owner',
+                'name' => 'Customer Owner',
                 'mobile_number' => '0944444444',
                 'password' => bcrypt('password'),
-                'user_type_id' => $cafeType->id,
+                'user_type_id' => $customerType->id,
                 'is_active' => true,
             ]
         );
 
         return Order::create(array_merge([
-            'user_id' => $cafeUser->id,
+            'user_id' => $customerUser->id,
             'address_id' => $this->address->id,
             'delivery_latitude' => $this->address->latitude,
             'delivery_longitude' => $this->address->longitude,

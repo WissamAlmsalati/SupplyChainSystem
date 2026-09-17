@@ -7,20 +7,20 @@ Configuration: /Users/wissamalmsalati/cafe-supply-chain/backend/phpunit.host.xml
 
 Time: 00:01.247, Memory: 50.50 MB
 
-Cafe Mobile Endpoints (Tests\Feature\CafeMobileEndpoints)
- ✔ Cafe login returns token and permissions
- ✔ Cafe me returns user
- ✔ Cafe profile
- ✔ Cafe branches list
- ✔ Cafe branch create
- ✔ Cafe branch orders
- ✔ Cafe orders list
- ✔ Cafe order create
- ✔ Cafe categories list
- ✔ Cafe products list
- ✔ Cafe product variants
- ✔ Cafe inventory list
- ✔ Cafe can list delivery zones for map
+Customer Mobile Endpoints (Tests\Feature\CustomerMobileEndpoints)
+ ✔ Customer login returns token and permissions
+ ✔ Customer me returns user
+ ✔ Customer profile
+ ✔ Customer branches list
+ ✔ Customer branch create
+ ✔ Customer branch orders
+ ✔ Customer orders list
+ ✔ Customer order create
+ ✔ Customer categories list
+ ✔ Customer products list
+ ✔ Customer product variants
+ ✔ Customer inventory list
+ ✔ Customer can list delivery zones for map
 
 Delegate Endpoints (Tests\Feature\DelegateEndpoints)
  ✔ Admin can list delegates

@@ -40,6 +40,14 @@ class OrderController extends BaseApiController
         return ! $this->isCustomer() || $order->user_id === auth()->id();
     }
 
+    // Statuses the dashboard may move this order to next; drives the status UI.
+    protected function withNextStatuses(Order $order): Order
+    {
+        $order->setAttribute('next_statuses', $order->status->nextValues());
+
+        return $order;
+    }
+
     protected function activeDelegate(int $id): ?AppUser
     {
         return AppUser::whereKey($id)
@@ -132,10 +140,10 @@ class OrderController extends BaseApiController
             return $this->jsonResponse(['message' => 'غير مصرح'], 403);
         }
 
-        return $this->jsonResponse($order->load([
+        return $this->jsonResponse($this->withNextStatuses($order->load([
             'user.customerProfile', 'user.wallet', 'address', 'deliveryZone', 'delegate', 'cart',
             'items.productVariant.product', 'payments.collector:id,name', 'statusLogs.changedBy',
-        ]));
+        ])));
     }
 
     /**
@@ -149,7 +157,7 @@ class OrderController extends BaseApiController
      */
     public function update(OrderRequest $request, Order $order): JsonResponse
     {
-        // Customers follow their orders through the /cafe endpoints.
+        // Customers follow their orders through the /customer endpoints.
         if ($this->isCustomer()) {
             return $this->jsonResponse(['message' => 'غير مصرح'], 403);
         }
@@ -160,13 +168,10 @@ class OrderController extends BaseApiController
             return $this->jsonResponse(['message' => 'المندوب غير موجود أو غير نشط'], 422);
         }
 
-        if ($order->status === OrderStatus::Cancelled && isset($data['status']) && $data['status'] !== OrderStatus::Cancelled->value) {
-            return $this->jsonResponse(['message' => 'لا يمكن تغيير حالة طلب ملغي'], 422);
-        }
-
+        // Illegal moves (e.g. delivered back to pending) are refused by the Order model.
         $order->update(collect($data)->only(['status', 'delegate_id'])->all());
 
-        return $this->jsonResponse($order->load(['user', 'address', 'deliveryZone', 'delegate', 'items.productVariant', 'statusLogs.changedBy']));
+        return $this->jsonResponse($this->withNextStatuses($order->load(['user', 'address', 'deliveryZone', 'delegate', 'items.productVariant', 'statusLogs.changedBy'])));
     }
 
     /**

@@ -23,12 +23,12 @@ class OrderAssignDelegateTest extends TestCase
     {
         parent::setUp();
 
-        $adminType = UserType::create(['name' => 'admin']);
-        $delegateType = UserType::create(['name' => 'delegate']);
-        UserType::create(['name' => 'cafe']);
+        $adminType = UserType::firstOrCreate(['name' => 'admin']);
+        $delegateType = UserType::firstOrCreate(['name' => 'delegate']);
+        UserType::firstOrCreate(['name' => 'customer']);
 
-        $codes = ['ORDERS_VIEW', 'ORDERS_EDIT', 'ORDERS_CREATE'];
-        $perms = collect($codes)->map(fn ($code) => Permission::create(['code' => $code]));
+        $codes = ['ORDERS_VIEW', 'ORDERS_EDIT', 'ORDERS_CREATE', 'ORDER_ASSIGN'];
+        $perms = collect($codes)->map(fn ($code) => Permission::firstOrCreate(['code' => $code]));
         $adminType->permissions()->sync($perms->pluck('id'));
 
         $this->adminUser = AppUser::create([

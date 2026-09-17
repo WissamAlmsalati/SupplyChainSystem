@@ -9,7 +9,7 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/Modal'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
-import { statusLabels, orderStatuses, StatusBadge } from '../lib/status'
+import { statusLabels, StatusBadge } from '../lib/status'
 import { PageSkeleton } from '../components/ui/Skeleton'
 import { useModulePermission } from '../hooks/usePermission'
 import { useApiList } from '../hooks/useApiResource'
@@ -233,6 +233,8 @@ export default function OrderDetail() {
   // A cancelled order owes nothing.
   const balance = order.status === 'cancelled' ? 0 : total - paid + refunded
   const next = NEXT_ACTION[order.status]
+  // Moves the API allows from the current status (OrderStatus::transitions()).
+  const nextStatuses = order.next_statuses ?? []
   const isCancelled = order.status === 'cancelled'
   const isClosed = isCancelled || order.status === 'delivered' || order.status === 'received'
   const hasCoords = order.delivery_latitude != null && order.delivery_longitude != null
@@ -348,7 +350,7 @@ export default function OrderDetail() {
           )}
           {canEdit && (
             <div className="mt-4 flex justify-end">
-              <button onClick={() => { setNewStatus(order.status); setStatusModal(true) }} className="text-xs text-muted underline hover:text-foreground">
+              <button onClick={() => { setNewStatus(nextStatuses[0] ?? ''); setStatusModal(true) }} className="text-xs text-muted underline hover:text-foreground">
                 تعيين حالة يدوياً
               </button>
             </div>
@@ -737,15 +739,19 @@ export default function OrderDetail() {
         <form onSubmit={saveStatus} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-muted">الحالة</label>
-            <select className={selectClass} value={newStatus} onChange={(e) => setNewStatus(e.target.value)} required>
-              {orderStatuses.map((key) => (
-                <option key={key} value={key}>{statusLabels[key] || key}</option>
-              ))}
-            </select>
+            {nextStatuses.length === 0 ? (
+              <p className="text-sm text-muted">لا توجد حالات متاحة لهذا الطلب.</p>
+            ) : (
+              <select className={selectClass} value={newStatus} onChange={(e) => setNewStatus(e.target.value)} required>
+                {nextStatuses.map((key) => (
+                  <option key={key} value={key}>{statusLabels[key] || key}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="mt-6 flex items-center justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setStatusModal(false)}>إلغاء</Button>
-            <Button type="submit" variant="primary" disabled={saving || newStatus === order.status}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>
+            <Button type="submit" variant="primary" disabled={saving || !nextStatuses.includes(newStatus)}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>
           </div>
         </form>
       </Modal>

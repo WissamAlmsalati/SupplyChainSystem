@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 class FavoriteController extends BaseApiController
 {
     /**
-     * @OA\Get(path="/cafe/favorites", tags={"Cafe Favorites"}, summary="My favorite products (paginated, newest first)", security={{"bearerAuth":{}}},
+     * @OA\Get(path="/customer/favorites", tags={"Customer Favorites"}, summary="My favorite products (paginated, newest first)", security={{"bearerAuth":{}}},
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
      *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=20, maximum=100)),
      *     @OA\Response(response=200, description="data: product cards with favorited_at; meta: current_page, per_page, total, last_page"))
@@ -31,7 +31,7 @@ class FavoriteController extends BaseApiController
         $page = $query->paginate(max(1, min(100, $request->integer('per_page', 20))));
 
         return $this->jsonResponse([
-            'data' => $page->getCollection()->map(fn (Product $product) => CafeMobileController::productCard($product, true) + [
+            'data' => $page->getCollection()->map(fn (Product $product) => CustomerMobileController::productCard($product, true) + [
                 'favorited_at' => $product->getAttribute('favorited_at'),
             ])->values(),
             'meta' => [
@@ -45,7 +45,7 @@ class FavoriteController extends BaseApiController
     }
 
     /**
-     * @OA\Get(path="/cafe/favorites/ids", tags={"Cafe Favorites"}, summary="Ids of my favorite products (to mark hearts in lists)", security={{"bearerAuth":{}}},
+     * @OA\Get(path="/customer/favorites/ids", tags={"Customer Favorites"}, summary="Ids of my favorite products (to mark hearts in lists)", security={{"bearerAuth":{}}},
      *     @OA\Response(response=200, description="data: [product ids]"))
      */
     public function ids(): JsonResponse
@@ -54,7 +54,7 @@ class FavoriteController extends BaseApiController
     }
 
     /**
-     * @OA\Post(path="/cafe/favorites", tags={"Cafe Favorites"}, summary="Add a product to favorites (idempotent)", security={{"bearerAuth":{}}},
+     * @OA\Post(path="/customer/favorites", tags={"Customer Favorites"}, summary="Add a product to favorites (idempotent)", security={{"bearerAuth":{}}},
      *     @OA\RequestBody(required=true, @OA\JsonContent(required={"product_id"}, @OA\Property(property="product_id", type="integer"))),
      *     @OA\Response(response=201, description="product_id, is_favorite=true, favorites_count"),
      *     @OA\Response(response=422, description="Unknown or inactive product"))
@@ -82,7 +82,7 @@ class FavoriteController extends BaseApiController
     }
 
     /**
-     * @OA\Delete(path="/cafe/favorites/{productId}", tags={"Cafe Favorites"}, summary="Remove a product from favorites (idempotent)", security={{"bearerAuth":{}}},
+     * @OA\Delete(path="/customer/favorites/{productId}", tags={"Customer Favorites"}, summary="Remove a product from favorites (idempotent)", security={{"bearerAuth":{}}},
      *     @OA\Parameter(name="productId", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="product_id, is_favorite=false, favorites_count"))
      */

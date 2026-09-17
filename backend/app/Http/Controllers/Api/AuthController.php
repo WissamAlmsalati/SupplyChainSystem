@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\Auth\CafeRegisterRequest;
+use App\Http\Requests\Api\Auth\CustomerRegisterRequest;
 use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Http\Requests\Api\Auth\RegisterRequest;
 use App\Models\AppUser;
@@ -25,7 +25,7 @@ class AuthController extends BaseApiController
      *     path="/login",
      *     tags={"Auth"},
      *     summary="Log in and receive an access token",
-     *     description="Cafe users must login with phone_number and password. The response is a bare bearer token with no permissions. Admin and delegate users may use email instead of phone_number and will receive permissions in the response.",
+     *     description="Customer users must login with phone_number and password. The response is a bare bearer token with no permissions. Admin and delegate users may use email instead of phone_number and will receive permissions in the response.",
      *     security={},
      *     @OA\RequestBody(
      *         required=true,
@@ -60,7 +60,7 @@ class AuthController extends BaseApiController
             return $this->jsonResponse(['message' => 'بيانات الدخول غير صحيحة'], 401);
         }
 
-        if ($user->userType?->name === 'cafe' && $email) {
+        if ($user->userType?->name === 'customer' && $email) {
             return $this->jsonResponse(['message' => 'يجب تسجيل الدخول برقم الهاتف'], 403);
         }
 
@@ -75,8 +75,8 @@ class AuthController extends BaseApiController
             'token' => $user->createToken('api')->plainTextToken,
         ];
 
-        // ponytail: hide permissions for cafe users for now without deleting the loading code
-        if ($user->userType?->name !== 'cafe') {
+        // ponytail: hide permissions for customer users for now without deleting the loading code
+        if ($user->userType?->name !== 'customer') {
             $response['permissions'] = $codes;
         }
 
@@ -87,7 +87,7 @@ class AuthController extends BaseApiController
      * @OA\Post(
      *     path="/register",
      *     tags={"Admin Users"},
-     *     summary="Register a new cafe user (admin only)",
+     *     summary="Register a new customer user (admin only)",
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AuthRegisterRequest")),
      *     @OA\Response(response=201, description="Registration successful", @OA\JsonContent(ref="#/components/schemas/AuthResponse")),
      *     @OA\Response(response=403, description="Forbidden"),
@@ -101,14 +101,14 @@ class AuthController extends BaseApiController
             return $this->jsonResponse(['message' => 'غير مصرح'], 403);
         }
 
-        $cafeType = UserType::where('name', 'cafe')->firstOrFail();
+        $customerType = UserType::where('name', 'customer')->firstOrFail();
 
         $user = AppUser::create([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'mobile_number' => $request->validated('mobile_number'),
             'password' => Hash::make($request->validated('password')),
-            'user_type_id' => $cafeType->id,
+            'user_type_id' => $customerType->id,
             'is_active' => true,
         ]);
 
@@ -130,17 +130,17 @@ class AuthController extends BaseApiController
      */
     /**
      * @OA\Post(
-     *     path="/cafe/register",
+     *     path="/customer/register",
      *     tags={"Auth"},
-     *     summary="Register a cafe account (OTP verification required before login)",
-     *     description="Creates an inactive cafe user and sends a 6-digit OTP. Verify it via POST /cafe/verify-otp: when cafe_auto_approve is active a bearer token is returned immediately, otherwise the account waits for admin approval and only a message is returned.",
+     *     summary="Register a customer account (OTP verification required before login)",
+     *     description="Creates an inactive customer user and sends a 6-digit OTP. Verify it via POST /customer/verify-otp: when customer_auto_approve is active a bearer token is returned immediately, otherwise the account waits for admin approval and only a message is returned.",
      *     security={},
-     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CafeRegisterRequest")),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CustomerRegisterRequest")),
      *     @OA\Response(response=201, description="Account created"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
      */
-    public function registerCafe(CafeRegisterRequest $request): JsonResponse
+    public function registerCustomer(CustomerRegisterRequest $request): JsonResponse
     {
         $validated = $request->validated();
 
@@ -171,10 +171,10 @@ class AuthController extends BaseApiController
 
     /**
      * @OA\Post(
-     *     path="/cafe/verify-otp",
+     *     path="/customer/verify-otp",
      *     tags={"Auth"},
      *     summary="Verify registration OTP",
-     *     description="When cafe_auto_approve is active the user is activated and a bearer token is returned immediately. Otherwise the account stays inactive until an admin approves it, and only a message is returned.",
+     *     description="When customer_auto_approve is active the user is activated and a bearer token is returned immediately. Otherwise the account stays inactive until an admin approves it, and only a message is returned.",
      *     security={},
      *     @OA\RequestBody(required=true, @OA\JsonContent(
      *         @OA\Property(property="token", type="string"),
@@ -202,14 +202,14 @@ class AuthController extends BaseApiController
             return $this->jsonResponse(['message' => 'طلب التسجيل غير مكتمل'], 422);
         }
 
-        $cafeType = UserType::where('name', 'cafe')->firstOrFail();
+        $customerType = UserType::where('name', 'customer')->firstOrFail();
 
         $user = AppUser::create([
             'name' => $record->payload['name'],
             'email' => $record->payload['email'] ?? null,
             'mobile_number' => $record->payload['phone_number'],
             'password' => Hash::make($record->payload['password']),
-            'user_type_id' => $cafeType->id,
+            'user_type_id' => $customerType->id,
             'is_active' => false,
         ]);
 
@@ -221,7 +221,7 @@ class AuthController extends BaseApiController
 
         $record->delete();
 
-        if (PremiumFeature::isActive('cafe_auto_approve')) {
+        if (PremiumFeature::isActive('customer_auto_approve')) {
             $user->update(['is_active' => true]);
 
             return $this->jsonResponse([
@@ -236,7 +236,7 @@ class AuthController extends BaseApiController
             'تسجيل مقهى جديد',
             "مستخدم جديد ({$user->name}) بانتظار الموافقة على تفعيل حسابه",
             '/users',
-            'cafe_registration'
+            'customer_registration'
         );
 
         return $this->jsonResponse([
@@ -247,7 +247,7 @@ class AuthController extends BaseApiController
 
     /**
      * @OA\Post(
-     *     path="/cafe/resend-otp",
+     *     path="/customer/resend-otp",
      *     tags={"Auth"},
      *     summary="Resend the registration OTP",
      *     security={},
@@ -276,7 +276,7 @@ class AuthController extends BaseApiController
         }
 
         $user = AppUser::where('mobile_number', $data['mobile_number'])
-            ->whereHas('userType', fn ($q) => $q->where('name', 'cafe'))
+            ->whereHas('userType', fn ($q) => $q->where('name', 'customer'))
             ->first();
 
         if (! $user) {

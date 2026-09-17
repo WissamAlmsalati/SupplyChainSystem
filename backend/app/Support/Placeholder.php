@@ -6,7 +6,7 @@ namespace App\Support;
 // PlaceholderController so web and mobile clients share one URL.
 class Placeholder
 {
-    public const KINDS = ['product', 'promo', 'category', 'cafe', 'user'];
+    public const KINDS = ['product', 'promo', 'category', 'customer', 'user'];
 
     public static function url(string $kind = 'product'): string
     {
@@ -29,7 +29,7 @@ class Placeholder
         $art = match ($kind) {
             'promo' => self::promoArt(),
             'category' => self::categoryArt(),
-            'cafe' => self::storeArt(),
+            'customer' => self::storeArt(),
             'user' => self::userArt(),
             default => self::cupArt(),
         };

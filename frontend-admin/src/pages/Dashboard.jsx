@@ -33,7 +33,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [quickOpen, setQuickOpen] = useState(false)
   const { canCreate: canCreateOrder } = useModulePermission('ORDERS')
-  const branchesFeature = usePremiumFeatureActive('cafe_branches')
+  const branchesFeature = usePremiumFeatureActive('customer_branches')
 
   const load = async () => {
     setLoading(true)

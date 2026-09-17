@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-// The system has no default or inactive address: a cafe's branches are just
+// The system has no default or inactive address: a customer's branches are just
 // its addresses, and removing one is a (soft) delete.
 return new class extends Migration
 {

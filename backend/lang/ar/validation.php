@@ -150,7 +150,7 @@ return [
         'phone_number' => 'رقم الهاتف',
         'mobile_number' => 'رقم الهاتف',
         'name' => 'الاسم',
-        'cafe_name' => 'اسم المقهى',
+        'customer_name' => 'اسم المقهى',
         'address' => 'العنوان',
         'latitude' => 'خط العرض',
         'longitude' => 'خط الطول',
