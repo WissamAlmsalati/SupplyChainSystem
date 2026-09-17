@@ -78,6 +78,7 @@ namespace App\OpenApi;
  *     type="object",
  *     required={"name"},
  *     @OA\Property(property="name", type="string", maxLength=100),
+ *     @OA\Property(property="image", type="string", format="binary", nullable=true, description="Category picture; send as multipart/form-data. Leave it out to keep the current one."),
  *     @OA\Property(property="parent_category_id", type="integer", nullable=true),
  * )
  *

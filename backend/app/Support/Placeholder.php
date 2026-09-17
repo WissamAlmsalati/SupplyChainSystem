@@ -15,6 +15,12 @@ class Placeholder
         return "/api/v1/placeholder/{$kind}.svg";
     }
 
+    // 'placeholder' when the URL is our default artwork, 'uploaded' otherwise.
+    public static function typeFor(?string $url): string
+    {
+        return $url && str_starts_with($url, '/api/v1/placeholder/') ? 'placeholder' : 'uploaded';
+    }
+
     public static function svg(string $kind = 'product'): string
     {
         $kind = in_array($kind, self::KINDS, true) ? $kind : 'product';

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\UserRole;
 use App\Models\AppUser;
+use App\Models\Category;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\Product;
@@ -30,6 +31,7 @@ class DemoContentSeeder extends Seeder
 
     public function run(): void
     {
+        $this->categoryImages();
         $this->productImages();
         $this->promos();
         $this->favorites();
@@ -57,6 +59,16 @@ class DemoContentSeeder extends Seeder
         CAPTION;
 
         return str_replace('</svg>', $caption, $svg);
+    }
+
+    private function categoryImages(): void
+    {
+        foreach (Category::all()->values() as $i => $category) {
+            $path = "categories/category-{$category->id}.svg";
+            Storage::disk('public')->put($path, $this->card($category->name, 'تصنيف', $i, 'category'));
+
+            $category->update(['image' => $path]);
+        }
     }
 
     private function productImages(): void

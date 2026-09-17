@@ -478,6 +478,7 @@ class CafeMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/cafe/categories", tags={"Cafe Products"}, summary="List categories",
+     *     description="Each category carries image_url (its own picture, or the shared default) and image_type (uploaded / placeholder).",
      *     @OA\Response(response=200, description="Categories"))
      */
     public function categories(Request $request): JsonResponse
@@ -583,6 +584,7 @@ class CafeMobileController extends BaseApiController
             'name' => $product->name,
             'brand' => $product->brand,
             'image_url' => $product->image_url,
+            'image_type' => $product->image_type,
             'min_price' => $product->variants->min('price'),
             'max_price' => $product->variants->max('price'),
             'in_stock' => (int) $stock > 0,

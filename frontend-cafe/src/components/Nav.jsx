@@ -44,7 +44,7 @@ export default function Nav({ mobileOpen, onMobileClose, showDesktop = true }) {
       <div className="p-5 lg:hidden">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2" onClick={onMobileClose}>
-            <img src="/logo.svg" alt="الساحل" className="h-10 w-auto" />
+            <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="الساحل" className="h-10 w-auto" />
             <span className="font-bold text-foreground">الساحل</span>
           </Link>
           <button onClick={onMobileClose} className="rounded-lg p-2 text-muted hover:bg-background">
@@ -127,7 +127,7 @@ export default function Nav({ mobileOpen, onMobileClose, showDesktop = true }) {
         <aside className="hidden h-full w-64 flex-shrink-0 flex-col border-l border-border bg-surface lg:flex lg:overflow-y-auto">
           <div className="p-5">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/logo.svg" alt="الساحل" className="h-10 w-auto" />
+              <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="الساحل" className="h-10 w-auto" />
               <div>
                 <div className="font-bold text-foreground">الساحل</div>
                 <div className="text-xs text-muted">لمستلزمات المقاهي</div>

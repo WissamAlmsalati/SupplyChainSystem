@@ -110,7 +110,7 @@ class ProductSearchTest extends TestCase
         $res->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'كيكة')->assertJsonPath('data.0.is_favorite', true);
 
         $card = collect($this->search([])->json('data'))->firstWhere('name', 'بن عربي');
-        $this->assertSame(['id', 'name', 'brand', 'image_url', 'min_price', 'max_price', 'in_stock', 'category_id', 'default_variant_id', 'is_favorite'], array_keys($card));
+        $this->assertSame(['id', 'name', 'brand', 'image_url', 'image_type', 'min_price', 'max_price', 'in_stock', 'category_id', 'default_variant_id', 'is_favorite'], array_keys($card));
         $this->assertSame(['الريف', '12.00', '40.00', true], [$card['brand'], $card['min_price'], $card['max_price'], $card['in_stock']]);
         $this->assertFalse(collect($this->search([])->json('data'))->firstWhere('name', 'إسبريسو')['in_stock']);
     }

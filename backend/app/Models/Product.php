@@ -30,6 +30,7 @@ class Product extends Model
 
     protected $appends = [
         'image_url',
+        'image_type',
     ];
 
     // Primary product-level image, falling back to the first variant image.
@@ -44,6 +45,12 @@ class Product extends Model
             ?? $images->firstWhere('is_primary', true) ?? $images->first();
 
         return $image?->image_url ?? \App\Support\Placeholder::url('product');
+    }
+
+    // Whether image_url points at an uploaded picture or the default artwork.
+    public function getImageTypeAttribute(): string
+    {
+        return \App\Support\Placeholder::typeFor($this->image_url);
     }
 
     public function category(): BelongsTo

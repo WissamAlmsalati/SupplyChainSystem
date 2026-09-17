@@ -980,6 +980,7 @@
                     "Cafe Products"
                 ],
                 "summary": "List categories",
+                "description": "Each category carries image_url (its own picture, or the shared default) and image_type (uploaded / placeholder).",
                 "operationId": "a4cb49242b76128b80cc01f04488b6b9",
                 "responses": {
                     "200": {
@@ -6851,6 +6852,12 @@
                     "name": {
                         "type": "string",
                         "maxLength": 100
+                    },
+                    "image": {
+                        "description": "Category picture; send as multipart/form-data. Leave it out to keep the current one.",
+                        "type": "string",
+                        "format": "binary",
+                        "nullable": true
                     },
                     "parent_category_id": {
                         "type": "integer",

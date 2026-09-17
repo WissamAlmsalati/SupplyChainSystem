@@ -72,7 +72,7 @@ export default function Header({ onMenuClick }) {
         </button>
 
         <Link to="/" className="flex items-center gap-2">
-          <img src="/logo.svg" alt="الساحل" className="h-10 w-auto" />
+          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="الساحل" className="h-10 w-auto" />
           <span className="hidden text-lg font-bold text-foreground sm:block">الساحل</span>
         </Link>
 

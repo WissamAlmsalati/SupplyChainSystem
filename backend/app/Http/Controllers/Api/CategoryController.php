@@ -6,6 +6,8 @@ use App\Http\Requests\Api\CategoryRequest;
 use App\Models\Category;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @OA\Tag(name="Admin Categories", description="Admin platform category management")
@@ -53,8 +55,24 @@ class CategoryController extends BaseApiController
      */
     public function store(CategoryRequest $request): JsonResponse
     {
-        $category = Category::create($request->validated());
+        $data = $request->validated();
+        $data['image'] = $this->storeImage($request->file('image'));
+
+        $category = Category::create($data);
+
         return $this->jsonResponse($category->load('parentCategory'), 201);
+    }
+
+    private function storeImage(?UploadedFile $file): ?string
+    {
+        return $file?->store('categories', 'public');
+    }
+
+    private function deleteImage(?string $path): void
+    {
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
     }
 
     /**
@@ -86,7 +104,17 @@ class CategoryController extends BaseApiController
      */
     public function update(CategoryRequest $request, Category $category): JsonResponse
     {
-        $category->update($request->validated());
+        $data = $request->validated();
+
+        if ($request->hasFile('image')) {
+            $this->deleteImage($category->image);
+            $data['image'] = $this->storeImage($request->file('image'));
+        } else {
+            unset($data['image']);
+        }
+
+        $category->update($data);
+
         return $this->jsonResponse($category->load('parentCategory'));
     }
 
@@ -101,7 +129,9 @@ class CategoryController extends BaseApiController
      */
     public function destroy(Category $category): JsonResponse
     {
+        $this->deleteImage($category->image);
         $category->delete();
+
         return $this->jsonResponse(null, 204);
     }
 }

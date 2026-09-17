@@ -143,8 +143,9 @@ export default function Dashboard() {
               <button
                 key={c.id}
                 onClick={() => navigate(`/products?category=${c.id}`)}
-                className="rounded-full border border-border bg-surface px-5 py-2 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
+                className="flex items-center gap-2 rounded-full border border-border bg-surface py-1.5 pe-5 ps-1.5 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
               >
+                <img src={c.image_url} alt="" className="h-8 w-8 rounded-full object-cover" />
                 {c.name}
               </button>
             ))}

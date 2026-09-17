@@ -37,7 +37,7 @@ export default function Login() {
       <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 shadow-lg">
         <div className="mb-6 text-center">
           <img
-            src="/logo.svg"
+            src={`${import.meta.env.BASE_URL}logo.svg`}
             alt="الساحل لمستلزمات المقاهي"
             className="mx-auto mb-4 h-20 w-auto"
           />

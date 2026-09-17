@@ -11,6 +11,8 @@ const initial = { name: '', parent_category_id: '' }
 
 export default function Categories() {
   const [search, setSearch] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
   const [filterParent, setFilterParent] = useState('')
   const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/categories', { search, parent: filterParent })
   const [modal, setModal] = useState(false)
@@ -22,12 +24,16 @@ export default function Categories() {
 
   const openCreate = () => {
     setForm(initial)
+    setImageFile(null)
+    setImagePreview(null)
     setEditing(null)
     setModal(true)
   }
 
   const openEdit = (item) => {
     setForm({ ...initial, ...item, parent_category_id: item.parent_category_id ?? '' })
+    setImageFile(null)
+    setImagePreview(item.image_type === 'uploaded' ? item.image_url : null)
     setEditing(item)
     setModal(true)
   }
@@ -35,6 +41,8 @@ export default function Categories() {
   const close = () => {
     setModal(false)
     setForm(initial)
+    setImageFile(null)
+    setImagePreview(null)
     setEditing(null)
   }
 
@@ -42,8 +50,18 @@ export default function Categories() {
     e.preventDefault()
     setSaving(true)
     try {
-      const data = { ...form }
-      if (!data.parent_category_id) data.parent_category_id = null
+      // A picture means multipart; otherwise send plain JSON as before.
+      let data
+      if (imageFile) {
+        data = new FormData()
+        data.append('name', form.name)
+        data.append('image', imageFile)
+        if (form.parent_category_id) data.append('parent_category_id', form.parent_category_id)
+      } else {
+        data = { ...form }
+        delete data.image
+        if (!data.parent_category_id) data.parent_category_id = null
+      }
       if (editing) await update(editing.id, data)
       else await create(data)
       close()
@@ -53,6 +71,11 @@ export default function Categories() {
   }
 
   const columns = [
+    {
+      key: 'image_url',
+      label: 'الصورة',
+      render: (r) => <img src={r.image_url} alt="" className="h-10 w-10 rounded object-cover" />,
+    },
     { key: 'name', label: 'الاسم' },
     { key: 'parent_category', label: 'التصنيف الأب', render: (r) => r.parent_category?.name ?? '-' },
   ]
@@ -105,6 +128,20 @@ export default function Categories() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
           />
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-muted">الصورة</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                setImageFile(file || null)
+                setImagePreview(file ? URL.createObjectURL(file) : null)
+              }}
+              className="w-full text-sm"
+            />
+            {imagePreview && <img src={imagePreview} alt="" className="mt-2 h-28 w-28 rounded-lg object-cover" />}
+          </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-muted">التصنيف الأب</label>
             <select

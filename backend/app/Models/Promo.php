@@ -16,10 +16,15 @@ class Promo extends Model
         'is_active' => 'boolean',
     ];
 
-    protected $appends = ['image_url'];
+    protected $appends = ['image_url', 'image_type'];
 
     public function getImageUrlAttribute(): ?string
     {
         return $this->image ? '/storage/' . ltrim($this->image, '/') : \App\Support\Placeholder::url('promo');
+    }
+
+    public function getImageTypeAttribute(): string
+    {
+        return \App\Support\Placeholder::typeFor($this->image_url);
     }
 }
