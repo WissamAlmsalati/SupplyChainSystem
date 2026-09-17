@@ -36,6 +36,7 @@ class CheckPermission
         'settle' => 'EDIT',
         'location' => 'EDIT',
         'expand-hex' => 'EDIT',
+        'invoice' => 'VIEW',
     ];
 
     /** Routes whose code does not follow RESOURCE_VERB. */
@@ -107,6 +108,11 @@ class CheckPermission
 
         if (str_starts_with($routeName, 'activity-logs.')) {
             return 'ACTIVITY_LOGS_VIEW';
+        }
+
+        // Every report, whatever it is about, is one read-only permission.
+        if (str_starts_with($routeName, 'reports.')) {
+            return 'REPORTS_VIEW';
         }
 
         $parts = explode('.', $routeName);

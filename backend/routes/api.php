@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\Api\PromoController;
 use App\Http\Controllers\Api\RecurringCartController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\StockMovementController;
 use App\Http\Controllers\Api\UserTypeController;
 use App\Http\Controllers\Api\WarehouseController;
@@ -139,6 +140,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::post('recurring-carts/{id}/order', [RecurringCartController::class, 'order'])->name('recurring-carts.order');
 
             Route::get('orders/{id}/delegate', [CustomerMobileController::class, 'orderDelegate'])->name('orders.delegate');
+            Route::get('orders/{id}/invoice', [CustomerMobileController::class, 'orderInvoice'])->name('orders.invoice');
+            Route::get('wallet/statement', [CustomerWalletController::class, 'statement'])->name('wallet.statement');
             Route::get('promos', [PromoController::class, 'active'])->name('promos.index');
         });
 
@@ -214,5 +217,15 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::apiResource('categories', CategoryController::class)->except(['index', 'show']);
 
         Route::post('orders/{order}/assign-delegate', [OrderController::class, 'assignDelegate'])->name('orders.assign-delegate');
+        Route::get('orders/{order}/invoice', [ReportController::class, 'invoice'])->name('orders.invoice');
+
+        // Reports: JSON for the dashboard, ?format=pdf|xlsx for downloads. All need REPORTS_VIEW.
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('sales', [ReportController::class, 'sales'])->name('sales');
+            Route::get('inventory', [ReportController::class, 'inventory'])->name('inventory');
+            Route::get('orders', [ReportController::class, 'orders'])->name('orders');
+            Route::get('custody/{delegate}', [ReportController::class, 'custody'])->name('custody');
+            Route::get('wallet/{wallet}', [ReportController::class, 'wallet'])->name('wallet');
+        });
     });
 });

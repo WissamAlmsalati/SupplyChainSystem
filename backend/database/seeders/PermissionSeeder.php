@@ -46,6 +46,7 @@ class PermissionSeeder extends Seeder
             'CUSTOMER_REGISTRATIONS_APPROVE',
             'PREMIUM_FEATURES_VIEW',
             'PREMIUM_FEATURES_EDIT',
+            'REPORTS_VIEW',
         ];
 
         foreach ($viewOnly as $module) {

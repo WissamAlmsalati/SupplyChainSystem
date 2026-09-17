@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\ReportController;
 use App\Enums\CartType;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
@@ -906,6 +907,16 @@ Page 1 starts from the beginning of the section (it repeats the products already
      *     @OA\Response(response=200, description="Delegate location"),
      *     @OA\Response(response=404, description="No delegate assigned"))
      */
+    /**
+     * @OA\Get(path="/customer/orders/{id}/invoice", tags={"Customer Orders"}, summary="Download my order's invoice (PDF)",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="PDF download"))
+     */
+    public function orderInvoice(int $id)
+    {
+        return app(ReportController::class)->invoiceFor($this->orderScope()->findOrFail($id));
+    }
+
     public function orderDelegate(int $id): JsonResponse
     {
         $order = $this->orderScope()->with('delegate.delegateProfile')->findOrFail($id);

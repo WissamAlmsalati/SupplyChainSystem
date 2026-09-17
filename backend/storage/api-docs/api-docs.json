@@ -1908,13 +1908,13 @@
                 }
             }
         },
-        "/customer/orders/{id}/delegate": {
+        "/customer/orders/{id}/invoice": {
             "get": {
                 "tags": [
                     "Customer Orders"
                 ],
-                "summary": "Live location of the order's delegate",
-                "operationId": "839c055fc87726d5a2b8299be9bf5cd9",
+                "summary": "Download my order's invoice (PDF)",
+                "operationId": "7ddc9f225201b75e7e7243e43fddd756",
                 "parameters": [
                     {
                         "name": "id",
@@ -1927,10 +1927,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Delegate location"
-                    },
-                    "404": {
-                        "description": "No delegate assigned"
+                        "description": "PDF download"
                     }
                 }
             }
@@ -1954,31 +1951,46 @@
                 ]
             }
         },
-        "/customer/wallet/transactions": {
+        "/customer/wallet/statement": {
             "get": {
                 "tags": [
                     "Customer Wallet"
                 ],
-                "summary": "Wallet transactions",
-                "operationId": "0391119d7579974d08aedae4b6292b04",
+                "summary": "My wallet statement (JSON, or ?format=pdf|xlsx)",
+                "operationId": "15aa96e48b2e05a1e7f6a2f763ceeda0",
                 "parameters": [
                     {
-                        "name": "type",
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "format",
                         "in": "query",
                         "schema": {
                             "type": "string",
                             "enum": [
-                                "topup",
-                                "payment",
-                                "refund",
-                                "adjustment"
+                                "json",
+                                "pdf",
+                                "xlsx"
                             ]
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Paginated transactions"
+                        "description": "Statement"
                     }
                 },
                 "security": [
@@ -3460,6 +3472,295 @@
                     },
                     "409": {
                         "description": "Insufficient stock"
+                    }
+                }
+            }
+        },
+        "/reports/sales": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Sales report for a period",
+                "operationId": "d0895b9d0bb623dc1a43a3ad5eac60d6",
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "group_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "day",
+                                "month"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "json",
+                                "pdf",
+                                "xlsx"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report (JSON), or a PDF / Excel download"
+                    }
+                }
+            }
+        },
+        "/reports/custody/{delegate}": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Delegate custody statement",
+                "operationId": "be8e1b6f6042adbaf48ba29d11e041d8",
+                "parameters": [
+                    {
+                        "name": "delegate",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "all",
+                        "in": "query",
+                        "description": "1 = since the beginning",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "json",
+                                "pdf",
+                                "xlsx"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Statement"
+                    }
+                }
+            }
+        },
+        "/reports/wallet/{wallet}": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Customer wallet statement",
+                "operationId": "66887ba808b247cdf932e11530514f19",
+                "parameters": [
+                    {
+                        "name": "wallet",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "json",
+                                "pdf",
+                                "xlsx"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Statement"
+                    }
+                }
+            }
+        },
+        "/reports/inventory": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Stock on hand, low stock and movements",
+                "operationId": "4b47a626ed4dc301b580732c65fd4ee0",
+                "parameters": [
+                    {
+                        "name": "warehouse_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "low_stock_at",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "json",
+                                "pdf",
+                                "xlsx"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report"
+                    }
+                }
+            }
+        },
+        "/reports/orders": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Export orders to Excel",
+                "operationId": "2b652fd094473841ec470610607fe9da",
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel download"
+                    }
+                }
+            }
+        },
+        "/orders/{id}/invoice": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Order invoice (PDF)",
+                "operationId": "69d6ca498f912a7890efd4941c86d0f7",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PDF download"
                     }
                 }
             }
@@ -7383,6 +7684,10 @@
         {
             "name": "Promos",
             "description": "App banners"
+        },
+        {
+            "name": "Reports",
+            "description": "Sales, custody, wallet and stock reports (JSON, PDF, Excel)"
         },
         {
             "name": "Admin Warehouses",

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import client from '../api/client'
+import { downloadFile } from '../lib/download'
 
 const TX_TYPES = {
   topup: { label: 'شحن', className: 'text-green-700 bg-green-50' },
@@ -122,6 +123,12 @@ export default function Wallet() {
       <header className="mb-6 pt-6">
         <h1 className="text-2xl font-extrabold text-foreground">محفظتي</h1>
         <p className="mt-1 text-muted">اشحن رصيدك وادفع طلباتك مباشرة من المحفظة</p>
+        <button
+          onClick={() => downloadFile('/customer/wallet/statement', { all: 1, format: 'pdf' }).catch(() => setError('فشل تحميل كشف الحساب'))}
+          className="mt-3 rounded-lg border border-border bg-background px-3 py-1.5 text-sm hover:bg-surface"
+        >
+          كشف حساب PDF
+        </button>
       </header>
 
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}

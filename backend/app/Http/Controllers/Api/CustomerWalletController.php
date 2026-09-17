@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Services\Reports\LedgerStatement;
 use App\Enums\TopupMethod;
 use App\Enums\TopupStatus;
 use App\Enums\WalletTransactionType;
@@ -41,6 +42,20 @@ class CustomerWalletController extends BaseApiController
      *     @OA\Parameter(name="type", in="query", @OA\Schema(type="string", enum={"topup","payment","refund","adjustment"})),
      *     @OA\Response(response=200, description="Paginated transactions"))
      */
+    /**
+     * @OA\Get(path="/customer/wallet/statement", tags={"Customer Wallet"}, summary="My wallet statement (JSON, or ?format=pdf|xlsx)", security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="format", in="query", @OA\Schema(type="string", enum={"json","pdf","xlsx"})),
+     *     @OA\Response(response=200, description="Statement"))
+     */
+    public function statement(Request $request, LedgerStatement $statement)
+    {
+        $wallet = $this->wallets->walletFor(auth()->user())->load('user:id,name,mobile_number');
+
+        return app(ReportController::class)->walletStatement($request, $wallet, $statement);
+    }
+
     public function transactions(Request $request): JsonResponse
     {
         $query = $this->wallets->walletFor(auth()->user())->transactions();

@@ -144,6 +144,17 @@ its table changes, and each wraps work in a transaction with `lockForUpdate()`:
 
 `ProductSearch` handles catalog querying, faceting, and sorting for the customer app.
 
+### Reports (PDF / Excel)
+
+`app/Services/Reports/` builds report data as arrays (`SalesReport`, `LedgerStatement` for
+custody and wallet statements, `InventoryReport`) and `ReportController` serves each one as JSON,
+`?format=pdf` or `?format=xlsx`. PDFs are Blade views under `resources/views/reports/` rendered by
+`PdfRenderer` (mPDF, RTL, DejaVu Sans — no Chrome needed); Excel goes through `XlsxRenderer`
+(OpenSpout). `Period::fromRequest()` parses `from`/`to`/`all` for every report. Invoices live at
+`orders/{id}/invoice` (dashboard) and `customer/orders/{id}/invoice`; all `reports.*` routes need the
+single `REPORTS_VIEW` code. Frontends download through `lib/download.js`, which fetches a blob with
+the bearer token and names the file from `Content-Disposition`.
+
 ### Arabic-tolerant search
 
 `App\Support\ArabicText` folds alef/ta-marbuta/ya variants, strips harakat and tatweel, and maps

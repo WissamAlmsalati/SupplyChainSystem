@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowRight, Plus, Minus } from 'lucide-react'
+import { ArrowRight, Plus, Minus, FileDown } from 'lucide-react'
 import client from '../api/client'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { PageSkeleton } from '../components/ui/Skeleton'
 import { useModulePermission } from '../hooks/usePermission'
 import { walletTransactionTypes, topupMethods, topupStatuses, formatMoney, formatDateTime } from '../lib/wallet'
+import { downloadFile, downloadError } from '../lib/download'
 
 const inputClass = 'w-full rounded-md border border-border-strong bg-surface px-3.5 py-2 text-foreground shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none'
 
@@ -84,13 +85,14 @@ export default function WalletDetail() {
             </p>
           </div>
         </div>
-        {canEdit && (
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => downloadFile(`/reports/wallet/${id}`, { all: 1, format: 'pdf' }).catch(async (e) => setError(await downloadError(e)))}><FileDown className="h-4 w-4" /> كشف حساب PDF</Button>
+          {canEdit && (<>
             <Button variant="primary" onClick={() => setAdjust({ direction: 'credit', amount: '', note: '' })}><Plus className="h-4 w-4" /> إضافة رصيد</Button>
             <Button variant="secondary" onClick={() => setAdjust({ direction: 'debit', amount: '', note: '' })}><Minus className="h-4 w-4" /> خصم رصيد</Button>
             <Button variant="secondary" onClick={toggleActive}>{wallet.is_active ? 'إيقاف المحفظة' : 'تفعيل المحفظة'}</Button>
-          </div>
-        )}
+          </>)}
+        </div>
       </header>
 
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}

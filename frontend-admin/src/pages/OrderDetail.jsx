@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowRight, Printer, Check, X, Clock, CheckCircle2, Package, Truck, Home, PackageCheck,
-  MapPin, Phone, User, Repeat, Smartphone, LayoutDashboard, CreditCard, History, Boxes, Trash2,
+  MapPin, Phone, User, Repeat, Smartphone, LayoutDashboard, CreditCard, History, Boxes, Trash2, FileDown,
 } from 'lucide-react'
 import client from '../api/client'
 import Button from '../components/ui/Button'
@@ -10,6 +10,7 @@ import Badge from '../components/ui/Badge'
 import Modal from '../components/Modal'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { statusLabels, StatusBadge } from '../lib/status'
+import { downloadFile, downloadError } from '../lib/download'
 import { PageSkeleton } from '../components/ui/Skeleton'
 import { useModulePermission } from '../hooks/usePermission'
 import { useApiList } from '../hooks/useApiResource'
@@ -301,7 +302,10 @@ export default function OrderDetail() {
             </Button>
           )}
           <Button variant="secondary" onClick={handlePrint}>
-            <Printer className="h-4 w-4" /> طباعة / PDF
+            <Printer className="h-4 w-4" /> طباعة
+          </Button>
+          <Button variant="secondary" onClick={() => downloadFile(`/orders/${id}/invoice`).catch(async (e) => setError(await downloadError(e)))}>
+            <FileDown className="h-4 w-4" /> فاتورة PDF
           </Button>
           {canDelete && isCancelled && (
             <Button variant="danger" onClick={deleteOrder}>

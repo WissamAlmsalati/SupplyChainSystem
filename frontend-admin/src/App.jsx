@@ -37,6 +37,7 @@ import Promos from './pages/Promos'
 import PremiumFeatures from './pages/PremiumFeatures'
 import Map from './pages/Map'
 import MonthlyStats from './pages/MonthlyStats'
+import Reports from './pages/Reports'
 import NotFound from './pages/NotFound'
 
 function HomeRedirect() {
@@ -75,6 +76,7 @@ function App() {
         <Route path="/featured-sections" element={<RequirePermission permission="FEATURED_SECTIONS_VIEW"><FeaturedSections /></RequirePermission>} />
         <Route path="/custody" element={<RequirePermission permission="CUSTODY_VIEW"><Custody /></RequirePermission>} />
         <Route path="/custody/:id" element={<RequirePermission permission="CUSTODY_VIEW"><CustodyDetail /></RequirePermission>} />
+        <Route path="/reports" element={<RequirePermission permission="REPORTS_VIEW"><Reports /></RequirePermission>} />
         <Route path="/orders" element={<RequirePermission permission="ORDERS_VIEW"><Orders /></RequirePermission>} />
         <Route path="/orders/:id" element={<RequirePermission permission="ORDERS_VIEW"><OrderDetail /></RequirePermission>} />
         <Route path="/delivery-zones" element={<RequirePermission permission="DELIVERY_ZONES_VIEW"><DeliveryZones /></RequirePermission>} />

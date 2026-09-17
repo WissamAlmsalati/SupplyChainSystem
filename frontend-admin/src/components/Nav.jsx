@@ -22,6 +22,7 @@ import {
   BanknoteArrowUp,
   HandCoins,
   LayoutList,
+  BarChart3,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Button from './ui/Button'
@@ -45,6 +46,7 @@ const icons = {
   BanknoteArrowUp,
   HandCoins,
   LayoutList,
+  BarChart3,
 }
 
 const groups = [
@@ -63,6 +65,7 @@ const groups = [
       { to: '/wallets', label: 'المحافظ والسيولة', icon: 'Wallet', permission: 'WALLETS_VIEW' },
       { to: '/wallet-topups', label: 'طلبات الشحن', icon: 'BanknoteArrowUp', permission: 'WALLET_TOPUPS_VIEW' },
       { to: '/custody', label: 'عهد المناديب', icon: 'HandCoins', permission: 'CUSTODY_VIEW' },
+      { to: '/reports', label: 'التقارير', icon: 'BarChart3', permission: 'REPORTS_VIEW' },
     ],
   },
   {

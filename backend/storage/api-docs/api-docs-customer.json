@@ -1588,13 +1588,13 @@
                 }
             }
         },
-        "/customer/orders/{id}/delegate": {
+        "/customer/orders/{id}/invoice": {
             "get": {
                 "tags": [
                     "Customer Orders"
                 ],
-                "summary": "Live location of the order's delegate",
-                "operationId": "839c055fc87726d5a2b8299be9bf5cd9",
+                "summary": "Download my order's invoice (PDF)",
+                "operationId": "7ddc9f225201b75e7e7243e43fddd756",
                 "parameters": [
                     {
                         "name": "id",
@@ -1607,10 +1607,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Delegate location"
-                    },
-                    "404": {
-                        "description": "No delegate assigned"
+                        "description": "PDF download"
                     }
                 }
             }
@@ -1634,31 +1631,46 @@
                 ]
             }
         },
-        "/customer/wallet/transactions": {
+        "/customer/wallet/statement": {
             "get": {
                 "tags": [
                     "Customer Wallet"
                 ],
-                "summary": "Wallet transactions",
-                "operationId": "0391119d7579974d08aedae4b6292b04",
+                "summary": "My wallet statement (JSON, or ?format=pdf|xlsx)",
+                "operationId": "15aa96e48b2e05a1e7f6a2f763ceeda0",
                 "parameters": [
                     {
-                        "name": "type",
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "format",
                         "in": "query",
                         "schema": {
                             "type": "string",
                             "enum": [
-                                "topup",
-                                "payment",
-                                "refund",
-                                "adjustment"
+                                "json",
+                                "pdf",
+                                "xlsx"
                             ]
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Paginated transactions"
+                        "description": "Statement"
                     }
                 },
                 "security": [

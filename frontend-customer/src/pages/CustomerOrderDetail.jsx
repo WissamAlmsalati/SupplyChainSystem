@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
+import { downloadFile } from '../lib/download'
 
 const statusLabels = {
   pending: 'قيد الانتظار',
@@ -99,6 +100,12 @@ export default function CustomerOrderDetail() {
           رجوع
         </button>
         <h1 className="text-2xl font-extrabold text-foreground">تفاصيل الطلب {order.order_number ?? `#${order.id}`}</h1>
+        <button
+          onClick={() => downloadFile(`/customer/orders/${id}/invoice`).catch(() => setError('فشل تحميل الفاتورة'))}
+          className="mr-auto rounded-lg border border-border bg-background px-3 py-1.5 text-sm hover:bg-surface"
+        >
+          تحميل الفاتورة PDF
+        </button>
       </header>
 
       {error && (
