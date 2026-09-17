@@ -45,8 +45,12 @@ if [ "$APP_ENV" = "local" ] || [ "$APP_ENV" = "development" ]; then
   fi
 fi
 
-# Ensure storage permissions
-chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+# Ensure storage permissions. Best-effort: in dev, /var/www is a bind mount of
+# the host checkout, so a `git pull` run as root on the host can leave files
+# owned by root that this non-root (www-data) process can't chmod. That must
+# not crash the whole container under `set -e` — a stale mode on a couple of
+# tracked files is far less bad than app/worker/scheduler/reverb crash-looping.
+chmod -R 775 /var/www/storage /var/www/bootstrap/cache 2>/dev/null || true
 
 # Route container role: worker, scheduler or web
 if [ "$CONTAINER_ROLE" = "worker" ]; then
