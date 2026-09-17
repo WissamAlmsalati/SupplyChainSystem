@@ -23,7 +23,7 @@ class ProductImageController extends BaseApiController
             }
         }
 
-        return $this->jsonResponse($query->orderBy('sort_order')->orderByDesc('id')->paginate(15));
+        return $this->paginated($query->orderBy('sort_order')->orderByDesc('id')->paginate(15));
     }
 
     public function store(ProductImageRequest $request): JsonResponse

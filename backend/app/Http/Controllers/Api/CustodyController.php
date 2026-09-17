@@ -43,9 +43,9 @@ class CustodyController extends BaseApiController
             $query->whereHas('delegateProfile', fn ($q) => $q->where('custody_balance', '>', 0));
         }
 
-        return $this->jsonResponse(
-            $query->orderByDesc('custody_balance')->paginate($request->integer('per_page', 15))->toArray()
-            + ['summary' => ['total_custody' => round((float) DelegateProfile::sum('custody_balance'), 2)]]
+        return $this->paginated(
+            $query->orderByDesc('custody_balance')->paginate($request->integer('per_page', 15)),
+            meta: ['summary' => ['total_custody' => round((float) DelegateProfile::sum('custody_balance'), 2)]]
         );
     }
 
@@ -82,7 +82,7 @@ class CustodyController extends BaseApiController
             $query->where('type', $request->input('type'));
         }
 
-        return $this->jsonResponse($query->paginate($request->integer('per_page', 20)));
+        return $this->paginated($query->paginate($request->integer('per_page', 20)));
     }
 
     public function settle(Request $request, int $delegate): JsonResponse

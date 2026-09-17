@@ -58,7 +58,7 @@ class DelegateController extends BaseApiController
             $query->whereHas('delegateProfile', fn ($q) => $q->where('is_available', $request->boolean('is_available')));
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->orderByDesc('id')->paginate($request->integer('per_page', 15)));
     }
 
     /**

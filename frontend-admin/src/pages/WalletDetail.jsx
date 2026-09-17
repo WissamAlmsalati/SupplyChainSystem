@@ -18,6 +18,7 @@ export default function WalletDetail() {
   const { canEdit } = useModulePermission('WALLETS')
   const [wallet, setWallet] = useState(null)
   const [transactions, setTransactions] = useState({ data: [], current_page: 1, last_page: 1 })
+  const normalizePage = (payload) => ({ data: payload?.data ?? [], ...(payload?.meta ?? payload ?? {}) })
   const [page, setPage] = useState(1)
   const [type, setType] = useState('')
   const [loading, setLoading] = useState(true)
@@ -32,7 +33,7 @@ export default function WalletDetail() {
 
   const loadTransactions = async () => {
     const res = await client.get(`/wallets/${id}/transactions`, { params: { page, type: type || undefined } })
-    setTransactions(res.data)
+    setTransactions(normalizePage(res.data))
   }
 
   useEffect(() => {

@@ -43,8 +43,9 @@ class WalletController extends BaseApiController
             'wallets' => Wallet::count(),
         ];
 
-        return $this->jsonResponse(
-            $query->orderByDesc('balance')->paginate($request->integer('per_page', 15))->toArray() + ['summary' => $summary]
+        return $this->paginated(
+            $query->orderByDesc('balance')->paginate($request->integer('per_page', 15)),
+            meta: ['summary' => $summary]
         );
     }
 
@@ -135,7 +136,7 @@ class WalletController extends BaseApiController
             $query->where('type', $request->input('type'));
         }
 
-        return $this->jsonResponse($query->paginate($request->integer('per_page', 20)));
+        return $this->paginated($query->paginate($request->integer('per_page', 20)));
     }
 
     // Positive amount credits, negative debits; a note is required for the audit trail.

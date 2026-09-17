@@ -28,7 +28,7 @@ class StockMovementController extends BaseApiController
                 ->where('reference_id', $request->integer('reference_id'));
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->orderByDesc('id')->paginate($request->integer('per_page', 15)));
     }
 
     public function show(StockMovement $stockMovement): JsonResponse

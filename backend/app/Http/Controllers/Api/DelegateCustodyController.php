@@ -46,7 +46,7 @@ class DelegateCustodyController extends BaseApiController
                 'amount' => round((float) (clone $sinceLast)->sum('amount'), 2),
             ],
             'last_settlement' => $last,
-            'entries' => $entries->paginate($request->integer('per_page', 20)),
+            'entries' => $this->paginatedPayload($entries->paginate($request->integer('per_page', 20))),
         ]);
     }
 
@@ -67,8 +67,7 @@ class DelegateCustodyController extends BaseApiController
             return $this->jsonResponse(['message' => 'غير مصرح'], 403);
         }
 
-        return $this->jsonResponse(
-            DelegateSettlement::with('receiver:id,name')->where('delegate_id', auth()->id())->orderByDesc('id')->paginate($request->integer('per_page', 15))
+        return $this->paginated(DelegateSettlement::with('receiver:id,name')->where('delegate_id', auth()->id())->orderByDesc('id')->paginate($request->integer('per_page', 15))
         );
     }
 }

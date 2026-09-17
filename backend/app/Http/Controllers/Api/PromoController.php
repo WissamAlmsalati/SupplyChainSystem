@@ -32,7 +32,7 @@ class PromoController extends BaseApiController
 
     public function index(): JsonResponse
     {
-        return $this->jsonResponse(Promo::orderByDesc('id')->paginate(15));
+        return $this->paginated(Promo::orderByDesc('id')->paginate(15));
     }
 
     /**

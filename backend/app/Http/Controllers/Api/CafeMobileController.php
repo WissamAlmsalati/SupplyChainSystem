@@ -66,7 +66,7 @@ class CafeMobileController extends BaseApiController
             $query->whereDate('placed_at', '<=', $request->input('to'));
         }
 
-        return $this->jsonResponse($query->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->paginate($request->integer('per_page', 15)));
     }
 
     /**
@@ -144,6 +144,7 @@ class CafeMobileController extends BaseApiController
                 'per_page' => $page->perPage(),
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
+                'has_more' => $page->hasMorePages(),
                 'counts' => $counts,
                 'applied' => (object) array_filter([
                     'group' => $request->input('group'),
@@ -539,6 +540,7 @@ class CafeMobileController extends BaseApiController
                 'per_page' => $page->perPage(),
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
+                'has_more' => $page->hasMorePages(),
                 'applied' => $search->applied(),
             ],
         ]);
@@ -659,6 +661,7 @@ class CafeMobileController extends BaseApiController
                 'per_page' => $page->perPage(),
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
+                'has_more' => $page->hasMorePages(),
             ],
         ]);
     }
@@ -697,6 +700,7 @@ Page 1 starts from the beginning of the section (it repeats the products already
                 'per_page' => $page->perPage(),
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
+                'has_more' => $page->hasMorePages(),
             ],
         ]);
     }

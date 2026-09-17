@@ -17,7 +17,7 @@ class OrderStatusLogController extends BaseApiController
             $query->where('order_id', $request->integer('order_id'));
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
+        return $this->paginated($query->orderByDesc('id')->paginate(15));
     }
 
     public function show(OrderStatusLog $orderStatusLog): JsonResponse

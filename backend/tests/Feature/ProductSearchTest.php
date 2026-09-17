@@ -145,4 +145,18 @@ class ProductSearchTest extends TestCase
         $this->assertSame(['الريف' => 1], $brands->all());                                                    // in stock + coffee
         $this->assertNotContains('relevance', collect($res->json('data.sort_options'))->pluck('value'));
     }
+
+    public function test_search_ignores_hamza_taa_marbuta_and_harakat(): void
+    {
+        $category = Category::where('name', 'مشروبات')->first() ?? Category::create(['name' => 'مشروبات']);
+        $product = Product::create(['name' => 'قهوة أمريكية', 'category_id' => $category->id, 'is_active' => true]);
+        ProductVariant::create(['product_id' => $product->id, 'name' => 'وسط', 'price' => 10, 'is_active' => true]);
+
+        foreach (['قهوه امريكيه', 'قهوة أمريكية', 'قَهْوة', 'امريكية'] as $term) {
+            $this->assertNotNull(
+                collect($this->search(['q' => $term])->json('data'))->firstWhere('name', 'قهوة أمريكية'),
+                "لم يجد المنتج بالبحث عن: {$term}"
+            );
+        }
+    }
 }

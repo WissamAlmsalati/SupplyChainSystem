@@ -88,6 +88,31 @@ class DatabaseDesignTest extends TestCase
         ], $this->asAdmin())->assertCreated();
     }
 
+    public function test_identical_goods_in_within_seconds_is_rejected_as_a_duplicate(): void
+    {
+        $payload = [
+            'warehouse_id' => $this->warehouse->id,
+            'product_variant_id' => $this->variant->id,
+            'quantity' => 150,
+            'unit_cost' => 10,
+        ];
+
+        $this->postJson('/api/v1/inventory', $payload, $this->asAdmin())->assertCreated();
+        $this->postJson('/api/v1/inventory', $payload, $this->asAdmin())->assertUnprocessable();
+
+        $this->assertSame(150, $this->stockOnHand());
+        $this->assertSame(1, \App\Models\StockMovement::where('product_variant_id', $this->variant->id)->count());
+
+        // A different quantity is a real second delivery, not a duplicate.
+        $this->postJson('/api/v1/inventory', ['quantity' => 40] + $payload, $this->asAdmin())->assertCreated();
+        $this->assertSame(190, $this->stockOnHand());
+
+        // And the same one is fine again once the window has passed.
+        \App\Models\StockMovement::query()->update(['created_at' => now()->subMinute()]);
+        $this->postJson('/api/v1/inventory', $payload, $this->asAdmin())->assertCreated();
+        $this->assertSame(340, $this->stockOnHand());
+    }
+
     public function test_each_user_type_gets_its_own_profile(): void
     {
         $delegate = AppUser::factory()->delegate()->create();

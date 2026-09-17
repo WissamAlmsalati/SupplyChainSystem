@@ -26,7 +26,7 @@ class NotificationController extends BaseApiController
             $query->whereNull('read_at');
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->orderByDesc('id')->paginate($request->integer('per_page', 15)));
     }
 
     /**

@@ -254,7 +254,7 @@ class WalletTest extends TestCase
 
         $this->assertSame(25.0, $this->balance());
         $this->getJson("/api/v1/wallets/{$wallet->id}/transactions", $this->as($this->admin))->assertOk()->assertJsonCount(2, 'data');
-        $this->getJson('/api/v1/wallets', $this->as($this->admin))->assertOk()->assertJsonPath('summary.total_balance', 25);
+        $this->getJson('/api/v1/wallets', $this->as($this->admin))->assertOk()->assertJsonPath('meta.summary.total_balance', 25);
     }
 
     public function test_customer_cannot_use_admin_wallet_endpoints(): void

@@ -78,7 +78,7 @@ class DelegateWalletController extends BaseApiController
 
         return $this->jsonResponse([
             'total' => round((float) $total, 2),
-            'collections' => $query->orderByDesc('id')->paginate($request->integer('per_page', 15)),
+            'collections' => $this->paginatedPayload($query->orderByDesc('id')->paginate($request->integer('per_page', 15))),
         ]);
     }
 }

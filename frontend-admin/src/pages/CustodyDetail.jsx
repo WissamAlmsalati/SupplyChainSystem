@@ -24,6 +24,7 @@ export default function CustodyDetail() {
   const { canEdit } = useModulePermission('CUSTODY')
   const [data, setData] = useState(null)
   const [entries, setEntries] = useState({ data: [], current_page: 1, last_page: 1 })
+  const normalizePage = (payload) => ({ data: payload?.data ?? [], ...(payload?.meta ?? payload ?? {}) })
   const [page, setPage] = useState(1)
   const [error, setError] = useState('')
   const [settle, setSettle] = useState(null)
@@ -36,7 +37,7 @@ export default function CustodyDetail() {
       client.get(`/custody/${id}/entries`, { params: { page } }),
     ])
     setData(summary.data)
-    setEntries(list.data)
+    setEntries(normalizePage(list.data))
   }
 
   useEffect(() => {

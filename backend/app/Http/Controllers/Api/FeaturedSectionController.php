@@ -21,7 +21,7 @@ class FeaturedSectionController extends BaseApiController
             $query->where('title', 'like', '%' . $request->input('search') . '%');
         }
 
-        return $this->jsonResponse($query->paginate($request->integer('per_page', 50)));
+        return $this->paginated($query->paginate($request->integer('per_page', 50)));
     }
 
     public function store(FeaturedSectionRequest $request): JsonResponse

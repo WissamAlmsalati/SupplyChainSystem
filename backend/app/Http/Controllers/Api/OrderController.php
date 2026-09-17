@@ -83,7 +83,7 @@ class OrderController extends BaseApiController
             $query->whereDate('placed_at', '<=', $request->input('date_to'));
         }
 
-        return $this->jsonResponse($query->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->paginate($request->integer('per_page', 15)));
     }
 
     /**

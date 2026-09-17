@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\Api\InventoryRequest;
+use App\Enums\StockMovementType;
 use App\Models\Inventory;
+use App\Models\StockMovement;
 use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +38,7 @@ class InventoryController extends BaseApiController
 
         $perPage = $request->integer('per_page', 15);
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
+        return $this->paginated($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
     }
 
     // Goods received into a warehouse: sums with the balance and records a purchase
@@ -44,6 +46,22 @@ class InventoryController extends BaseApiController
     public function store(InventoryRequest $request): JsonResponse
     {
         $data = $request->validated();
+
+        // Guard against a double click or a retried request repeating the same
+        // goods-in: an identical movement seconds ago is almost certainly a dupe.
+        $recent = StockMovement::where('warehouse_id', $data['warehouse_id'])
+            ->where('product_variant_id', $data['product_variant_id'])
+            ->where('quantity_change', (int) $data['quantity'])
+            ->where('type', StockMovementType::Purchase)
+            ->where('created_by', auth()->id())
+            ->where('created_at', '>=', now()->subSeconds(10))
+            ->exists();
+
+        if ($recent) {
+            return $this->jsonResponse([
+                'message' => 'تم تسجيل نفس الإدخال قبل لحظات. راجع سجل الإدخال قبل إعادة المحاولة.',
+            ], 422);
+        }
 
         $inventory = $this->stock->receive(
             $data['warehouse_id'],

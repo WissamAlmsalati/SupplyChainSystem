@@ -35,7 +35,7 @@ class ProductController extends BaseApiController
 
         $perPage = $request->integer('per_page', 15);
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
+        return $this->paginated($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
     }
 
     public function store(ProductRequest $request): JsonResponse

@@ -49,7 +49,7 @@ class CafeWalletController extends BaseApiController
             $query->where('type', $request->input('type'));
         }
 
-        return $this->jsonResponse($query->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->paginate($request->integer('per_page', 15)));
     }
 
     /**
@@ -65,7 +65,7 @@ class CafeWalletController extends BaseApiController
             $query->where('status', $request->input('status'));
         }
 
-        return $this->jsonResponse($query->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->paginate($request->integer('per_page', 15)));
     }
 
     /**

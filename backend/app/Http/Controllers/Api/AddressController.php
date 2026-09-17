@@ -49,7 +49,7 @@ class AddressController extends BaseApiController
             $query->where('user_id', $request->integer('user_id'));
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
+        return $this->paginated($query->orderByDesc('id')->paginate($perPage > 0 ? min($perPage, 10000) : 15));
     }
 
     /**

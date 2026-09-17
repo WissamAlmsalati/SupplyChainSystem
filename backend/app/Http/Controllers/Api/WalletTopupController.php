@@ -32,7 +32,7 @@ class WalletTopupController extends BaseApiController
                 ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%")->orWhere('mobile_number', 'like', "%{$search}%")));
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->orderByDesc('id')->paginate($request->integer('per_page', 15)));
     }
 
     public function show(WalletTopup $walletTopup): JsonResponse

@@ -20,7 +20,7 @@ class CartController extends BaseApiController
             $query->where('user_id', $request->integer('user_id'));
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
+        return $this->paginated($query->orderByDesc('id')->paginate(15));
     }
 
     public function show(Cart $cart): JsonResponse

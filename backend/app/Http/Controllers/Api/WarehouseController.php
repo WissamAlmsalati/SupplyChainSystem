@@ -79,7 +79,7 @@ class WarehouseController extends BaseApiController
             });
         }
 
-        return $this->jsonResponse($query->orderByDesc('id')->paginate(15));
+        return $this->paginated($query->orderByDesc('id')->paginate(15));
     }
 
     /**

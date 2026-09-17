@@ -47,7 +47,7 @@ export default function Orders() {
     try {
       const res = await client.get(`/cafe/orders?page=${page}`)
       setOrders(res.data.data ?? [])
-      setLastPage(res.data.last_page ?? 1)
+      setLastPage(res.data.meta?.last_page ?? res.data.last_page ?? 1)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تحميل الطلبات')
     } finally {

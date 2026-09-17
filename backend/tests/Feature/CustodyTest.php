@@ -126,7 +126,7 @@ class CustodyTest extends TestCase
         $this->getJson("/api/v1/custody/{$this->delegate->id}", $this->as($this->admin))
             ->assertOk()->assertJsonPath('balance', '20.00')->assertJsonPath('settlements.0.amount', '60.00');
         $this->getJson("/api/v1/custody/{$this->delegate->id}/entries", $this->as($this->admin))->assertOk()->assertJsonCount(3, 'data');
-        $this->getJson('/api/v1/custody', $this->as($this->admin))->assertOk()->assertJsonPath('summary.total_custody', 20);
+        $this->getJson('/api/v1/custody', $this->as($this->admin))->assertOk()->assertJsonPath('meta.summary.total_custody', 20);
 
         $this->getJson('/api/v1/delegate/custody', $this->as($this->delegate))
             ->assertOk()->assertJsonPath('balance', '20.00')->assertJsonPath('last_settlement.amount', '60.00')->assertJsonPath('since_last_settlement.amount', 0);

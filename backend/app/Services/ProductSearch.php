@@ -7,6 +7,7 @@ use App\Models\Inventory;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Support\ArabicText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -52,15 +53,21 @@ class ProductSearch
             ->whereHas('variants', fn ($v) => $v->where('is_active', true));
 
         if (($term = $this->term()) !== '') {
-            $like = '%' . addcslashes($term, '%_\\') . '%';
+            // Both sides are folded (أ/ا, ة/ه, harakat, Arabic-Indic digits), so
+            // "قهوه" finds "قهوة" and "احمد" finds "أحمد".
+            $like = '%' . addcslashes(ArabicText::normalize($term), '%_\\') . '%';
+            $matches = fn (string $column) => ArabicText::sqlExpression($column) . ' LIKE ?';
+
             $query->where(fn ($q) => $q
-                ->where('products.name', 'like', $like)
-                ->orWhere('products.brand', 'like', $like)
-                ->orWhere('products.description', 'like', $like)
-                ->orWhere('products.tags', 'like', $like)
-                ->orWhereHas('category', fn ($c) => $c->where('name', 'like', $like))
+                ->whereRaw($matches('products.name'), [$like])
+                ->orWhereRaw($matches('products.brand'), [$like])
+                ->orWhereRaw($matches('products.description'), [$like])
+                ->orWhereRaw($matches('products.tags'), [$like])
+                ->orWhereHas('category', fn ($c) => $c->whereRaw($matches('categories.name'), [$like]))
                 ->orWhereHas('variants', fn ($v) => $v->where('is_active', true)->where(fn ($vv) => $vv
-                    ->where('name', 'like', $like)->orWhere('sku', 'like', $like)->orWhere('barcode', 'like', $like))));
+                    ->whereRaw($matches('product_variants.name'), [$like])
+                    ->orWhereRaw($matches('product_variants.sku'), [$like])
+                    ->orWhereRaw($matches('product_variants.barcode'), [$like]))));
         }
 
         if (! in_array('category', $skip, true) && ($categoryIds = $this->ids('category_id'))) {
@@ -118,9 +125,16 @@ class ProductSearch
 
         match ($this->sort()) {
             'relevance' => $query
-                ->orderByRaw('CASE WHEN products.name = ? THEN 0 WHEN products.name LIKE ? THEN 1 WHEN products.name LIKE ? THEN 2 ELSE 3 END', [
-                    $term, addcslashes($term, '%_\\') . '%', '%' . addcslashes($term, '%_\\') . '%',
-                ])
+                ->orderByRaw(
+                    'CASE WHEN ' . ArabicText::sqlExpression('products.name') . ' = ? THEN 0'
+                    . ' WHEN ' . ArabicText::sqlExpression('products.name') . ' LIKE ? THEN 1'
+                    . ' WHEN ' . ArabicText::sqlExpression('products.name') . ' LIKE ? THEN 2 ELSE 3 END',
+                    [
+                        ArabicText::normalize($term),
+                        addcslashes(ArabicText::normalize($term), '%_\\') . '%',
+                        '%' . addcslashes(ArabicText::normalize($term), '%_\\') . '%',
+                    ]
+                )
                 ->orderBy('products.name'),
             'price_asc' => $query->orderBy('min_price_value')->orderBy('products.id'),
             'price_desc' => $query->orderByDesc('min_price_value')->orderBy('products.id'),
@@ -140,8 +154,10 @@ class ProductSearch
             return null;
         }
 
+        $needle = ArabicText::normalize($term);
+
         return $product->variants->first(fn (ProductVariant $v) => collect([$v->name, $v->sku, $v->barcode])
-            ->contains(fn ($value) => $value !== null && mb_stripos($value, $term) !== false));
+            ->contains(fn ($value) => $value !== null && str_contains(ArabicText::normalize($value), $needle)));
     }
 
     /**

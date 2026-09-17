@@ -39,6 +39,7 @@ class FavoriteController extends BaseApiController
                 'per_page' => $page->perPage(),
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
+                'has_more' => $page->hasMorePages(),
             ],
         ]);
     }

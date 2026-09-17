@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApiResource, useApiList, usePremiumFeatureActive } from '../hooks/useApiResource'
 import { useModulePermission } from '../hooks/usePermission'
@@ -37,6 +37,7 @@ export default function Inventory() {
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
+  const submitting = useRef(false)
   const [modalError, setModalError] = useState('')
   const [imageFiles, setImageFiles] = useState([])
   const [imagePreviews, setImagePreviews] = useState([])
@@ -110,6 +111,10 @@ export default function Inventory() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    // A ref locks immediately; `saving` only disables the button on the next
+    // render, which a fast double click beats.
+    if (submitting.current) return
+    submitting.current = true
     setSaving(true)
     try {
       let variantId = form.product_variant_id
@@ -176,6 +181,7 @@ export default function Inventory() {
     } catch (err) {
       setModalError(err.response?.data?.message || 'فشل الحفظ')
     } finally {
+      submitting.current = false
       setSaving(false)
     }
   }
