@@ -32,6 +32,7 @@ class UserTypeController extends BaseApiController
 
         $userType = UserType::create($request->validated());
         $userType->permissions()->sync($request->input('permission_ids', []));
+
         return $this->jsonResponse($userType->load('permissions'), 201);
     }
 
@@ -44,12 +45,14 @@ class UserTypeController extends BaseApiController
     {
         $userType->update($request->validated());
         $userType->permissions()->sync($request->input('permission_ids', []));
+
         return $this->jsonResponse($userType->load('permissions'));
     }
 
     public function destroy(UserType $userType): JsonResponse
     {
         $userType->delete();
+
         return $this->jsonResponse(null, 204);
     }
 }

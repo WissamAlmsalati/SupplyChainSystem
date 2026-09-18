@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Product;
 use App\Services\ProductSearch;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -13,8 +13,10 @@ class FavoriteController extends BaseApiController
 {
     /**
      * @OA\Get(path="/customer/favorites", tags={"Customer Favorites"}, summary="My favorite products (paginated, newest first)", security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
      *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=20, maximum=100)),
+     *
      *     @OA\Response(response=200, description="data: product cards with favorited_at; meta: current_page, per_page, total, last_page"))
      */
     public function index(Request $request): JsonResponse
@@ -46,6 +48,7 @@ class FavoriteController extends BaseApiController
 
     /**
      * @OA\Get(path="/customer/favorites/ids", tags={"Customer Favorites"}, summary="Ids of my favorite products (to mark hearts in lists)", security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(response=200, description="data: [product ids]"))
      */
     public function ids(): JsonResponse
@@ -55,7 +58,9 @@ class FavoriteController extends BaseApiController
 
     /**
      * @OA\Post(path="/customer/favorites", tags={"Customer Favorites"}, summary="Add a product to favorites (idempotent)", security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(required={"product_id"}, @OA\Property(property="product_id", type="integer"))),
+     *
      *     @OA\Response(response=201, description="product_id, is_favorite=true, favorites_count"),
      *     @OA\Response(response=422, description="Unknown or inactive product"))
      */
@@ -83,7 +88,9 @@ class FavoriteController extends BaseApiController
 
     /**
      * @OA\Delete(path="/customer/favorites/{productId}", tags={"Customer Favorites"}, summary="Remove a product from favorites (idempotent)", security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="productId", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="product_id, is_favorite=false, favorites_count"))
      */
     public function destroy(int $productId): JsonResponse

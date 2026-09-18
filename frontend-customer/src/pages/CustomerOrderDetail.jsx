@@ -59,7 +59,7 @@ export default function CustomerOrderDetail() {
   const confirmReceipt = async () => {
     setConfirming(true)
     try {
-      await client.put(`/customer/orders/${id}/status`, { status: 'received' })
+      await client.patch(`/customer/orders/${id}/status`, { status: 'received' })
       const res = await client.get(`/customer/orders/${id}`)
       setOrder(res.data?.data ?? res.data)
     } catch (err) {

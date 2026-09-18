@@ -32,9 +32,11 @@ class DelegateController extends BaseApiController
 
     /**
      * @OA\Get(path="/delegates", tags={"Delegates"}, summary="List delegates",
+     *
      *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
      *     @OA\Parameter(name="is_active", in="query", @OA\Schema(type="boolean")),
      *     @OA\Parameter(name="is_available", in="query", @OA\Schema(type="boolean")),
+     *
      *     @OA\Response(response=200, description="Paginated delegates with delegate_profile"))
      */
     public function index(Request $request): JsonResponse
@@ -45,8 +47,8 @@ class DelegateController extends BaseApiController
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('mobile_number', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('mobile_number', 'like', "%{$search}%");
             });
         }
 
@@ -63,7 +65,9 @@ class DelegateController extends BaseApiController
 
     /**
      * @OA\Post(path="/delegates", tags={"Delegates"}, summary="Create a delegate",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/DelegateRequest")),
+     *
      *     @OA\Response(response=201, description="Delegate created"))
      */
     public function store(DelegateRequest $request): JsonResponse
@@ -93,7 +97,9 @@ class DelegateController extends BaseApiController
 
     /**
      * @OA\Get(path="/delegates/{id}", tags={"Delegates"}, summary="Delegate details",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Delegate with profile and orders"))
      */
     public function show(int $id): JsonResponse
@@ -103,8 +109,11 @@ class DelegateController extends BaseApiController
 
     /**
      * @OA\Put(path="/delegates/{id}", tags={"Delegates"}, summary="Update a delegate",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/DelegateRequest")),
+     *
      *     @OA\Response(response=200, description="Delegate updated"))
      */
     public function update(DelegateRequest $request, int $id): JsonResponse
@@ -126,7 +135,9 @@ class DelegateController extends BaseApiController
 
     /**
      * @OA\Delete(path="/delegates/{id}", tags={"Delegates"}, summary="Delete a delegate (soft delete)",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=204, description="Delegate deleted"))
      */
     public function destroy(int $id): JsonResponse

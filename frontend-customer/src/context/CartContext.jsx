@@ -31,7 +31,7 @@ export function CartProvider({ children }) {
   }
 
   const updateItem = async (itemId, quantity) => {
-    const res = await client.put(`/customer/cart/items/${itemId}`, { quantity })
+    const res = await client.patch(`/customer/cart/items/${itemId}`, { quantity })
     setCart(res.data?.data ?? res.data)
     return res.data
   }

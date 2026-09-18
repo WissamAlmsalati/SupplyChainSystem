@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\CustodyEntryType;
 use App\Enums\OrderStatus;
-use App\Enums\PaymentMethod;
-use App\Enums\WalletTransactionType;
 use App\Models\AppUser;
 use App\Models\CustodyEntry;
 use App\Models\Order;
@@ -58,10 +55,12 @@ class ReportController extends BaseApiController
 
     /**
      * @OA\Get(path="/reports/sales", tags={"Reports"}, summary="Sales report for a period",
+     *
      *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="group_by", in="query", @OA\Schema(type="string", enum={"day","month"})),
      *     @OA\Parameter(name="format", in="query", @OA\Schema(type="string", enum={"json","pdf","xlsx"})),
+     *
      *     @OA\Response(response=200, description="Report (JSON), or a PDF / Excel download"))
      */
     public function sales(Request $request, SalesReport $sales)
@@ -98,11 +97,13 @@ class ReportController extends BaseApiController
 
     /**
      * @OA\Get(path="/reports/custody/{delegate}", tags={"Reports"}, summary="Delegate custody statement",
+     *
      *     @OA\Parameter(name="delegate", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="all", in="query", description="1 = since the beginning", @OA\Schema(type="boolean")),
      *     @OA\Parameter(name="format", in="query", @OA\Schema(type="string", enum={"json","pdf","xlsx"})),
+     *
      *     @OA\Response(response=200, description="Statement"))
      */
     public function custody(Request $request, int $delegate, LedgerStatement $statement)
@@ -122,10 +123,12 @@ class ReportController extends BaseApiController
 
     /**
      * @OA\Get(path="/reports/wallet/{wallet}", tags={"Reports"}, summary="Customer wallet statement",
+     *
      *     @OA\Parameter(name="wallet", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="format", in="query", @OA\Schema(type="string", enum={"json","pdf","xlsx"})),
+     *
      *     @OA\Response(response=200, description="Statement"))
      */
     public function wallet(Request $request, Wallet $wallet, LedgerStatement $statement)
@@ -170,11 +173,13 @@ class ReportController extends BaseApiController
 
     /**
      * @OA\Get(path="/reports/inventory", tags={"Reports"}, summary="Stock on hand, low stock and movements",
+     *
      *     @OA\Parameter(name="warehouse_id", in="query", @OA\Schema(type="integer")),
      *     @OA\Parameter(name="low_stock_at", in="query", @OA\Schema(type="integer", default=10)),
      *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="format", in="query", @OA\Schema(type="string", enum={"json","pdf","xlsx"})),
+     *
      *     @OA\Response(response=200, description="Report"))
      */
     public function inventory(Request $request, InventoryReport $inventory)
@@ -200,9 +205,11 @@ class ReportController extends BaseApiController
 
     /**
      * @OA\Get(path="/reports/orders", tags={"Reports"}, summary="Export orders to Excel",
+     *
      *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string")),
+     *
      *     @OA\Response(response=200, description="Excel download"))
      */
     public function orders(Request $request)
@@ -237,7 +244,9 @@ class ReportController extends BaseApiController
 
     /**
      * @OA\Get(path="/orders/{id}/invoice", tags={"Reports"}, summary="Order invoice (PDF)",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="PDF download"))
      */
     public function invoice(Order $order)

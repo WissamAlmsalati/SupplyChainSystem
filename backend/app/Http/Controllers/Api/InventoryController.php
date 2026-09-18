@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\InventoryRequest;
 use App\Enums\StockMovementType;
+use App\Http\Requests\Api\InventoryRequest;
 use App\Models\Inventory;
 use App\Models\StockMovement;
 use App\Services\StockService;
@@ -23,8 +23,8 @@ class InventoryController extends BaseApiController
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->whereHas('productVariant.product', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('productVariant', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('warehouse', fn ($sub) => $sub->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('productVariant', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('warehouse', fn ($sub) => $sub->where('name', 'like', "%{$search}%"));
             });
         }
 

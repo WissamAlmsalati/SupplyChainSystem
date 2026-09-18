@@ -110,7 +110,7 @@ export default function Addresses() {
       delete data.hex_id
 
       if (editing) {
-        await client.put(`/customer/addresses/${editing.id}`, data)
+        await client.patch(`/customer/addresses/${editing.id}`, data)
       } else {
         await client.post('/customer/addresses', data)
       }

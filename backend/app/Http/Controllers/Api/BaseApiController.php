@@ -34,7 +34,7 @@ abstract class BaseApiController extends Controller
     {
         $items = $page->getCollection();
 
-        return ([
+        return [
             'data' => ($map ? $items->map($map) : $items)->values(),
             'meta' => [
                 'current_page' => $page->currentPage(),
@@ -43,7 +43,7 @@ abstract class BaseApiController extends Controller
                 'last_page' => $page->lastPage(),
                 'has_more' => $page->hasMorePages(),
             ] + $meta,
-        ]);
+        ];
     }
 
     protected function jsonResponse(mixed $data, int $status = 200): JsonResponse

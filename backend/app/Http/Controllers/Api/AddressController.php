@@ -24,6 +24,7 @@ class AddressController extends BaseApiController
      *     path="/addresses",
      *     tags={"Admin Addresses"},
      *     summary="List addresses",
+     *
      *     @OA\Response(response=200, description="Paginated list of addresses")
      * )
      */
@@ -40,8 +41,8 @@ class AddressController extends BaseApiController
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('city', 'like', "%{$search}%")
-                  ->orWhere('street', 'like', "%{$search}%");
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('street', 'like', "%{$search}%");
             });
         }
 
@@ -57,7 +58,9 @@ class AddressController extends BaseApiController
      *     path="/addresses",
      *     tags={"Admin Addresses"},
      *     summary="Create an address",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
+     *
      *     @OA\Response(response=201, description="Address created"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
@@ -66,7 +69,7 @@ class AddressController extends BaseApiController
     {
         // ponytail: customer_branches premium feature gates address creation for everyone;
         // frontend hides the add button, this guard blocks direct API calls.
-        if (!PremiumFeature::isActive('customer_branches')) {
+        if (! PremiumFeature::isActive('customer_branches')) {
             return $this->jsonResponse(['message' => 'إضافة عناوين غير متاحة — الميزة معطلة'], 403);
         }
 
@@ -77,6 +80,7 @@ class AddressController extends BaseApiController
         }
 
         $address = Address::create($data);
+
         return $this->jsonResponse($address->load(['user', 'deliveryZone']), 201);
     }
 
@@ -85,7 +89,9 @@ class AddressController extends BaseApiController
      *     path="/addresses/{id}",
      *     tags={"Admin Addresses"},
      *     summary="Get an address",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Address details"),
      *     @OA\Response(response=404, description="Not found")
      * )
@@ -100,8 +106,11 @@ class AddressController extends BaseApiController
      *     path="/addresses/{id}",
      *     tags={"Admin Addresses"},
      *     summary="Update an address",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
+     *
      *     @OA\Response(response=200, description="Address updated"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
@@ -118,6 +127,7 @@ class AddressController extends BaseApiController
         }
 
         $address->update($data);
+
         return $this->jsonResponse($address->load(['user', 'deliveryZone']));
     }
 
@@ -126,7 +136,9 @@ class AddressController extends BaseApiController
      *     path="/addresses/{id}",
      *     tags={"Admin Addresses"},
      *     summary="Delete an address",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=204, description="Address deleted")
      * )
      */
@@ -138,6 +150,7 @@ class AddressController extends BaseApiController
         }
 
         $address->delete();
+
         return $this->jsonResponse(null, 204);
     }
 }

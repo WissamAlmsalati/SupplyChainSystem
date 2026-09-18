@@ -27,11 +27,13 @@ class DeliveryZoneController extends BaseApiController
 
         return $data;
     }
+
     /**
      * @OA\Get(
      *     path="/delivery-zones",
      *     tags={"Admin Delivery Zones"},
      *     summary="List delivery zones",
+     *
      *     @OA\Response(response=200, description="Paginated list of delivery zones")
      * )
      */
@@ -48,7 +50,7 @@ class DeliveryZoneController extends BaseApiController
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('hex_id', 'like', "%{$search}%");
+                    ->orWhere('hex_id', 'like', "%{$search}%");
             });
         }
 
@@ -64,7 +66,9 @@ class DeliveryZoneController extends BaseApiController
      *     path="/delivery-zones",
      *     tags={"Admin Delivery Zones"},
      *     summary="Create a delivery zone",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/DeliveryZoneRequest")),
+     *
      *     @OA\Response(response=201, description="Delivery zone created"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
@@ -73,6 +77,7 @@ class DeliveryZoneController extends BaseApiController
     {
         $data = $this->resolveCenter($request->validated());
         $zone = DeliveryZone::create($data);
+
         return $this->jsonResponse($zone, 201);
     }
 
@@ -81,7 +86,9 @@ class DeliveryZoneController extends BaseApiController
      *     path="/delivery-zones/{id}",
      *     tags={"Admin Delivery Zones"},
      *     summary="Get a delivery zone",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Delivery zone details"),
      *     @OA\Response(response=404, description="Not found")
      * )
@@ -96,8 +103,11 @@ class DeliveryZoneController extends BaseApiController
      *     path="/delivery-zones/{id}",
      *     tags={"Admin Delivery Zones"},
      *     summary="Update a delivery zone",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/DeliveryZoneRequest")),
+     *
      *     @OA\Response(response=200, description="Delivery zone updated"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
@@ -106,6 +116,7 @@ class DeliveryZoneController extends BaseApiController
     {
         $data = $this->resolveCenter($request->validated());
         $deliveryZone->update($data);
+
         return $this->jsonResponse($deliveryZone);
     }
 
@@ -114,13 +125,16 @@ class DeliveryZoneController extends BaseApiController
      *     path="/delivery-zones/{id}",
      *     tags={"Admin Delivery Zones"},
      *     summary="Delete a delivery zone",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=204, description="Delivery zone deleted")
      * )
      */
     public function destroy(DeliveryZone $deliveryZone): JsonResponse
     {
         $deliveryZone->delete();
+
         return $this->jsonResponse(null, 204);
     }
 }

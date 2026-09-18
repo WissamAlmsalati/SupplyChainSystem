@@ -20,6 +20,7 @@ class CategoryController extends BaseApiController
      *     tags={"Admin Categories"},
      *     summary="List categories",
      *     security={},
+     *
      *     @OA\Response(response=200, description="Paginated list of categories")
      * )
      */
@@ -48,7 +49,9 @@ class CategoryController extends BaseApiController
      *     path="/categories",
      *     tags={"Admin Categories"},
      *     summary="Create a category",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CategoryRequest")),
+     *
      *     @OA\Response(response=201, description="Category created"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
@@ -81,7 +84,9 @@ class CategoryController extends BaseApiController
      *     tags={"Admin Categories"},
      *     summary="Get a category",
      *     security={},
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Category details"),
      *     @OA\Response(response=404, description="Not found")
      * )
@@ -96,8 +101,11 @@ class CategoryController extends BaseApiController
      *     path="/categories/{id}",
      *     tags={"Admin Categories"},
      *     summary="Update a category",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CategoryRequest")),
+     *
      *     @OA\Response(response=200, description="Category updated"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
@@ -123,7 +131,9 @@ class CategoryController extends BaseApiController
      *     path="/categories/{id}",
      *     tags={"Admin Categories"},
      *     summary="Delete a category",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=204, description="Category deleted")
      * )
      */

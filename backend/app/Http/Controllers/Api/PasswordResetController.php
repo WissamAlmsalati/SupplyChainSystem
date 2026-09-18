@@ -17,7 +17,9 @@ class PasswordResetController extends BaseApiController
      *     tags={"Auth"},
      *     summary="Request password reset OTP for customer user",
      *     security={},
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="mobile_number", type="string"))),
+     *
      *     @OA\Response(response=200, description="OTP sent"),
      *     @OA\Response(response=404, description="Mobile number not found")
      * )
@@ -64,12 +66,15 @@ class PasswordResetController extends BaseApiController
      *     tags={"Auth"},
      *     summary="Reset customer user password with OTP",
      *     security={},
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *
      *         @OA\Property(property="token", type="string"),
      *         @OA\Property(property="otp", type="string"),
      *         @OA\Property(property="password", type="string"),
      *         @OA\Property(property="password_confirmation", type="string")
      *     )),
+     *
      *     @OA\Response(response=200, description="Password reset successfully"),
      *     @OA\Response(response=422, description="Invalid or expired token/OTP")
      * )

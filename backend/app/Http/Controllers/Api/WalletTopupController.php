@@ -24,7 +24,18 @@ class WalletTopupController extends BaseApiController
      *     @OA\Parameter(name="method", in="query", @OA\Schema(type="string")),
      *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
      *
-     *     @OA\Response(response=200, description="Paginated top-ups"))
+     *     @OA\Response(response=200, description="Paginated, with a count per status beside the paging.",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="meta", type="object", allOf={@OA\Schema(ref="#/components/schemas/PaginationMeta")}),
+     *             example={"data": {{"id": 10, "amount": "100.00", "method": "bank_transfer", "status": "rejected", "reference_number": "TRX-828636"}},
+     *                      "meta": {"current_page": 1, "per_page": 15, "total": 2, "last_page": 1, "has_more": false,
+     *                               "status_counts": {"pending": 0, "approved": 12, "rejected": 2, "cancelled": 2, "failed": 0, "all": 16}}})),
+     *
+     *     @OA\Response(response=401, ref="#/components/responses/Unauthenticated"),
+     *     @OA\Response(response=403, ref="#/components/responses/Forbidden"))
      */
     public function index(Request $request): JsonResponse
     {

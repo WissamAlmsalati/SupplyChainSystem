@@ -29,7 +29,9 @@ class DelegateMobileController extends BaseApiController
 
     /**
      * @OA\Post(path="/delegate/location", tags={"Delegate Mobile"}, summary="Report current location",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/DelegateLocationRequest")),
+     *
      *     @OA\Response(response=200, description="Location saved"))
      */
     public function updateLocation(Request $request): JsonResponse
@@ -57,7 +59,9 @@ class DelegateMobileController extends BaseApiController
 
     /**
      * @OA\Post(path="/delegate/availability", tags={"Delegate Mobile"}, summary="Go online/offline",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/DelegateAvailabilityRequest")),
+     *
      *     @OA\Response(response=200, description="Availability saved"))
      */
     public function setAvailability(Request $request): JsonResponse
@@ -80,7 +84,9 @@ class DelegateMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/delegate/orders", tags={"Delegate Mobile"}, summary="Orders assigned to me",
+     *
      *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string")),
+     *
      *     @OA\Response(response=200, description="Orders"))
      */
     public function myOrders(Request $request): JsonResponse
@@ -102,7 +108,9 @@ class DelegateMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/delegate/orders/{id}", tags={"Delegate Mobile"}, summary="Assigned order details",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Order"))
      */
     public function showOrder(int $id): JsonResponse
@@ -126,8 +134,11 @@ class DelegateMobileController extends BaseApiController
 
     /**
      * @OA\Post(path="/delegate/orders/{id}/status", tags={"Delegate Mobile"}, summary="Move an assigned order to out_for_delivery or delivered",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="status", type="string", enum={"out_for_delivery", "delivered"}))),
+     *
      *     @OA\Response(response=200, description="Order updated"),
      *     @OA\Response(response=422, description="Move not allowed from the current status"))
      */

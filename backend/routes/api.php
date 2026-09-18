@@ -1,23 +1,21 @@
 <?php
 
+use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\AppUserController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\CustomerDashboardController;
-use App\Http\Controllers\Api\CustomerMobileController;
-use App\Http\Controllers\Api\CustomerWalletController;
-use App\Http\Controllers\Api\CustodyController;
-use App\Http\Controllers\Api\DelegateCustodyController;
-use App\Http\Controllers\Api\DelegateWalletController;
-use App\Http\Controllers\Api\WalletController;
-use App\Http\Controllers\Api\WalletGatewayController;
-use App\Http\Controllers\Api\WalletTopupController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CartItemController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CustodyController;
+use App\Http\Controllers\Api\CustomerDashboardController;
+use App\Http\Controllers\Api\CustomerMobileController;
+use App\Http\Controllers\Api\CustomerWalletController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DelegateController;
+use App\Http\Controllers\Api\DelegateCustodyController;
 use App\Http\Controllers\Api\DelegateMobileController;
+use App\Http\Controllers\Api\DelegateWalletController;
 use App\Http\Controllers\Api\DeliveryZoneController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\FeaturedSectionController;
@@ -27,11 +25,10 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderItemController;
 use App\Http\Controllers\Api\OrderStatusLogController;
 use App\Http\Controllers\Api\PasswordResetController;
-use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\PlaceholderController;
 use App\Http\Controllers\Api\PremiumFeatureController;
-use App\Models\PremiumFeature;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\ProductVariantController;
@@ -40,6 +37,9 @@ use App\Http\Controllers\Api\RecurringCartController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\StockMovementController;
 use App\Http\Controllers\Api\UserTypeController;
+use App\Http\Controllers\Api\WalletController;
+use App\Http\Controllers\Api\WalletGatewayController;
+use App\Http\Controllers\Api\WalletTopupController;
 use App\Http\Controllers\Api\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,6 +48,9 @@ use Illuminate\Support\Facades\Route;
 | API v1 Routes
 |--------------------------------------------------------------------------
 |
+| Updates are PATCH: each one changes some fields and leaves the rest alone,
+| which is not what PUT means. PUT stays accepted beside it for older clients.
+|
 | Authentication endpoints and read-only storefront endpoints are open.
 | All other API routes require a valid Sanctum bearer token.
 |
@@ -55,7 +58,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth');
-    Route::get('placeholder/{kind}', [\App\Http\Controllers\Api\PlaceholderController::class, 'show'])->name('placeholder');
+    Route::get('placeholder/{kind}', [PlaceholderController::class, 'show'])->name('placeholder');
     // OTP endpoints share the "otp" limiter: 6-digit codes must not be guessable.
     Route::middleware('throttle:otp')->group(function () {
         Route::post('customer/register', [AuthController::class, 'registerCustomer'])->name('customer.register');
@@ -82,12 +85,12 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('dashboard/monthly/{year}/{month}', [DashboardController::class, 'monthlyStats'])->name('dashboard.monthly');
         Route::get('customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
         Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');
-        Route::put('premium-features/{premiumFeature}', [PremiumFeatureController::class, 'update'])->name('premium-features.update');
+        Route::match(['patch', 'put'], 'premium-features/{premiumFeature}', [PremiumFeatureController::class, 'update'])->name('premium-features.update');
 
         Route::prefix('customer')->name('customer.')->group(function () {
             // Profile endpoints stay reachable for every authenticated customer user.
             Route::get('profile', [CustomerMobileController::class, 'profile'])->name('profile');
-            Route::put('profile', [CustomerMobileController::class, 'updateProfile'])->name('profile.update');
+            Route::match(['patch', 'put'], 'profile', [CustomerMobileController::class, 'updateProfile'])->name('profile.update');
             // Read-only feature flags for the customer app UI (addresses toggle, etc.)
             Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');
         });
@@ -96,13 +99,13 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::get('orders', [CustomerMobileController::class, 'orders'])->name('orders.index');
             Route::post('orders', [CustomerMobileController::class, 'storeOrder'])->name('orders.store');
             Route::get('orders/{id}', [CustomerMobileController::class, 'showOrder'])->name('orders.show');
-            Route::put('orders/{id}/status', [CustomerMobileController::class, 'updateOrderStatus'])->name('orders.status');
+            Route::match(['patch', 'put'], 'orders/{id}/status', [CustomerMobileController::class, 'updateOrderStatus'])->name('orders.status');
             Route::post('orders/{id}/cancel-request', [CustomerMobileController::class, 'requestCancellation'])->name('orders.cancel-request');
             Route::get('addresses', [CustomerMobileController::class, 'addresses'])->name('addresses.index');
             Route::post('addresses', [CustomerMobileController::class, 'storeAddress'])->name('addresses.store');
             Route::get('addresses/{id}', [CustomerMobileController::class, 'showAddress'])->name('addresses.show');
             Route::get('addresses/{id}/orders', [CustomerMobileController::class, 'addressOrders'])->name('addresses.orders');
-            Route::put('addresses/{id}', [CustomerMobileController::class, 'updateAddress'])->name('addresses.update');
+            Route::match(['patch', 'put'], 'addresses/{id}', [CustomerMobileController::class, 'updateAddress'])->name('addresses.update');
             Route::delete('addresses/{id}', [CustomerMobileController::class, 'destroyAddress'])->name('addresses.destroy');
             Route::get('delivery-zones', [CustomerMobileController::class, 'deliveryZones'])->name('delivery-zones.index');
             Route::get('categories', [CustomerMobileController::class, 'categories'])->name('categories.index');
@@ -120,7 +123,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::get('cart', [CustomerMobileController::class, 'cart'])->name('cart');
             Route::get('cart/check-stock', [CustomerMobileController::class, 'checkStock'])->name('cart.check-stock');
             Route::post('cart/items', [CustomerMobileController::class, 'addCartItem'])->name('cart.items.store');
-            Route::put('cart/items/{id}', [CustomerMobileController::class, 'updateCartItem'])->name('cart.items.update');
+            Route::match(['patch', 'put'], 'cart/items/{id}', [CustomerMobileController::class, 'updateCartItem'])->name('cart.items.update');
             Route::delete('cart/items/{id}', [CustomerMobileController::class, 'removeCartItem'])->name('cart.items.destroy');
             Route::delete('cart', [CustomerMobileController::class, 'clearCart'])->name('cart.clear');
             Route::post('cart/checkout', [CustomerMobileController::class, 'checkout'])->name('cart.checkout');
@@ -135,7 +138,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::get('recurring-carts', [RecurringCartController::class, 'index'])->name('recurring-carts.index');
             Route::post('recurring-carts', [RecurringCartController::class, 'store'])->name('recurring-carts.store');
             Route::get('recurring-carts/{id}', [RecurringCartController::class, 'show'])->name('recurring-carts.show');
-            Route::put('recurring-carts/{id}', [RecurringCartController::class, 'update'])->name('recurring-carts.update');
+            Route::match(['patch', 'put'], 'recurring-carts/{id}', [RecurringCartController::class, 'update'])->name('recurring-carts.update');
             Route::delete('recurring-carts/{id}', [RecurringCartController::class, 'destroy'])->name('recurring-carts.destroy');
             Route::post('recurring-carts/{id}/order', [RecurringCartController::class, 'order'])->name('recurring-carts.order');
 
@@ -161,9 +164,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('notifications/send', [NotificationController::class, 'send'])->name('notifications.send');
         Route::get('notifications/sent', [NotificationController::class, 'sent'])->name('notifications.sent');
         Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
-        Route::put('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+        Route::match(['patch', 'put'], 'notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
         Route::apiResource('notifications', NotificationController::class)->only(['index', 'show', 'destroy']);
-        Route::put('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+        Route::match(['patch', 'put'], 'notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
         Route::apiResources([
             'user-types' => UserTypeController::class,
@@ -209,10 +212,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('wallet-topups/{wallet_topup}/approve', [WalletTopupController::class, 'approve'])->name('wallet-topups.approve');
         Route::post('wallet-topups/{wallet_topup}/reject', [WalletTopupController::class, 'reject'])->name('wallet-topups.reject');
 
-
         Route::post('warehouses/{warehouse}/expand-hex', [WarehouseController::class, 'expandHex'])->name('warehouses.expand-hex');
         Route::post('delegates/{delegate}/toggle-active', [DelegateController::class, 'toggleActive'])->name('delegates.toggle-active');
-        Route::put('delegates/{delegate}/location', [DelegateController::class, 'updateLocation'])->name('delegates.location');
+        Route::match(['patch', 'put'], 'delegates/{delegate}/location', [DelegateController::class, 'updateLocation'])->name('delegates.location');
 
         // Write endpoints for the storefront resources are protected;
         // index/show remain public above.

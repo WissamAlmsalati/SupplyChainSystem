@@ -21,9 +21,9 @@ class ProductVariantController extends BaseApiController
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%")
-                  ->orWhere('barcode', 'like', "%{$search}%")
-                  ->orWhereHas('product', fn ($sub) => $sub->where('name', 'like', "%{$search}%"));
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%")
+                    ->orWhereHas('product', fn ($sub) => $sub->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -43,11 +43,11 @@ class ProductVariantController extends BaseApiController
 
         $ascii = strtoupper(preg_replace('/[^A-Za-z0-9]+/', '-', trim((string) $variant->name)));
         $ascii = trim($ascii, '-');
-        $prefix = 'PRD-' . str_pad((string) $variant->product_id, 4, '0', STR_PAD_LEFT) . '-';
-        $sku = $prefix . ($ascii ?: str_pad((string) $variant->id, 5, '0', STR_PAD_LEFT));
+        $prefix = 'PRD-'.str_pad((string) $variant->product_id, 4, '0', STR_PAD_LEFT).'-';
+        $sku = $prefix.($ascii ?: str_pad((string) $variant->id, 5, '0', STR_PAD_LEFT));
 
         if (ProductVariant::withTrashed()->where('sku', $sku)->whereKeyNot($variant->id)->exists()) {
-            $sku = $prefix . str_pad((string) $variant->id, 5, '0', STR_PAD_LEFT);
+            $sku = $prefix.str_pad((string) $variant->id, 5, '0', STR_PAD_LEFT);
         }
 
         $variant->update(['sku' => $sku]);

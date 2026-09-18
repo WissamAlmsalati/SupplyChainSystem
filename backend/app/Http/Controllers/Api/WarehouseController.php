@@ -9,6 +9,7 @@ use App\Models\Warehouse;
 use App\Services\H3Service;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @OA\Tag(name="Admin Warehouses", description="Admin platform warehouse management")
@@ -49,7 +50,7 @@ class WarehouseController extends BaseApiController
                 DeliveryZone::create([
                     'hex_id' => $hexId,
                     'warehouse_id' => $warehouse->id,
-                    'name' => 'منطقة ' . substr($hexId, -6),
+                    'name' => 'منطقة '.substr($hexId, -6),
                     'delivery_price' => 0,
                     'latitude' => $center[0],
                     'longitude' => $center[1],
@@ -64,6 +65,7 @@ class WarehouseController extends BaseApiController
      *     path="/warehouses",
      *     tags={"Admin Warehouses"},
      *     summary="List warehouses",
+     *
      *     @OA\Response(response=200, description="Paginated list of warehouses")
      * )
      */
@@ -75,7 +77,7 @@ class WarehouseController extends BaseApiController
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('city', 'like', "%{$search}%");
+                    ->orWhere('city', 'like', "%{$search}%");
             });
         }
 
@@ -87,7 +89,9 @@ class WarehouseController extends BaseApiController
      *     path="/warehouses",
      *     tags={"Admin Warehouses"},
      *     summary="Create a warehouse",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/WarehouseRequest")),
+     *
      *     @OA\Response(response=201, description="Warehouse created"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
@@ -96,7 +100,7 @@ class WarehouseController extends BaseApiController
     {
         // ponytail: add_inventory feature now gates warehouse creation (not inventory rows);
         // frontend hides the button, this guard blocks direct API calls.
-        if (!PremiumFeature::isActive('add_inventory')) {
+        if (! PremiumFeature::isActive('add_inventory')) {
             return $this->jsonResponse(['message' => 'إضافة مستودع جديد غير متاحة — الميزة معطلة'], 403);
         }
 
@@ -115,7 +119,9 @@ class WarehouseController extends BaseApiController
      *     path="/warehouses/{id}",
      *     tags={"Admin Warehouses"},
      *     summary="Get a warehouse",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Warehouse details"),
      *     @OA\Response(response=404, description="Not found")
      * )
@@ -133,8 +139,11 @@ class WarehouseController extends BaseApiController
      *     path="/warehouses/{id}",
      *     tags={"Admin Warehouses"},
      *     summary="Update a warehouse",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/WarehouseRequest")),
+     *
      *     @OA\Response(response=200, description="Warehouse updated"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
@@ -156,7 +165,9 @@ class WarehouseController extends BaseApiController
      *     path="/warehouses/{id}",
      *     tags={"Admin Warehouses"},
      *     summary="Delete a warehouse",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=204, description="Warehouse deleted")
      * )
      */
@@ -189,7 +200,7 @@ class WarehouseController extends BaseApiController
         }
         $defaultPrice = (float) ($data['default_price'] ?? 0);
         $children = H3Service::cellToChildren($warehouse->hex_id, $childRes);
-        \Illuminate\Support\Facades\Log::info('expandHex', ['children_count' => count($children), 'children' => $children]);
+        Log::info('expandHex', ['children_count' => count($children), 'children' => $children]);
 
         $created = [];
         foreach ($children as $hexId) {
@@ -198,19 +209,19 @@ class WarehouseController extends BaseApiController
                 ['hex_id' => $hexId],
                 [
                     'warehouse_id' => $warehouse->id,
-                    'name' => 'منطقة ' . substr($hexId, -6),
+                    'name' => 'منطقة '.substr($hexId, -6),
                     'delivery_price' => $defaultPrice,
                     'latitude' => $center[0],
                     'longitude' => $center[1],
                     'is_active' => true,
                 ]
             );
-            \Illuminate\Support\Facades\Log::info('expandHex loop', ['hex_id' => $hexId, 'zone_id' => $zone->id, 'created' => $zone->wasRecentlyCreated]);
+            Log::info('expandHex loop', ['hex_id' => $hexId, 'zone_id' => $zone->id, 'created' => $zone->wasRecentlyCreated]);
             $created[] = $zone;
         }
 
         return $this->jsonResponse([
-            'message' => 'تم إنشاء ' . count($created) . ' منطقة توصيل',
+            'message' => 'تم إنشاء '.count($created).' منطقة توصيل',
             'data' => $created,
         ], 201);
     }

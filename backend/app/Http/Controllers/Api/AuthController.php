@@ -27,20 +27,28 @@ class AuthController extends BaseApiController
      *     summary="Log in and receive an access token",
      *     description="Customer users must login with phone_number and password. The response is a bare bearer token with no permissions. Admin and delegate users may use email instead of phone_number and will receive permissions in the response.",
      *     security={},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             ref="#/components/schemas/AuthLoginRequest",
      *             example={"phone_number": "0912345678", "password": "password"}
      *         )
      *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Login successful",
-     *         @OA\JsonContent(ref="#/components/schemas/AuthResponse", example={"token": "1|laravel_sanctum_bearer_token_here"})
-     *     ),
-     *     @OA\Response(response=401, description="Invalid credentials"),
-     *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
+     *
+     *     @OA\Response(response=200, description="Signed in. Send the token as `Authorization: Bearer …` from here on.",
+     *
+     *         @OA\JsonContent(ref="#/components/schemas/AuthResponse",
+     *             example={"token": "42|8PlDIsOOdQ1Rs0KyzWfyzqnUZhL7j49eoerVoK", "permissions": {"DASHBOARD_VIEW", "ORDERS_VIEW", "ORDERS_CREATE", "REPORTS_VIEW"}})),
+     *
+     *     @OA\Response(response=401, description="Wrong credentials, or the account is not active yet.",
+     *
+     *         @OA\JsonContent(ref="#/components/schemas/Error",
+     *             example={"success": false, "message": "بيانات الدخول غير صحيحة"})),
+     *
+     *     @OA\Response(response=422, ref="#/components/responses/ValidationError"),
+     *     @OA\Response(response=429, ref="#/components/responses/TooManyRequests")
      * )
      */
     public function login(LoginRequest $request): JsonResponse
@@ -88,7 +96,9 @@ class AuthController extends BaseApiController
      *     path="/register",
      *     tags={"Admin Users"},
      *     summary="Register a new customer user (admin only)",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AuthRegisterRequest")),
+     *
      *     @OA\Response(response=201, description="Registration successful", @OA\JsonContent(ref="#/components/schemas/AuthResponse")),
      *     @OA\Response(response=403, description="Forbidden"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
@@ -124,6 +134,7 @@ class AuthController extends BaseApiController
      *     tags={"Auth"},
      *     summary="Revoke the current access token",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(response=200, description="Logged out successfully"),
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
@@ -135,7 +146,9 @@ class AuthController extends BaseApiController
      *     summary="Register a customer account (OTP verification required before login)",
      *     description="Creates an inactive customer user and sends a 6-digit OTP. Verify it via POST /customer/verify-otp: when customer_auto_approve is active a bearer token is returned immediately, otherwise the account waits for admin approval and only a message is returned.",
      *     security={},
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CustomerRegisterRequest")),
+     *
      *     @OA\Response(response=201, description="Account created"),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
@@ -176,10 +189,13 @@ class AuthController extends BaseApiController
      *     summary="Verify registration OTP",
      *     description="When customer_auto_approve is active the user is activated and a bearer token is returned immediately. Otherwise the account stays inactive until an admin approves it, and only a message is returned.",
      *     security={},
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *
      *         @OA\Property(property="token", type="string"),
      *         @OA\Property(property="otp", type="string")
      *     )),
+     *
      *     @OA\Response(response=200, description="Verified: token (auto-approve) or pending-approval message")
      * )
      */
@@ -251,7 +267,9 @@ class AuthController extends BaseApiController
      *     tags={"Auth"},
      *     summary="Resend the registration OTP",
      *     security={},
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="mobile_number", type="string"))),
+     *
      *     @OA\Response(response=200, description="OTP resent")
      * )
      */
@@ -325,6 +343,7 @@ class AuthController extends BaseApiController
      *     tags={"Auth"},
      *     summary="Get the authenticated user",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(response=200, description="Authenticated user details. has_addresses is true when the user has at least one address (branch); addresses_count gives the number."),
      *     @OA\Response(response=401, description="Unauthenticated")
      * )

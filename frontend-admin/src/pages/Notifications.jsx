@@ -69,7 +69,7 @@ function InboxTab() {
   const markRead = async (id, e) => {
     e?.stopPropagation()
     try {
-      await client.put(`/notifications/${id}/read`)
+      await client.patch(`/notifications/${id}/read`)
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)))
     } catch (err) {
       setError(err.response?.data?.message || 'فشل التحديد كمقروء')
@@ -77,7 +77,7 @@ function InboxTab() {
   }
   const markAllRead = async () => {
     try {
-      await client.put('/notifications/mark-all-read')
+      await client.patch('/notifications/mark-all-read')
       setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })))
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تحديد الكل كمقروء')

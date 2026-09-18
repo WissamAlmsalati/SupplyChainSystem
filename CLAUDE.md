@@ -203,6 +203,19 @@ by client: a `customer/` group (mostly `CustomerMobileController`), a `delegate/
 admin resources via `apiResources`. Carts, cart items, order items, status logs, and stock movements
 are deliberately read-only, since their workflows write them.
 
+Updates are `PATCH` — every one of them changes some fields and leaves the rest alone, which is
+not what `PUT` means. `PUT` is still accepted beside it (`Route::match(['patch', 'put'], …)`, the
+same pair `apiResource` registers) so clients already deployed keep working, and
+`ApiConventionsTest` fails if a new update route takes only `PUT`.
+
+`app/OpenApi/Responses.php` defines the error envelopes once — `Unauthenticated`, `Forbidden`,
+`NotFound`, `ValidationError`, `TooManyRequests` — each with the body the app actually returns, so
+an endpoint documents a failure with
+`@OA\Response(response=422, ref="#/components/responses/ValidationError")`. Two annotations for the
+same path and method make swagger-php abandon the whole file and silently keep serving a stale
+spec, so after adding one, check `l5-swagger:generate --all` prints no error. The reference page is
+Scalar (`resources/views/scalar.blade.php`), configured through `data-configuration`.
+
 `app/OpenApi/` holds the annotations for admin endpoints in one place so CRUD controllers stay
 readable; cafe and delegate endpoints are annotated on their own controllers. Two Swagger
 documents are configured: `default` (everything) and `customer`, which filters to tags matching

@@ -62,7 +62,7 @@ export default function Orders() {
   const confirmReceipt = async (order) => {
     setUpdating(order.id)
     try {
-      await client.put(`/customer/orders/${order.id}/status`, { status: 'received' })
+      await client.patch(`/customer/orders/${order.id}/status`, { status: 'received' })
       load()
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تأكيد الاستلام')

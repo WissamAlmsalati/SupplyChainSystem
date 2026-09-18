@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Api\ReportController;
 use App\Enums\CartType;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
@@ -44,10 +43,12 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/customer/orders", tags={"Customer Orders"}, summary="List own orders",
+     *
      *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string")),
      *     @OA\Parameter(name="address_id", in="query", @OA\Schema(type="integer")),
      *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
+     *
      *     @OA\Response(response=200, description="Paginated orders"))
      */
     public function orders(Request $request): JsonResponse
@@ -74,6 +75,7 @@ class CustomerMobileController extends BaseApiController
      * @OA\Get(path="/customer/addresses/{id}/orders", tags={"Customer Addresses"}, summary="Orders of one address (branch), paginated",
      *     description="Light order cards for one address. Address details are at GET /customer/addresses/{id}. meta.counts gives the number per tab (all / active / completed / cancelled) and per status; it honours from, to and q but not status or group, so tab badges stay stable. Open GET /customer/orders/{id} for the full order.",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Parameter(name="group", in="query", description="Tab: active (pending, confirmed, preparing, out_for_delivery, cancellation_requested), completed (delivered, received), cancelled", @OA\Schema(type="string", enum={"active","completed","cancelled"})),
      *     @OA\Parameter(name="status", in="query", description="One or more statuses, comma-separated", @OA\Schema(type="string", example="pending,confirmed")),
@@ -82,8 +84,11 @@ class CustomerMobileController extends BaseApiController
      *     @OA\Parameter(name="q", in="query", description="Order number search", @OA\Schema(type="string", example="00039")),
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
      *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15, maximum=50)),
+     *
      *     @OA\Response(response=200, description="data + meta",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/CustomerOrderCard")),
      *             @OA\Property(property="meta", type="object",
      *                 @OA\Property(property="current_page", type="integer", example=1),
@@ -97,6 +102,7 @@ class CustomerMobileController extends BaseApiController
      *                     @OA\Property(property="cancelled", type="integer", example=1),
      *                     @OA\Property(property="by_status", type="object", example={"pending": 1, "confirmed": 1, "received": 3, "cancelled": 1})),
      *                 @OA\Property(property="applied", type="object")))),
+     *
      *     @OA\Response(response=404, description="Address not found or not yours"))
      */
     public function addressOrders(Request $request, int $id): JsonResponse
@@ -202,7 +208,9 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/customer/orders/{id}", tags={"Customer Orders"}, summary="Own order details",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Order"))
      */
     public function showOrder(int $id): JsonResponse
@@ -215,9 +223,12 @@ class CustomerMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Put(path="/customer/orders/{id}/status", tags={"Customer Orders"}, summary="Confirm receipt of a delivered order",
+     * @OA\Patch(path="/customer/orders/{id}/status", tags={"Customer Orders"}, summary="Confirm receipt of a delivered order",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="status", type="string", enum={"received"}))),
+     *
      *     @OA\Response(response=200, description="Order updated"),
      *     @OA\Response(response=422, description="Order is not delivered yet"))
      */
@@ -238,7 +249,9 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Post(path="/customer/orders/{id}/cancel-request", tags={"Customer Orders"}, summary="Ask the admins to cancel a pending order",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Cancellation requested"),
      *     @OA\Response(response=422, description="Order is not pending"))
      */
@@ -268,7 +281,9 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Post(path="/customer/orders", tags={"Customer Orders"}, summary="Place an order directly (without the cart)",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/CustomerOrderRequest")),
+     *
      *     @OA\Response(response=201, description="Order created"),
      *     @OA\Response(response=409, description="Insufficient stock"))
      */
@@ -297,8 +312,11 @@ class CustomerMobileController extends BaseApiController
      * @OA\Get(path="/customer/addresses", tags={"Customer Addresses"}, summary="List own addresses (branches)",
      *     description="Address details with delivery zone and price. Orders of an address are a separate call: GET /customer/addresses/{id}/orders. data.delivery_price is the price at the customer's registered location (used when there are no addresses yet).",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(response=200, description="Addresses",
+     *
      *         @OA\JsonContent(@OA\Property(property="data", type="object",
+     *
      *             @OA\Property(property="addresses", type="array", @OA\Items(ref="#/components/schemas/CustomerAddressDetail")),
      *             @OA\Property(property="delivery_price", type="number", nullable=true, example=6)))))
      */
@@ -338,7 +356,9 @@ class CustomerMobileController extends BaseApiController
     /**
      * @OA\Get(path="/customer/addresses/{id}", tags={"Customer Addresses"}, summary="Own address details",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Address with delivery zone and price", @OA\JsonContent(ref="#/components/schemas/CustomerAddressDetail")),
      *     @OA\Response(response=404, description="Address not found or not yours"))
      */
@@ -349,7 +369,9 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Post(path="/customer/addresses", tags={"Customer Addresses"}, summary="Create an address",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
+     *
      *     @OA\Response(response=201, description="Address created"))
      */
     public function storeAddress(AddressRequest $request): JsonResponse
@@ -368,9 +390,12 @@ class CustomerMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Put(path="/customer/addresses/{id}", tags={"Customer Addresses"}, summary="Update an address",
+     * @OA\Patch(path="/customer/addresses/{id}", tags={"Customer Addresses"}, summary="Update an address",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
+     *
      *     @OA\Response(response=200, description="Address updated"))
      */
     public function updateAddress(AddressRequest $request, int $id): JsonResponse
@@ -384,7 +409,9 @@ class CustomerMobileController extends BaseApiController
     /**
      * @OA\Delete(path="/customer/addresses/{id}", tags={"Customer Addresses"}, summary="Delete an address",
      *     description="Soft delete; past orders keep their own copy of the delivery address.",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Address deleted"))
      */
     public function destroyAddress(int $id): JsonResponse
@@ -396,8 +423,11 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/customer/profile", tags={"Customer Profile"}, summary="Customer profile",
+     *
      *     @OA\Response(response=200, description="User fields merged with the customer profile, plus addresses. user.has_addresses is true once the customer has at least one address (branch); user.addresses_count gives the number.",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="user", type="object",
      *                 @OA\Property(property="id", type="integer", example=3),
      *                 @OA\Property(property="name", type="string"),
@@ -416,13 +446,16 @@ class CustomerMobileController extends BaseApiController
     }
 
     /**
-     * @OA\Put(path="/customer/profile", tags={"Customer Profile"}, summary="Update customer profile",
+     * @OA\Patch(path="/customer/profile", tags={"Customer Profile"}, summary="Update customer profile",
+     *
      *     @OA\RequestBody(@OA\JsonContent(
+     *
      *         @OA\Property(property="name", type="string"),
      *         @OA\Property(property="mobile_number", type="string"),
      *         @OA\Property(property="business_name", type="string", nullable=true),
      *         @OA\Property(property="latitude", type="number", nullable=true),
      *         @OA\Property(property="longitude", type="number", nullable=true))),
+     *
      *     @OA\Response(response=200, description="Updated profile"))
      */
     public function updateProfile(Request $request): JsonResponse
@@ -467,6 +500,7 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/customer/delivery-zones", tags={"Customer Addresses"}, summary="Active delivery zones for the map",
+     *
      *     @OA\Response(response=200, description="Zones"))
      */
     public function deliveryZones(Request $request): JsonResponse
@@ -481,6 +515,7 @@ class CustomerMobileController extends BaseApiController
     /**
      * @OA\Get(path="/customer/categories", tags={"Customer Products"}, summary="List categories",
      *     description="Each category carries image_url (its own picture, or the shared default) and image_type (uploaded / placeholder).",
+     *
      *     @OA\Response(response=200, description="Categories"))
      */
     public function categories(Request $request): JsonResponse
@@ -492,6 +527,7 @@ class CustomerMobileController extends BaseApiController
      * @OA\Get(path="/customer/products", tags={"Customer Products"}, summary="Search and filter products (paginated)",
      *     description="Text search covers product name, brand, description, tags, category and size name / SKU / barcode. Filters combine with AND; list filters accept comma-separated values. Use GET /customer/products/filters for the available options and counts.",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="q", in="query", description="Search text (alias: search)", @OA\Schema(type="string", example="قهوة")),
      *     @OA\Parameter(name="category_id", in="query", description="One or more category ids, e.g. 1,4 (sub-categories included)", @OA\Schema(type="string")),
      *     @OA\Parameter(name="brand", in="query", description="One or more brands, comma-separated", @OA\Schema(type="string")),
@@ -502,8 +538,11 @@ class CustomerMobileController extends BaseApiController
      *     @OA\Parameter(name="sort", in="query", description="Default: relevance when q is given, otherwise newest", @OA\Schema(type="string", enum={"relevance","newest","price_asc","price_desc","name_asc","popular"})),
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
      *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=20, maximum=100)),
+     *
      *     @OA\Response(response=200, description="data: product cards; meta: pagination + applied filters",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="data", type="array", @OA\Items(
      *                 @OA\Property(property="id", type="integer"), @OA\Property(property="name", type="string"),
      *                 @OA\Property(property="brand", type="string", nullable=true), @OA\Property(property="image_url", type="string", nullable=true),
@@ -551,6 +590,7 @@ class CustomerMobileController extends BaseApiController
      * @OA\Get(path="/customer/products/filters", tags={"Customer Products"}, summary="Filter options with counts for the current search",
      *     description="Accepts the same parameters as GET /customer/products. Each facet is counted as if its own filter were not applied, so users can switch between options.",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="q", in="query", @OA\Schema(type="string")),
      *     @OA\Parameter(name="category_id", in="query", @OA\Schema(type="string")),
      *     @OA\Parameter(name="brand", in="query", @OA\Schema(type="string")),
@@ -558,8 +598,11 @@ class CustomerMobileController extends BaseApiController
      *     @OA\Parameter(name="max_price", in="query", @OA\Schema(type="number")),
      *     @OA\Parameter(name="in_stock", in="query", @OA\Schema(type="boolean")),
      *     @OA\Parameter(name="favorites", in="query", @OA\Schema(type="boolean")),
+     *
      *     @OA\Response(response=200, description="Facets",
+     *
      *         @OA\JsonContent(@OA\Property(property="data", type="object",
+     *
      *             @OA\Property(property="total", type="integer"),
      *             @OA\Property(property="in_stock_count", type="integer"),
      *             @OA\Property(property="categories", type="array", @OA\Items(@OA\Property(property="id", type="integer"), @OA\Property(property="name", type="string"), @OA\Property(property="parent_category_id", type="integer", nullable=true), @OA\Property(property="count", type="integer"))),
@@ -607,12 +650,16 @@ class CustomerMobileController extends BaseApiController
      * @OA\Get(path="/customer/featured-sections", tags={"Customer Products"}, summary="Home-screen product sections (paginated): title + first products in one object",
      *     description="Each section shows up to its products_limit products. Sections are either hand-picked by the admin (source=manual, admin order) or rule-based (source=filter, e.g. sort=popular for best sellers or price_asc for cheapest). Sections without available products are left out of the page.
 
-**View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /customer/featured-sections/{id}/products` (see the guide at the top of Customer Products).",
+     **View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /customer/featured-sections/{id}/products` (see the guide at the top of Customer Products).",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
      *     @OA\Parameter(name="per_page", in="query", description="Sections per page", @OA\Schema(type="integer", default=10, maximum=50)),
+     *
      *     @OA\Response(response=200, description="Sections",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="data", type="array", @OA\Items(
      *                 @OA\Property(property="id", type="integer"),
      *                 @OA\Property(property="title", type="string", example="الأكثر مبيعاً"),
@@ -671,14 +718,11 @@ class CustomerMobileController extends BaseApiController
      * @OA\Get(path="/customer/featured-sections/{id}/products", tags={"Customer Products"}, summary="All products of a section (paginated) for 'view all'",
      *     description="Screen opened from a section's «عرض الكل» button.
 
-1. Request `page=1` and show `section.title` and `meta.total`.
-2. On scroll end, while `meta.current_page < meta.last_page`, request the next `page` and append the results.
-
-Page 1 starts from the beginning of the section (it repeats the products already shown on the home screen, in the same order) — render the response as-is. The order is fixed by the section type. Returns 404 when the section is hidden or deleted.",
      *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
      *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=20, maximum=100)),
+     *
      *     @OA\Response(response=200, description="section {id,title,source,sort}, data: product cards in the section's order, meta: pagination"),
      *     @OA\Response(response=404, description="Section not found or hidden"))
      */
@@ -708,7 +752,9 @@ Page 1 starts from the beginning of the section (it repeats the products already
 
     /**
      * @OA\Get(path="/customer/products/{id}", tags={"Customer Products"}, summary="Product details",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Product with its own images"))
      */
     public function showProduct(int $id): JsonResponse
@@ -729,7 +775,9 @@ Page 1 starts from the beginning of the section (it repeats the products already
 
     /**
      * @OA\Get(path="/customer/products/{id}/variants", tags={"Customer Products"}, summary="Active sizes of a product",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Variants with images and stock"))
      */
     public function productVariants(int $id, StockService $stock): JsonResponse
@@ -745,6 +793,7 @@ Page 1 starts from the beginning of the section (it repeats the products already
 
     /**
      * @OA\Get(path="/customer/cart", tags={"Customer Cart"}, summary="Current shopping cart (null when none)",
+     *
      *     @OA\Response(response=200, description="Cart"))
      */
     public function cart(): JsonResponse
@@ -756,6 +805,7 @@ Page 1 starts from the beginning of the section (it repeats the products already
 
     /**
      * @OA\Get(path="/customer/cart/check-stock", tags={"Customer Cart"}, summary="Stock availability for the cart items",
+     *
      *     @OA\Response(response=200, description="Per-item availability"),
      *     @OA\Response(response=400, description="Cart is empty"))
      */
@@ -791,9 +841,12 @@ Page 1 starts from the beginning of the section (it repeats the products already
 
     /**
      * @OA\Post(path="/customer/cart/items", tags={"Customer Cart"}, summary="Add an item to the shopping cart (sets its quantity)",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *
      *         @OA\Property(property="product_variant_id", type="integer"),
      *         @OA\Property(property="quantity", type="integer"))),
+     *
      *     @OA\Response(response=201, description="Item saved"))
      */
     public function addCartItem(Request $request): JsonResponse
@@ -820,9 +873,12 @@ Page 1 starts from the beginning of the section (it repeats the products already
     }
 
     /**
-     * @OA\Put(path="/customer/cart/items/{id}", tags={"Customer Cart"}, summary="Change a cart item quantity",
+     * @OA\Patch(path="/customer/cart/items/{id}", tags={"Customer Cart"}, summary="Change a cart item quantity",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="quantity", type="integer"))),
+     *
      *     @OA\Response(response=200, description="Cart"))
      */
     public function updateCartItem(Request $request, int $id): JsonResponse
@@ -841,7 +897,9 @@ Page 1 starts from the beginning of the section (it repeats the products already
 
     /**
      * @OA\Delete(path="/customer/cart/items/{id}", tags={"Customer Cart"}, summary="Remove a cart item",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Cart"))
      */
     public function removeCartItem(int $id): JsonResponse
@@ -858,6 +916,7 @@ Page 1 starts from the beginning of the section (it repeats the products already
 
     /**
      * @OA\Delete(path="/customer/cart", tags={"Customer Cart"}, summary="Empty the shopping cart",
+     *
      *     @OA\Response(response=200, description="Cart emptied"))
      */
     public function clearCart(): JsonResponse
@@ -869,12 +928,26 @@ Page 1 starts from the beginning of the section (it repeats the products already
 
     /**
      * @OA\Post(path="/customer/cart/checkout", tags={"Customer Cart"}, summary="Turn the shopping cart into an order",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(required={"address_id"},
+     *
      *         @OA\Property(property="address_id", type="integer"),
      *         @OA\Property(property="payment_method", type="string", enum={"cash","wallet"}, default="cash", description="wallet = pay the full total from the wallet now"))),
-     *     @OA\Response(response=201, description="Order created"),
-     *     @OA\Response(response=400, description="Cart is empty"),
-     *     @OA\Response(response=422, description="Insufficient wallet balance"),
+     *
+     *     @OA\Response(response=201, description="The cart became an order and was emptied. Stock is already deducted.",
+     *
+     *         @OA\JsonContent(ref="#/components/schemas/Created",
+     *             example={"success": true, "message": "تم إنشاء الطلب بنجاح", "data": {"id": 59, "order_number": "ORD-2026-09-18-14-003", "status": "pending", "total_amount": "143.00"}})),
+     *
+     *     @OA\Response(response=400, description="Nothing in the cart to order.",
+     *
+     *         @OA\JsonContent(ref="#/components/schemas/Error", example={"success": false, "message": "السلة فارغة"})),
+     *
+     *     @OA\Response(response=422, description="Refused: not enough stock for a line, not enough balance for a wallet payment, or the address is not yours.",
+     *
+     *         @OA\JsonContent(ref="#/components/schemas/ValidationError",
+     *             example={"success": false, "message": "البيانات المدخلة غير صحيحة", "errors": {"items": {"الكمية المطلوبة غير متوفرة في المخزون"}}})),
+     *
      *     @OA\Response(response=409, description="Insufficient stock"))
      */
     public function checkout(Request $request, OrderPlacementService $placement): JsonResponse
@@ -903,13 +976,17 @@ Page 1 starts from the beginning of the section (it repeats the products already
 
     /**
      * @OA\Get(path="/customer/orders/{id}/delegate", tags={"Customer Orders"}, summary="Live location of the order's delegate",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Delegate location"),
      *     @OA\Response(response=404, description="No delegate assigned"))
      */
     /**
      * @OA\Get(path="/customer/orders/{id}/invoice", tags={"Customer Orders"}, summary="Download my order's invoice (PDF)",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="PDF download"))
      */
     public function orderInvoice(int $id)
@@ -956,7 +1033,7 @@ Page 1 starts from the beginning of the section (it repeats the products already
     /**
      * Sets is_favorite on the product of each cart item so the app can draw the heart.
      *
-     * @param  iterable<\App\Models\CartItem>  $items
+     * @param  iterable<CartItem>  $items
      */
     public static function markFavorites(iterable $items): void
     {

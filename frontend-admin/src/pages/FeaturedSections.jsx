@@ -141,7 +141,7 @@ export default function FeaturedSections() {
   }
 
   const toggleActive = async (section) => {
-    await client.put(`/featured-sections/${section.id}`, { is_active: !section.is_active })
+    await client.patch(`/featured-sections/${section.id}`, { is_active: !section.is_active })
     await load()
   }
 

@@ -32,7 +32,7 @@ export default function PremiumFeatures() {
   const toggle = async (feature) => {
     setSaving(feature.id)
     try {
-      await client.put(`/premium-features/${feature.id}`, { is_active: !feature.is_active })
+      await client.patch(`/premium-features/${feature.id}`, { is_active: !feature.is_active })
       const updated = features.map((f) => (f.id === feature.id ? { ...f, is_active: !f.is_active } : f))
       setFeatures(updated)
       // keep the flicker-cache in sync so other pages/tabs render the new state instantly

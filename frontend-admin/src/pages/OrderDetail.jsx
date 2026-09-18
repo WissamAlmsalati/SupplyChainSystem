@@ -147,7 +147,7 @@ export default function OrderDetail() {
     setSaving(true)
     setError('')
     try {
-      await client.put(`/orders/${id}`, { status })
+      await client.patch(`/orders/${id}`, { status })
       setStatusModal(false)
       await load()
     } catch (err) {

@@ -58,10 +58,12 @@ class OrderController extends BaseApiController
 
     /**
      * @OA\Get(path="/orders", tags={"Orders"}, summary="List orders",
+     *
      *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
      *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string")),
      *     @OA\Parameter(name="date_from", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="date_to", in="query", @OA\Schema(type="string", format="date")),
+     *
      *     @OA\Response(response=200, description="Paginated orders"))
      */
     public function index(Request $request): JsonResponse
@@ -72,10 +74,10 @@ class OrderController extends BaseApiController
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('status', 'like', "%{$search}%")
-                  ->orWhere('id', $search)
-                  ->orWhere('order_number', 'like', "%{$search}%")
-                  ->orWhere('delivery_address_name', 'like', "%{$search}%")
-                  ->orWhereHas('user', fn ($sub) => $sub->where('name', 'like', "%{$search}%"));
+                    ->orWhere('id', $search)
+                    ->orWhere('order_number', 'like', "%{$search}%")
+                    ->orWhere('delivery_address_name', 'like', "%{$search}%")
+                    ->orWhereHas('user', fn ($sub) => $sub->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -97,7 +99,9 @@ class OrderController extends BaseApiController
     /**
      * @OA\Post(path="/orders", tags={"Orders"}, summary="Create an order for a customer",
      *     description="Prices come from the variants; stock is deducted.",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/OrderRequest")),
+     *
      *     @OA\Response(response=201, description="Order created"),
      *     @OA\Response(response=409, description="Insufficient stock"))
      */
@@ -131,7 +135,9 @@ class OrderController extends BaseApiController
 
     /**
      * @OA\Get(path="/orders/{id}", tags={"Orders"}, summary="Order details",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Order"))
      */
     public function show(Order $order): JsonResponse
@@ -149,11 +155,25 @@ class OrderController extends BaseApiController
     /**
      * @OA\Put(path="/orders/{id}", tags={"Orders"}, summary="Change order status or delegate",
      *     description="Setting status to cancelled returns the order's items to stock.",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *
      *         @OA\Property(property="status", type="string"),
      *         @OA\Property(property="delegate_id", type="integer", nullable=true))),
-     *     @OA\Response(response=200, description="Order updated"))
+     *
+     *     @OA\Response(response=200, description="Updated. `next_statuses` lists where it may go from here.",
+     *
+     *         @OA\JsonContent(example={"id": 58, "order_number": "ORD-2026-09-18-14-003", "status": "confirmed", "next_statuses": {"preparing", "out_for_delivery", "cancelled"}})),
+     *
+     *     @OA\Response(response=422, description="The lifecycle forbids that move — delivered never returns to pending, and received or cancelled are final.",
+     *
+     *         @OA\JsonContent(ref="#/components/schemas/ValidationError",
+     *             example={"success": false, "message": "البيانات المدخلة غير صحيحة", "errors": {"status": {"لا يمكن نقل الطلب من «تم التوصيل» إلى «قيد الانتظار»"}}})),
+     *
+     *     @OA\Response(response=403, ref="#/components/responses/Forbidden"),
+     *     @OA\Response(response=404, ref="#/components/responses/NotFound"))
      */
     public function update(OrderRequest $request, Order $order): JsonResponse
     {
@@ -176,7 +196,9 @@ class OrderController extends BaseApiController
 
     /**
      * @OA\Delete(path="/orders/{id}", tags={"Orders"}, summary="Delete a cancelled order",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=204, description="Order deleted"),
      *     @OA\Response(response=422, description="Only cancelled orders can be deleted"))
      */
@@ -198,8 +220,11 @@ class OrderController extends BaseApiController
 
     /**
      * @OA\Post(path="/orders/{id}/assign-delegate", tags={"Orders"}, summary="Assign a delegate",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="delegate_id", type="integer"))),
+     *
      *     @OA\Response(response=200, description="Delegate assigned"),
      *     @OA\Response(response=422, description="Delegate missing or inactive"))
      */

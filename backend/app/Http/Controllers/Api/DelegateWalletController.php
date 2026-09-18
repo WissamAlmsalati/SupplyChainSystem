@@ -22,11 +22,14 @@ class DelegateWalletController extends BaseApiController
 
     /**
      * @OA\Post(path="/delegate/wallet/collect", tags={"Delegate Mobile"}, summary="Record cash received from a customer; credited to their wallet immediately", security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(required={"amount"},
+     *
      *         @OA\Property(property="amount", type="number", example=200),
      *         @OA\Property(property="order_id", type="integer", description="An order assigned to me (identifies the customer)"),
      *         @OA\Property(property="mobile_number", type="string", description="Customer phone, when there is no order"),
      *         @OA\Property(property="note", type="string"))),
+     *
      *     @OA\Response(response=201, description="Approved top-up"), @OA\Response(response=404, description="Customer or order not found"))
      */
     public function collect(Request $request): JsonResponse
@@ -36,7 +39,7 @@ class DelegateWalletController extends BaseApiController
         }
 
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:' . config('wallet.min_topup'), 'max:' . config('wallet.max_topup')],
+            'amount' => ['required', 'numeric', 'min:'.config('wallet.min_topup'), 'max:'.config('wallet.max_topup')],
             'order_id' => ['nullable', 'integer', 'required_without:mobile_number'],
             'mobile_number' => ['nullable', 'string', 'max:20', 'required_without:order_id'],
             'note' => ['nullable', 'string', 'max:255'],
@@ -62,6 +65,7 @@ class DelegateWalletController extends BaseApiController
 
     /**
      * @OA\Get(path="/delegate/wallet/collections", tags={"Delegate Mobile"}, summary="Cash I collected", security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(response=200, description="Paginated collections with total"))
      */
     public function collections(Request $request): JsonResponse

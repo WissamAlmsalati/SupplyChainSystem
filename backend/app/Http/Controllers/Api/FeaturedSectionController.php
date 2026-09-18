@@ -18,7 +18,7 @@ class FeaturedSectionController extends BaseApiController
         $query = FeaturedSection::withCount('products')->orderBy('sort_order')->orderBy('id');
 
         if ($request->filled('search')) {
-            $query->where('title', 'like', '%' . $request->input('search') . '%');
+            $query->where('title', 'like', '%'.$request->input('search').'%');
         }
 
         return $this->paginated($query->paginate($request->integer('per_page', 50)));

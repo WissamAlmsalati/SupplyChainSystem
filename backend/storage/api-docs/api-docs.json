@@ -2,13 +2,13 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Al-Sahel Cafe Supplies API",
-        "description": "REST API documentation split by platform: Admin Dashboard, Customer Mobile App, and Public Storefront.",
+        "description": "\nThe API behind الساحل لمستلزمات المقاهي: the admin dashboard, the customer app and the delegate app all talk to this one service.\n\n### Authenticating\n\nEverything except sign-in, customer registration, password reset, the payment callback and the read-only storefront needs a bearer token.\n\n```\nPOST /api/v1/login   →   { \"token\": \"42|abc…\" }\nAuthorization: Bearer 42|abc…\n```\n\nTokens expire (30 days by default). A `401` means sign in again.\n\n### What a response looks like\n\nA single record is returned as-is. A list is always `{ data, meta }`, where `meta` carries the paging and may add keys of its own — `summary` on custody, `status_counts` on top-up requests:\n\n```json\n{ \"data\": [ … ], \"meta\": { \"current_page\": 1, \"per_page\": 15, \"total\": 58, \"last_page\": 4, \"has_more\": true } }\n```\n\nA `201` wraps its result: `{ success, message, data }`.\n\n### When something goes wrong\n\nFailures share one shape, and `message` is Arabic that is safe to show a user unchanged:\n\n```json\n{ \"success\": false, \"message\": \"البيانات المدخلة غير صحيحة\", \"errors\": { \"amount\": [\"المبلغ يتجاوز المتبقي على الطلب (40.00 د.ل)\"] } }\n```\n\n`401` not signed in · `403` signed in without the permission · `404` missing, or not yours · `422` refused by validation or by a rule of the business · `429` rate limited, with `Retry-After`.\n\nNote that `422` is not only about malformed input. An order cannot move to a state its lifecycle forbids, and a payment cannot exceed what the order still owes; both answer `422` with the reason.\n\n### Updating a record\n\nUpdates are `PATCH`: send the fields you want changed and leave the rest alone. `PUT` is still accepted everywhere `PATCH` is, so older clients keep working, but new code should send `PATCH`.\n\n### Rate limits\n\nSign-in and the OTP endpoints are limited per IP and per account; everything else shares a general ceiling. A `429` carries `Retry-After` in seconds.\n\n### Searching in Arabic\n\nList `search` parameters fold Arabic spelling, so `مصراته` finds `مصراتة`, `بنغازى` finds `بنغازي`, and `١٢٥` finds `125`.\n",
         "version": "1.0.0"
     },
     "servers": [
         {
             "url": "/api/v1",
-            "description": "Local development server"
+            "description": "This server"
         }
     ],
     "paths": {
@@ -173,30 +173,43 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Login successful",
+                        "description": "Signed in. Send the token as `Authorization: Bearer …` from here on.",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AuthResponse"
                                 },
                                 "example": {
-                                    "token": "1|laravel_sanctum_bearer_token_here"
+                                    "token": "42|8PlDIsOOdQ1Rs0KyzWfyzqnUZhL7j49eoerVoK",
+                                    "permissions": [
+                                        "DASHBOARD_VIEW",
+                                        "ORDERS_VIEW",
+                                        "ORDERS_CREATE",
+                                        "REPORTS_VIEW"
+                                    ]
                                 }
                             }
                         }
                     },
                     "401": {
-                        "description": "Invalid credentials"
-                    },
-                    "422": {
-                        "description": "Validation error",
+                        "description": "Wrong credentials, or the account is not active yet.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ValidationError"
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "بيانات الدخول غير صحيحة"
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
                     }
                 },
                 "security": []
@@ -769,12 +782,12 @@
             }
         },
         "/customer/orders/{id}/status": {
-            "put": {
+            "patch": {
                 "tags": [
                     "Customer Orders"
                 ],
                 "summary": "Confirm receipt of a delivered order",
-                "operationId": "9c8aaa7f8993a1fae9c25a25dd2651d6",
+                "operationId": "361d63870421e94bcc8e3ef9aeea9db8",
                 "parameters": [
                     {
                         "name": "id",
@@ -945,12 +958,35 @@
                     }
                 ]
             },
-            "put": {
+            "delete": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "Delete an address",
+                "description": "Soft delete; past orders keep their own copy of the delivery address.",
+                "operationId": "f71f3542a22f71956cfff5e19e40f5b2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Address deleted"
+                    }
+                }
+            },
+            "patch": {
                 "tags": [
                     "Customer Addresses"
                 ],
                 "summary": "Update an address",
-                "operationId": "43a08025906ca92c6789f59727f74afe",
+                "operationId": "34005854993dceffe2c304ac42f70f90",
                 "parameters": [
                     {
                         "name": "id",
@@ -974,29 +1010,6 @@
                 "responses": {
                     "200": {
                         "description": "Address updated"
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Customer Addresses"
-                ],
-                "summary": "Delete an address",
-                "description": "Soft delete; past orders keep their own copy of the delivery address.",
-                "operationId": "f71f3542a22f71956cfff5e19e40f5b2",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Address deleted"
                     }
                 }
             }
@@ -1057,12 +1070,12 @@
                     }
                 }
             },
-            "put": {
+            "patch": {
                 "tags": [
                     "Customer Profile"
                 ],
                 "summary": "Update customer profile",
-                "operationId": "4a1305212bace0792642ef5c0f545475",
+                "operationId": "ffaaa09d0231f1352f8221daf8038928",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1798,12 +1811,34 @@
             }
         },
         "/customer/cart/items/{id}": {
-            "put": {
+            "delete": {
+                "tags": [
+                    "Customer Cart"
+                ],
+                "summary": "Remove a cart item",
+                "operationId": "e6b1314e0edf3702a4e68b3fd68a87d1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cart"
+                    }
+                }
+            },
+            "patch": {
                 "tags": [
                     "Customer Cart"
                 ],
                 "summary": "Change a cart item quantity",
-                "operationId": "2d964fa65ca75b14875a8ac2fbdd0ba7",
+                "operationId": "1e5f94c821639c0cebb7d85e97a6c905",
                 "parameters": [
                     {
                         "name": "id",
@@ -1829,28 +1864,6 @@
                         }
                     }
                 },
-                "responses": {
-                    "200": {
-                        "description": "Cart"
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Customer Cart"
-                ],
-                "summary": "Remove a cart item",
-                "operationId": "e6b1314e0edf3702a4e68b3fd68a87d1",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Cart"
@@ -1894,13 +1907,57 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Order created"
+                        "description": "The cart became an order and was emptied. Stock is already deducted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Created"
+                                },
+                                "example": {
+                                    "success": true,
+                                    "message": "تم إنشاء الطلب بنجاح",
+                                    "data": {
+                                        "id": 59,
+                                        "order_number": "ORD-2026-09-18-14-003",
+                                        "status": "pending",
+                                        "total_amount": "143.00"
+                                    }
+                                }
+                            }
+                        }
                     },
                     "400": {
-                        "description": "Cart is empty"
+                        "description": "Nothing in the cart to order.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "السلة فارغة"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Insufficient wallet balance"
+                        "description": "Refused: not enough stock for a line, not enough balance for a wallet payment, or the address is not yours.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "البيانات المدخلة غير صحيحة",
+                                    "errors": {
+                                        "items": [
+                                            "الكمية المطلوبة غير متوفرة في المخزون"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
                     },
                     "409": {
                         "description": "Insufficient stock"
@@ -2851,18 +2908,118 @@
                 }
             }
         },
-        "/notifications/unread-count": {
+        "/notifications/send": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Send an announcement to an audience",
+                "operationId": "e503c9bb99880f57195770d4c1aa76b8",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "audience",
+                                    "title"
+                                ],
+                                "properties": {
+                                    "audience": {
+                                        "type": "string",
+                                        "enum": [
+                                            "all",
+                                            "customers",
+                                            "delegates",
+                                            "admins",
+                                            "users"
+                                        ]
+                                    },
+                                    "user_ids": {
+                                        "description": "Required when audience=users",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "title": {
+                                        "type": "string",
+                                        "maxLength": 150
+                                    },
+                                    "message": {
+                                        "type": "string"
+                                    },
+                                    "link": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "One notification row per recipient was written; they see it next time they open the app.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Created"
+                                },
+                                "example": {
+                                    "success": true,
+                                    "message": "أُرسل الإشعار إلى 34 مستخدم",
+                                    "data": {
+                                        "sent": 34,
+                                        "audience": "customers"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "No recipients for that audience, or the body did not validate.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "لا يوجد مستلمون لهذه الفئة"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/notifications/sent": {
             "get": {
                 "tags": [
                     "Notifications"
                 ],
-                "summary": "Get unread notification count",
-                "operationId": "85697ee523a5dace428185c95efb9f2f",
+                "summary": "Announcements sent from the dashboard, newest first",
+                "operationId": "35bb69aa615ed8b622e3a3fad306944c",
                 "responses": {
                     "200": {
-                        "description": "Unread count"
+                        "description": "Batches with recipient and read counts"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/notifications/{id}": {
@@ -2912,12 +3069,12 @@
             }
         },
         "/notifications/{id}/read": {
-            "put": {
+            "patch": {
                 "tags": [
                     "Notifications"
                 ],
                 "summary": "Mark a notification as read",
-                "operationId": "a28a3f705edbab5a620d9b567f97d739",
+                "operationId": "dea703083f3b271bc035110db4c25981",
                 "parameters": [
                     {
                         "name": "id",
@@ -2936,12 +3093,12 @@
             }
         },
         "/notifications/mark-all-read": {
-            "put": {
+            "patch": {
                 "tags": [
                     "Notifications"
                 ],
                 "summary": "Mark all notifications as read",
-                "operationId": "4d53e3eb9d0e49c14388b10eed7f8b18",
+                "operationId": "cdec422d1cd44f5fa1e5cbd6f5c334c0",
                 "responses": {
                     "200": {
                         "description": "All marked as read"
@@ -3082,7 +3239,47 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Order updated"
+                        "description": "Updated. `next_statuses` lists where it may go from here.",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "id": 58,
+                                    "order_number": "ORD-2026-09-18-14-003",
+                                    "status": "confirmed",
+                                    "next_statuses": [
+                                        "preparing",
+                                        "out_for_delivery",
+                                        "cancelled"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The lifecycle forbids that move — delivered never returns to pending, and received or cancelled are final.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "البيانات المدخلة غير صحيحة",
+                                    "errors": {
+                                        "status": [
+                                            "لا يمكن نقل الطلب من «تم التوصيل» إلى «قيد الانتظار»"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
                     }
                 }
             },
@@ -3229,6 +3426,136 @@
                 "security": []
             }
         },
+        "/payments": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "List payments",
+                "operationId": "f7d9ad2bd05719074ba7f0bf48ef61c1",
+                "responses": {
+                    "200": {
+                        "description": "List"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Record a payment against an order",
+                "description": "A payment can never exceed what the order still owes, and a cancelled order takes none at all. The same rule applies wherever a payment is created — the dashboard, a delegate marking an order delivered, or a wallet checkout.",
+                "operationId": "5c47100b55d39c88a2a839cfbb6dde69",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "order_id",
+                                    "amount",
+                                    "method",
+                                    "status"
+                                ],
+                                "properties": {
+                                    "order_id": {
+                                        "type": "integer",
+                                        "example": 58
+                                    },
+                                    "amount": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 40
+                                    },
+                                    "method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "cash",
+                                            "card",
+                                            "bank_transfer",
+                                            "wallet"
+                                        ]
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "pending",
+                                            "paid",
+                                            "failed",
+                                            "refunded"
+                                        ]
+                                    },
+                                    "paid_at": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Recorded.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Created"
+                                },
+                                "example": {
+                                    "success": true,
+                                    "message": "تم الإنشاء بنجاح",
+                                    "data": {
+                                        "id": 91,
+                                        "order_id": 58,
+                                        "amount": "40.00",
+                                        "method": "cash",
+                                        "status": "paid"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "More than the order still owes, zero or less, or the order is cancelled.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "البيانات المدخلة غير صحيحة",
+                                    "errors": {
+                                        "amount": [
+                                            "المبلغ يتجاوز المتبقي على الطلب (40.00 د.ل)"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/placeholder/{kind}": {
             "get": {
                 "tags": [
@@ -3270,12 +3597,12 @@
             }
         },
         "/premium-features/{id}": {
-            "put": {
+            "patch": {
                 "tags": [
                     "Premium Features"
                 ],
                 "summary": "Update a premium feature status",
-                "operationId": "e7623ce83b9b09bc4742bfdd60717ecf",
+                "operationId": "09692cd70ace165453886eca5590a8d8",
                 "parameters": [
                     {
                         "name": "id",
@@ -3367,12 +3694,34 @@
                     }
                 }
             },
-            "put": {
+            "delete": {
+                "tags": [
+                    "Customer Recurring Carts"
+                ],
+                "summary": "Delete a recurring cart",
+                "operationId": "9fd2c2aa5d911bb0c3a5c060a29a9c81",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cart deleted"
+                    }
+                }
+            },
+            "patch": {
                 "tags": [
                     "Customer Recurring Carts"
                 ],
                 "summary": "Rename and/or replace the items",
-                "operationId": "0453895c2cbf9ba588e8fb9b8e251a12",
+                "operationId": "c8e069b3b497c0cb935308decca151b4",
                 "parameters": [
                     {
                         "name": "id",
@@ -3396,28 +3745,6 @@
                 "responses": {
                     "200": {
                         "description": "Cart updated"
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Customer Recurring Carts"
-                ],
-                "summary": "Delete a recurring cart",
-                "operationId": "9fd2c2aa5d911bb0c3a5c060a29a9c81",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Cart deleted"
                     }
                 }
             }
@@ -3810,6 +4137,99 @@
                 }
             }
         },
+        "/wallet-topups": {
+            "get": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Top-up requests",
+                "description": "meta.status_counts holds the number of rows per status under the other\n     *         filters, so the dashboard can show that rejected requests exist while the\n     *         pending queue is empty.",
+                "operationId": "764eda22156cd9143107213713b9e9de",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "method",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated, with a count per status beside the paging.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/PaginationMeta"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "type": "object"
+                                },
+                                "example": {
+                                    "data": [
+                                        {
+                                            "id": 10,
+                                            "amount": "100.00",
+                                            "method": "bank_transfer",
+                                            "status": "rejected",
+                                            "reference_number": "TRX-828636"
+                                        }
+                                    ],
+                                    "meta": {
+                                        "current_page": 1,
+                                        "per_page": 15,
+                                        "total": 2,
+                                        "last_page": 1,
+                                        "has_more": false,
+                                        "status_counts": {
+                                            "pending": 0,
+                                            "approved": 12,
+                                            "rejected": 2,
+                                            "cancelled": 2,
+                                            "failed": 0,
+                                            "all": 16
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
         "/warehouses": {
             "get": {
                 "tags": [
@@ -4144,12 +4564,12 @@
             }
         },
         "/delegates/{id}/location": {
-            "put": {
+            "patch": {
                 "tags": [
                     "Delegates"
                 ],
                 "summary": "Set a delegate's location (delegate_profiles)",
-                "operationId": "fcfbec9bc0e33106c522e46cac55351b",
+                "operationId": "688ee62195824e1d048f3e5e7816ee34",
                 "parameters": [
                     {
                         "name": "id",
@@ -5339,92 +5759,6 @@
                 ]
             }
         },
-        "/payments": {
-            "get": {
-                "tags": [
-                    "Payments"
-                ],
-                "summary": "List payments",
-                "operationId": "f7d9ad2bd05719074ba7f0bf48ef61c1",
-                "responses": {
-                    "200": {
-                        "description": "List"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Payments"
-                ],
-                "summary": "Create payments",
-                "operationId": "d82a2a2fbf64edc2c118242e577cacc0",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "order_id",
-                                    "amount",
-                                    "method",
-                                    "status"
-                                ],
-                                "properties": {
-                                    "order_id": {
-                                        "type": "integer"
-                                    },
-                                    "amount": {
-                                        "type": "number"
-                                    },
-                                    "method": {
-                                        "type": "string",
-                                        "enum": [
-                                            "cash",
-                                            "card",
-                                            "bank_transfer",
-                                            "wallet"
-                                        ]
-                                    },
-                                    "status": {
-                                        "type": "string",
-                                        "enum": [
-                                            "pending",
-                                            "paid",
-                                            "failed",
-                                            "refunded"
-                                        ]
-                                    },
-                                    "paid_at": {
-                                        "type": "string",
-                                        "format": "date-time",
-                                        "nullable": true
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Created"
-                    },
-                    "422": {
-                        "description": "Validation error"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
         "/payments/{id}": {
             "get": {
                 "tags": [
@@ -5987,25 +6321,6 @@
                 ]
             }
         },
-        "/logout": {
-            "post": {
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Revoke the current token",
-                "operationId": "1ea30e94456bf034568c7ef70006bce7",
-                "responses": {
-                    "200": {
-                        "description": "Logged out"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
         "/customer/premium-features": {
             "get": {
                 "tags": [
@@ -6260,67 +6575,6 @@
                 "responses": {
                     "200": {
                         "description": "Wallet"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/wallet-topups": {
-            "get": {
-                "tags": [
-                    "Wallets"
-                ],
-                "summary": "Top-up requests",
-                "operationId": "77a269cdff1b9adc6cb98b756e927a78",
-                "parameters": [
-                    {
-                        "name": "status",
-                        "in": "query",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "pending",
-                                "approved",
-                                "rejected",
-                                "cancelled",
-                                "failed"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "method",
-                        "in": "query",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "bank_transfer",
-                                "delegate_cash",
-                                "gateway"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "user_id",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "search",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Paginated top-ups"
                     }
                 },
                 "security": [
@@ -6872,6 +7126,89 @@
     },
     "components": {
         "schemas": {
+            "Error": {
+                "description": "Any 4xx or 5xx. `message` is Arabic and safe to show a user as-is.",
+                "properties": {
+                    "success": {
+                        "description": "Every failure in this API comes back in one of a handful of shapes, produced\nby BaseApiController and the handlers in bootstrap/app.php. Defining them\nonce here means an endpoint can say \"and it can fail like this\" in a line,\nand the reader sees the actual body rather than a description of one.\n\nUse them as: @OA\\Response(response=422, ref=\"#/components/responses/ValidationError\")",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "غير مصرح"
+                    }
+                },
+                "type": "object"
+            },
+            "ValidationError": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "البيانات المدخلة غير صحيحة"
+                    },
+                    "errors": {
+                        "description": "Field name to the messages for it.",
+                        "type": "object",
+                        "example": {
+                            "amount": [
+                                "المبلغ يتجاوز المتبقي على الطلب (40.00 د.ل)"
+                            ],
+                            "address_id": [
+                                "حقل العنوان مطلوب."
+                            ]
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "PaginationMeta": {
+                "description": "Every list answers with this shape. Endpoints may add their own keys beside it (`summary`, `status_counts`).",
+                "properties": {
+                    "current_page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "per_page": {
+                        "type": "integer",
+                        "example": 15
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 58
+                    },
+                    "last_page": {
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "has_more": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object"
+            },
+            "Created": {
+                "description": "Shape of a 201.",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "تم الإنشاء بنجاح"
+                    },
+                    "data": {
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
             "CustomerAddressDetail": {
                 "properties": {
                     "id": {
@@ -6965,7 +7302,7 @@
                     },
                     "order_number": {
                         "type": "string",
-                        "example": "ORD-2026-00039"
+                        "example": "ORD-2026-09-18-14-003"
                     },
                     "status": {
                         "type": "string",
@@ -7062,7 +7399,7 @@
                         "type": "boolean"
                     },
                     "can_confirm_receipt": {
-                        "description": "Delivered: PUT /customer/orders/{id}/status received is allowed",
+                        "description": "Delivered: PATCH /customer/orders/{id}/status received is allowed",
                         "type": "boolean"
                     },
                     "placed_at": {
@@ -7621,23 +7958,93 @@
                     }
                 },
                 "type": "object"
+            }
+        },
+        "responses": {
+            "422": {
+                "$ref": "#/components/responses/ValidationError"
+            },
+            "Unauthenticated": {
+                "description": "No token, or the token expired. Sign in again.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        },
+                        "example": {
+                            "success": false,
+                            "message": "يجب تسجيل الدخول"
+                        }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "Signed in, but this role lacks the permission the route requires.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        },
+                        "example": {
+                            "success": false,
+                            "message": "غير مصرح"
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "No such row, or it belongs to someone else.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        },
+                        "example": {
+                            "success": false,
+                            "message": "العنصر غير موجود"
+                        }
+                    }
+                }
             },
             "ValidationError": {
-                "properties": {
-                    "message": {
-                        "type": "string"
+                "description": "The body did not validate, or a rule of the domain refused it.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        }
+                    }
+                }
+            },
+            "TooManyRequests": {
+                "description": "Rate limited. `Retry-After` says how many seconds to wait.",
+                "headers": {
+                    "Retry-After": {
+                        "description": "Seconds until the next attempt is allowed.",
+                        "schema": {
+                            "type": "integer",
+                            "example": 42
+                        }
                     },
-                    "errors": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
+                    "X-RateLimit-Remaining": {
+                        "description": "Attempts left in the current window.",
+                        "schema": {
+                            "type": "integer",
+                            "example": 0
                         }
                     }
                 },
-                "type": "object"
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        },
+                        "example": {
+                            "success": false,
+                            "message": "محاولات كثيرة، حاول مرة أخرى بعد قليل"
+                        }
+                    }
+                }
             }
         },
         "securitySchemes": {

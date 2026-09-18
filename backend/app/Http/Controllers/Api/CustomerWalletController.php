@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Services\Reports\LedgerStatement;
 use App\Enums\TopupMethod;
 use App\Enums\TopupStatus;
-use App\Enums\WalletTransactionType;
 use App\Models\WalletTopup;
 use App\Services\Payments\PaymentGateway;
+use App\Services\Reports\LedgerStatement;
 use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +18,7 @@ class CustomerWalletController extends BaseApiController
 
     /**
      * @OA\Get(path="/customer/wallet", tags={"Customer Wallet"}, summary="Wallet balance with latest transactions", security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(response=200, description="balance, currency, recent_transactions, pending_topups"))
      */
     public function show(): JsonResponse
@@ -39,14 +39,18 @@ class CustomerWalletController extends BaseApiController
 
     /**
      * @OA\Get(path="/customer/wallet/transactions", tags={"Customer Wallet"}, summary="Wallet transactions", security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="type", in="query", @OA\Schema(type="string", enum={"topup","payment","refund","adjustment"})),
+     *
      *     @OA\Response(response=200, description="Paginated transactions"))
      */
     /**
      * @OA\Get(path="/customer/wallet/statement", tags={"Customer Wallet"}, summary="My wallet statement (JSON, or ?format=pdf|xlsx)", security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
      *     @OA\Parameter(name="format", in="query", @OA\Schema(type="string", enum={"json","pdf","xlsx"})),
+     *
      *     @OA\Response(response=200, description="Statement"))
      */
     public function statement(Request $request, LedgerStatement $statement)
@@ -69,7 +73,9 @@ class CustomerWalletController extends BaseApiController
 
     /**
      * @OA\Get(path="/customer/wallet/topups", tags={"Customer Wallet"}, summary="My top-up requests", security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"pending","approved","rejected","cancelled","failed"})),
+     *
      *     @OA\Response(response=200, description="Paginated top-ups"))
      */
     public function topups(Request $request): JsonResponse
@@ -85,19 +91,22 @@ class CustomerWalletController extends BaseApiController
 
     /**
      * @OA\Post(path="/customer/wallet/topups", tags={"Customer Wallet"}, summary="Request a bank-transfer top-up with its receipt; an admin approves it", security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(required=true, @OA\MediaType(mediaType="multipart/form-data", @OA\Schema(
      *         required={"amount","method","reference_number","receipt"},
+     *
      *         @OA\Property(property="amount", type="number", example=100),
      *         @OA\Property(property="method", type="string", enum={"bank_transfer"}),
      *         @OA\Property(property="reference_number", type="string", description="Transfer reference"),
      *         @OA\Property(property="receipt", type="string", format="binary", description="Transfer receipt: jpg/png/webp/heic or pdf, max 5MB"),
      *         @OA\Property(property="note", type="string")))),
+     *
      *     @OA\Response(response=201, description="Pending top-up created"), @OA\Response(response=422, description="Validation error"))
      */
     public function storeTopup(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:' . config('wallet.min_topup'), 'max:' . config('wallet.max_topup')],
+            'amount' => ['required', 'numeric', 'min:'.config('wallet.min_topup'), 'max:'.config('wallet.max_topup')],
             'method' => ['required', Rule::in([TopupMethod::BankTransfer->value])],
             'reference_number' => ['required', 'string', 'max:100'],
             // The transfer receipt (photo or PDF) is reviewed by an admin.
@@ -116,7 +125,9 @@ class CustomerWalletController extends BaseApiController
 
     /**
      * @OA\Post(path="/customer/wallet/topups/{id}/cancel", tags={"Customer Wallet"}, summary="Cancel my pending top-up request", security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Cancelled"), @OA\Response(response=422, description="Already processed"))
      */
     public function cancelTopup(int $id): JsonResponse
@@ -128,13 +139,15 @@ class CustomerWalletController extends BaseApiController
 
     /**
      * @OA\Post(path="/customer/wallet/topups/gateway", tags={"Customer Wallet"}, summary="Start an online top-up; open checkout_url to pay", security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(required={"amount"}, @OA\Property(property="amount", type="number", example=150))),
+     *
      *     @OA\Response(response=201, description="topup + checkout_url; the wallet is credited when the gateway confirms"))
      */
     public function gatewayTopup(Request $request, PaymentGateway $gateway): JsonResponse
     {
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:' . config('wallet.min_topup'), 'max:' . config('wallet.max_topup')],
+            'amount' => ['required', 'numeric', 'min:'.config('wallet.min_topup'), 'max:'.config('wallet.max_topup')],
         ]);
 
         $topup = $this->wallets->requestTopup(auth()->user(), (float) $data['amount'], TopupMethod::Gateway);

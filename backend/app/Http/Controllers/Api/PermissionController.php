@@ -29,12 +29,14 @@ class PermissionController extends BaseApiController
     public function update(PermissionRequest $request, Permission $permission): JsonResponse
     {
         $permission->update($request->validated());
+
         return $this->jsonResponse($permission);
     }
 
     public function destroy(Permission $permission): JsonResponse
     {
         $permission->delete();
+
         return $this->jsonResponse(null, 204);
     }
 }

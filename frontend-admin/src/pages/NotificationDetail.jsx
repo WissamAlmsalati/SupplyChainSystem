@@ -24,7 +24,7 @@ export default function NotificationDetail() {
         const data = res.data?.data ?? res.data
         setNotification(data)
         if (!data.read_at) {
-          await client.put(`/notifications/${id}/read`)
+          await client.patch(`/notifications/${id}/read`)
           setNotification((prev) => (prev ? { ...prev, read_at: new Date().toISOString() } : prev))
         }
       } catch (err) {

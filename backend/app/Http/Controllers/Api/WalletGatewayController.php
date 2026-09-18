@@ -7,7 +7,6 @@ use App\Models\WalletTopup;
 use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\SandboxGateway;
 use App\Services\WalletService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -19,9 +18,12 @@ class WalletGatewayController extends BaseApiController
 {
     /**
      * @OA\Post(path="/wallet/gateway/callback", tags={"Customer Wallet"}, summary="Payment gateway callback (signed); credits the wallet on success",
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *
      *         @OA\Property(property="token", type="string"), @OA\Property(property="status", type="string", enum={"paid","failed"}),
      *         @OA\Property(property="reference", type="string"), @OA\Property(property="signature", type="string"))),
+     *
      *     @OA\Response(response=200, description="Processed"), @OA\Response(response=403, description="Invalid signature"))
      */
     public function callback(Request $request, PaymentGateway $gateway, WalletService $wallets)
@@ -46,7 +48,7 @@ class WalletGatewayController extends BaseApiController
         if ($request->boolean('redirect')) {
             // Keep the configured URL as-is (relative stays on the customer's current host;
             // redirect() would prefix APP_URL).
-            return new RedirectResponse(config('wallet.gateway.return_url') . '?topup=' . $topup->id . '&status=' . $topup->fresh()->status->value);
+            return new RedirectResponse(config('wallet.gateway.return_url').'?topup='.$topup->id.'&status='.$topup->fresh()->status->value);
         }
 
         return $this->jsonResponse(['id' => $topup->id, 'status' => $topup->fresh()->status]);
@@ -58,7 +60,7 @@ class WalletGatewayController extends BaseApiController
         abort_unless($gateway instanceof SandboxGateway, 404);
 
         $topup = WalletTopup::with('user:id,name')->where('gateway_token', $token)->firstOrFail();
-        $reference = 'SBX-' . strtoupper(Str::random(10));
+        $reference = 'SBX-'.strtoupper(Str::random(10));
 
         return response()->view('wallet.sandbox', [
             'topup' => $topup,

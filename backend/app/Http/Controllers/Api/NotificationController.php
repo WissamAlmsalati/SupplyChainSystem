@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\Notification;
-use Illuminate\Validation\Rule;
 use App\Models\AppUser;
+use App\Models\Notification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class NotificationController extends BaseApiController
 {
@@ -15,7 +15,9 @@ class NotificationController extends BaseApiController
      *     path="/notifications",
      *     tags={"Notifications"},
      *     summary="List current user notifications",
+     *
      *     @OA\Parameter(name="unread_only", in="query", @OA\Schema(type="boolean")),
+     *
      *     @OA\Response(response=200, description="List of notifications")
      * )
      */
@@ -36,6 +38,7 @@ class NotificationController extends BaseApiController
      *     path="/notifications/unread-count",
      *     tags={"Notifications"},
      *     summary="Get unread notification count",
+     *
      *     @OA\Response(response=200, description="Unread count")
      * )
      */
@@ -43,13 +46,26 @@ class NotificationController extends BaseApiController
 
     /**
      * @OA\Post(path="/notifications/send", tags={"Notifications"}, summary="Send an announcement to an audience", security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(required=true, @OA\JsonContent(required={"audience","title"},
+     *
      *         @OA\Property(property="audience", type="string", enum={"all","customers","delegates","admins","users"}),
      *         @OA\Property(property="user_ids", type="array", @OA\Items(type="integer"), description="Required when audience=users"),
      *         @OA\Property(property="title", type="string", maxLength=150),
      *         @OA\Property(property="message", type="string"),
      *         @OA\Property(property="link", type="string", maxLength=255))),
-     *     @OA\Response(response=201, description="Sent; data.sent is the recipient count"))
+     *
+     *     @OA\Response(response=201, description="One notification row per recipient was written; they see it next time they open the app.",
+     *
+     *         @OA\JsonContent(ref="#/components/schemas/Created",
+     *             example={"success": true, "message": "أُرسل الإشعار إلى 34 مستخدم", "data": {"sent": 34, "audience": "customers"}})),
+     *
+     *     @OA\Response(response=422, description="No recipients for that audience, or the body did not validate.",
+     *
+     *         @OA\JsonContent(ref="#/components/schemas/ValidationError",
+     *             example={"success": false, "message": "لا يوجد مستلمون لهذه الفئة"})),
+     *
+     *     @OA\Response(response=403, ref="#/components/responses/Forbidden"))
      */
     public function send(Request $request): JsonResponse
     {
@@ -89,6 +105,7 @@ class NotificationController extends BaseApiController
 
     /**
      * @OA\Get(path="/notifications/sent", tags={"Notifications"}, summary="Announcements sent from the dashboard, newest first", security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(response=200, description="Batches with recipient and read counts"))
      */
     public function sent(Request $request): JsonResponse
@@ -125,7 +142,9 @@ class NotificationController extends BaseApiController
      *     path="/notifications/{id}",
      *     tags={"Notifications"},
      *     summary="Get a single notification",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Notification details")
      * )
      */
@@ -139,11 +158,13 @@ class NotificationController extends BaseApiController
     }
 
     /**
-     * @OA\Put(
+     * @OA\Patch(
      *     path="/notifications/{id}/read",
      *     tags={"Notifications"},
      *     summary="Mark a notification as read",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=200, description="Marked as read")
      * )
      */
@@ -154,14 +175,16 @@ class NotificationController extends BaseApiController
         }
 
         $notification->markAsRead();
+
         return $this->jsonResponse(['message' => 'تم التحديد كمقروء']);
     }
 
     /**
-     * @OA\Put(
+     * @OA\Patch(
      *     path="/notifications/mark-all-read",
      *     tags={"Notifications"},
      *     summary="Mark all notifications as read",
+     *
      *     @OA\Response(response=200, description="All marked as read")
      * )
      */
@@ -179,7 +202,9 @@ class NotificationController extends BaseApiController
      *     path="/notifications/{id}",
      *     tags={"Notifications"},
      *     summary="Delete a notification",
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *     @OA\Response(response=204, description="Deleted")
      * )
      */
@@ -190,6 +215,7 @@ class NotificationController extends BaseApiController
         }
 
         $notification->delete();
+
         return $this->jsonResponse(null, 204);
     }
 }

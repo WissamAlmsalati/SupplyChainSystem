@@ -18,7 +18,9 @@ class DelegateCustodyController extends BaseApiController
 
     /**
      * @OA\Get(path="/delegate/custody", tags={"Delegate Mobile"}, summary="My cash custody balance and ledger", security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="type", in="query", @OA\Schema(type="string", enum={"order_collection","wallet_collection","settlement","adjustment"})),
+     *
      *     @OA\Response(response=200, description="balance, since_last_settlement, last_settlement, entries (paginated)"))
      */
     public function show(Request $request): JsonResponse
@@ -59,6 +61,7 @@ class DelegateCustodyController extends BaseApiController
 
     /**
      * @OA\Get(path="/delegate/custody/settlements", tags={"Delegate Mobile"}, summary="My cash hand-overs to the office", security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(response=200, description="Paginated settlements"))
      */
     public function settlements(Request $request): JsonResponse
