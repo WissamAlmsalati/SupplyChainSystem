@@ -11,6 +11,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // MySQL cannot roll back a CREATE TABLE, so a run that was interrupted
+        // (two migrators racing at deploy time did exactly that) leaves tables
+        // behind with no record of the migration. Both tables are new and hold
+        // nothing until this migration has finished, so clearing them is safe.
+        Schema::dropIfExists('order_return_items');
+        Schema::dropIfExists('order_returns');
+
         Schema::create('order_returns', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained()->restrictOnDelete();

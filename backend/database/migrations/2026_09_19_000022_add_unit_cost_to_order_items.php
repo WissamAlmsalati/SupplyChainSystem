@@ -12,9 +12,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('order_items', function (Blueprint $table) {
-            $table->decimal('unit_cost', 10, 2)->nullable()->after('unit_price');
-        });
+        // Tolerates a run that added the column and was interrupted before the backfill.
+        if (! Schema::hasColumn('order_items', 'unit_cost')) {
+            Schema::table('order_items', function (Blueprint $table) {
+                $table->decimal('unit_cost', 10, 2)->nullable()->after('unit_price');
+            });
+        }
 
         DB::table('order_items')->whereNull('unit_cost')->orderBy('id')->chunkById(500, function ($items) {
             $costs = DB::table('product_variants')->whereIn('id', $items->pluck('product_variant_id')->unique())->pluck('cost_price', 'id');

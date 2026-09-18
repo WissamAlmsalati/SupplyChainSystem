@@ -31,6 +31,10 @@ Dev URLs: API `http://localhost:8000/api/v1`, Swagger `http://localhost:8000/doc
 Telescope `http://localhost:8000/telescope`, phpMyAdmin `http://localhost:8080`,
 MySQL `localhost:3307`.
 
+When deploying, do not run `migrate` by hand right after `docker compose up`: the entrypoint is
+already migrating, and two migrators racing over a `CREATE TABLE` (which MySQL cannot roll back)
+interrupted a deploy once. Wait for the app container, then check `migrate:status`.
+
 `docker-entrypoint.sh` waits for MySQL and Redis, runs `migrate --force`, and seeds only when
 `APP_ENV` is `local`/`development` and `admin@example.com` does not yet exist. Dev login is
 `admin@example.com` / `password`. `CONTAINER_ROLE` selects what a container runs: `worker`
