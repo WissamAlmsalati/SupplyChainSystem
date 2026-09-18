@@ -107,6 +107,18 @@ function TopupReview({ topup, canEdit, onDone, onClose }) {
   )
 }
 
+// The queue is what you open this page for, so it leads and stays at zero;
+// every other status appears once it has rows, which is how a rejected request
+// stops being invisible behind the default filter.
+const STATUS_TABS = [
+  { key: 'pending', value: 'pending', label: 'قيد المراجعة', always: true },
+  { key: 'approved', value: 'approved', label: 'مقبول' },
+  { key: 'rejected', value: 'rejected', label: 'مرفوض' },
+  { key: 'cancelled', value: 'cancelled', label: 'ملغي' },
+  { key: 'failed', value: 'failed', label: 'فشل' },
+  { key: 'all', value: '', label: 'الكل', always: true },
+]
+
 export default function WalletTopups() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -117,6 +129,7 @@ export default function WalletTopups() {
   const { items, loading, error, pagination, setPage, fetch } = useApiResource('/wallet-topups', { search, status, method })
   const { canEdit } = useModulePermission('WALLET_TOPUPS')
   const [selected, setSelected] = useState(null)
+  const counts = pagination?.status_counts ?? {}
 
   const open = async (topupId) => {
     const res = await client.get(`/wallet-topups/${topupId}`)
@@ -155,10 +168,32 @@ export default function WalletTopups() {
             onChange={(e) => setSearch(e.target.value)}
             className="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-          <FilterSelect label="الحالة" value={status} onChange={setStatus} options={Object.entries(topupStatuses).map(([value, v]) => ({ value, label: v.label }))} />
           <FilterSelect label="الطريقة" value={method} onChange={setMethod} options={Object.entries(topupMethods).map(([value, label]) => ({ value, label }))} />
         </div>
       </header>
+      {/* A status is only worth a chip when it has rows — plus the review queue,
+          which stays visible at zero because an empty queue is the good case. */}
+      <div className="mt-4 flex flex-wrap items-center gap-1.5">
+        {STATUS_TABS.filter((t) => t.always || status === t.value || counts[t.key] > 0).map((t) => {
+          const active = status === t.value
+          const count = counts[t.key] ?? 0
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setStatus(t.value)}
+              aria-pressed={active}
+              className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
+                active ? 'border-transparent bg-primary text-primary-foreground' : 'border-border bg-surface text-foreground hover:border-primary hover:text-primary'
+              }`}
+            >
+              {t.label}
+              <span className={`min-w-5 rounded-full px-1.5 text-xs font-bold tabular-nums ${active ? 'bg-white/20' : 'bg-background text-muted'}`}>{count}</span>
+            </button>
+          )
+        })}
+      </div>
+
       {error && <div className="my-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
       <div className="mt-6">
         <DataTable
@@ -167,7 +202,7 @@ export default function WalletTopups() {
           loading={loading}
           pagination={pagination}
           onPageChange={setPage}
-          emptyText="لا توجد طلبات شحن."
+          emptyText={status === 'pending' ? 'لا توجد طلبات بانتظار المراجعة.' : 'لا توجد طلبات بهذه الحالة.'}
           actions={(row) => (
             <Button variant={row.status === 'pending' && canEdit ? 'primary' : 'secondary'} size="sm" onClick={() => open(row.id)}>
               {row.status === 'pending' && canEdit ? 'مراجعة' : 'عرض'}

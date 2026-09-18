@@ -274,7 +274,7 @@ main > header {
 
 .sb-link {
   position: relative; display: flex; align-items: center; gap: 12px;
-  margin: 1px 0 1px 10px; padding: 8px 14px 8px 12px;
+  margin: 1px 0 1px 12px; padding: 8px 14px 8px 14px;
   border-radius: 10px 0 0 10px; /* rounded toward the page (left in RTL) */
   font-size: 14px; font-weight: 500; color: var(--color-sidebar-muted);
   transition: background-color 120ms, color 120ms;
@@ -287,7 +287,9 @@ main > header {
    the scrollbar lives on the far side. */
 .sb-active, .sb-active:hover {
   background: var(--color-surface); color: var(--color-primary); font-weight: 600;
-  margin-left: 0; padding-left: 22px;
+  /* Flush to the page, but its contents keep the same 26px inset as the idle
+     rows above and below, so a badge never crowds the edge. */
+  margin-left: 0; padding-left: 26px;
   border-radius: 12px 0 0 12px;
 }
 .sb-link-icon.sb-active { margin-left: 0; padding-left: 0; border-radius: 12px 0 0 12px; }

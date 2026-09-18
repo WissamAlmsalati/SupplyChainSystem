@@ -8,6 +8,7 @@ use App\Models\CustodyEntry;
 use App\Models\DelegateProfile;
 use App\Models\DelegateSettlement;
 use App\Services\CustodyService;
+use App\Support\ArabicText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,10 +35,7 @@ class CustodyController extends BaseApiController
                 'last_settlement_at' => DelegateSettlement::select('created_at')->whereColumn('delegate_id', 'users.id')->latest('id')->limit(1),
             ]);
 
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('mobile_number', 'like', "%{$search}%"));
-        }
+        ArabicText::filter($query, $request->input('search'), ['users.name', 'users.mobile_number']);
 
         if ($request->boolean('with_balance')) {
             $query->whereHas('delegateProfile', fn ($q) => $q->where('custody_balance', '>', 0));

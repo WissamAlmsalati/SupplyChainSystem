@@ -59,13 +59,16 @@ export function useApiResource(path, extraParams = {}, options = {}) {
       } else if (payload?.data) {
         // The API answers { data, meta }; older endpoints put paging at the top level.
         const meta = payload.meta ?? payload
+        const { data: _rows, ...extra } = meta
         setItems(payload.data)
+        // Endpoints add their own keys next to the paging (summary, status_counts…),
+        // so carry the whole meta through instead of a fixed list.
         setPagination({
+          ...extra,
           current_page: meta.current_page ?? 1,
           last_page: meta.last_page ?? 1,
           per_page: meta.per_page ?? 15,
           total: meta.total ?? 0,
-          summary: meta.summary,
         })
       } else {
         setItems([])

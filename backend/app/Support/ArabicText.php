@@ -26,6 +26,30 @@ class ArabicText
         '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
     ];
 
+    /**
+     * Arabic-tolerant "LIKE %term%" across several columns, OR'd together.
+     * Both sides are folded, so "مصراته" finds "مصراتة" and "١٢٣" finds "123".
+     * Plain LIKE misses those, which is why list searches must go through here.
+     *
+     * @param  string[]  $columns
+     */
+    public static function filter($query, ?string $term, array $columns)
+    {
+        $term = trim((string) $term);
+
+        if ($term === '' || $columns === []) {
+            return $query;
+        }
+
+        $like = '%'.addcslashes(self::normalize($term), '%_\\').'%';
+
+        return $query->where(function ($q) use ($columns, $like) {
+            foreach ($columns as $column) {
+                $q->orWhereRaw(self::sqlExpression($column).' LIKE ?', [$like]);
+            }
+        });
+    }
+
     public static function normalize(?string $value): string
     {
         return strtr(mb_strtolower(trim((string) $value)), self::FOLD);

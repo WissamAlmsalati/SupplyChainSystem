@@ -106,7 +106,8 @@ code `RESOURCE_VERB`. `ROUTE_MAP` holds the exceptions (`orders.assign-delegate`
 ### Response shape
 
 Controllers extend `BaseApiController`, which owns the envelope. Use `paginated()` for every
-list so responses share one `{ data, meta }` shape (`meta` carries `current_page`, `per_page`,
+list so responses share one `{ data, meta }` shape; the admin's `useApiResource` carries every
+meta key through to `pagination`, so endpoint-specific keys (`summary`, `status_counts`) reach the page (`meta` carries `current_page`, `per_page`,
 `total`, `last_page`, `has_more`, plus any endpoint-specific keys). `jsonResponse()` wraps 201
 and 4xx bodies in `{ success, message, ... }` and always emits `JSON_UNESCAPED_UNICODE` so
 Arabic stays readable. Framework exceptions are converted to the same Arabic-message shape in
@@ -143,6 +144,9 @@ its table changes, and each wraps work in a transaction with `lockForUpdate()`:
   set, and a location updated within the last 30 minutes.
 
 `ProductSearch` handles catalog querying, faceting, and sorting for the customer app.
+`ArabicText::filter($query, $term, $columns)` is the shared Arabic-tolerant list search; admin
+lists that still use a plain `LIKE` will miss spelling variants, so move them onto it when you
+touch them (custody and wallet top-ups already use it).
 
 ### Reports (PDF / Excel)
 
