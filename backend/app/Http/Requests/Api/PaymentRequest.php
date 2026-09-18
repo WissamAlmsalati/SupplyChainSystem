@@ -18,7 +18,7 @@ class PaymentRequest extends FormRequest
     {
         return [
             'order_id' => ['required', 'integer', 'exists:orders,id'],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'amount' => ['required', 'numeric', 'gt:0'],
             'method' => ['required', Rule::enum(PaymentMethod::class)],
             'status' => ['required', Rule::enum(PaymentStatus::class)],
             'paid_at' => ['nullable', 'date'],

@@ -197,7 +197,8 @@ export default function OrderDetail() {
       setPaymentModal(false)
       await load()
     } catch (err) {
-      setError(err.response?.data?.message || 'فشل تسجيل الدفعة')
+      const errors = err.response?.data?.errors
+      setError(errors?.amount?.[0] || errors?.order_id?.[0] || err.response?.data?.message || 'فشل تسجيل الدفعة')
     } finally {
       setSaving(false)
     }
