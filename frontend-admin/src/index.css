@@ -205,6 +205,54 @@ main > header {
   }
 }
 
+/* Taps act immediately instead of waiting to see whether a second tap is a
+   double-tap zoom, and no grey flash is painted over the element that was hit. */
+html {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Installed, the window is the app: a scroll that reaches the end stops there
+   rather than rubber-banding or pulling the page down to refresh, and a long
+   press does not start selecting the interface. The display-mode query carries
+   this on its own; the .installed class is the fallback for older iOS, which
+   reports standalone only through navigator.standalone. */
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
+  html {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
+html.installed,
+html.installed body {
+  overscroll-behavior: none;
+}
+
+html.installed {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html.installed input,
+html.installed textarea,
+html.installed [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* Notch and home-indicator clearance is applied inline with calc() at each
    edge element, so it adds to that element's own padding. A utility class that
    simply set padding to env() would replace the padding instead, which silently

@@ -46,13 +46,15 @@ function Shell() {
 
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-background lg:flex-row">
-      {/* Phone top bar */}
-      <header className="flex w-full min-w-0 items-center gap-2 border-b border-border bg-surface px-3 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] lg:hidden">
-        <button type="button" onClick={() => setDrawer(true)} className="rounded-md p-2 text-muted hover:bg-background hover:text-foreground" aria-label="فتح القائمة"><Menu className="h-5 w-5" /></button>
-        <img src="/favicon.svg" alt="" className="h-8 w-8 rounded-md object-contain" />
-        <div className="flex-1 truncate font-bold text-foreground">الساحل</div>
-        <button type="button" onClick={() => setPalette(true)} className="rounded-md p-2 text-muted hover:bg-background hover:text-foreground" aria-label="بحث"><Search className="h-5 w-5" /></button>
-        <NotificationBell />
+      {/* Phone top bar. It carries the sidebar's colour and its own safe-area
+          padding, so when the app is installed the bar and the status bar above
+          it read as one surface instead of a white strip under a dark one. */}
+      <header className="flex w-full min-w-0 items-center gap-1 bg-sidebar px-2 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-sidebar-fg lg:hidden">
+        <button type="button" onClick={() => setDrawer(true)} className="sb-icon-btn" aria-label="فتح القائمة"><Menu className="h-5 w-5" /></button>
+        <img src="/favicon.svg" alt="" className="h-8 w-8 rounded-md bg-sidebar-fg object-contain p-0.5" />
+        <div className="flex-1 truncate font-bold">الساحل</div>
+        <button type="button" onClick={() => setPalette(true)} className="sb-icon-btn" aria-label="بحث"><Search className="h-5 w-5" /></button>
+        <NotificationBell tone="dark" />
       </header>
 
       {/* Desktop sidebar */}
