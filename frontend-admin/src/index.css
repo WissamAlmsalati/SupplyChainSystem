@@ -154,6 +154,62 @@ main > header {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Phone layout. The dashboard is used on a phone in the warehouse and in the
+   van, so nothing may need a sideways scroll to be read: filters become full
+   width, a card or chart that is genuinely wide scrolls inside itself, and the
+   page never does.
+--------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  main > header {
+    padding-top: 1rem;
+  }
+
+  /* Filter rows: one control per line beats three cut off at the edge. */
+  main > header input[type="text"],
+  main > header input[type="search"],
+  main > header input[type="date"],
+  main > header select {
+    width: 100%;
+  }
+
+  /* A filter is a label beside its control on a desktop row; at this width the
+     control needs the whole line, so the label moves above it instead of being
+     squeezed against the edge. */
+  main > header > div > label {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+  }
+
+  /* Several headers lay their filters out with plain `flex`, which pins them to
+     one line and lets the edge cut them off. Wrapping is what makes the
+     full-width rule above actually stack them. */
+  main > header > div {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  /* A detail table already sitting in a scroll box is better swiped than
+     squeezed into three-line cells — but only where the box can scroll, or it
+     would be clipped by the page instead. */
+  main .overflow-x-auto > table {
+    min-width: max-content;
+  }
+
+  /* A wide thing scrolls in its own box, never taking the page with it. */
+  .scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Notch and home-indicator clearance is applied inline with calc() at each
+   edge element, so it adds to that element's own padding. A utility class that
+   simply set padding to env() would replace the padding instead, which silently
+   flattened the page gutters. */
+
 /* Print: show only the invoice, full A4 page */
 @media print {
   @page {

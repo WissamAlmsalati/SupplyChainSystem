@@ -133,6 +133,7 @@ export default function Wallets() {
             <Card className="lg:col-span-1">
               <CardHeader><CardTitle>تفصيل الحركة</CardTitle></CardHeader>
               <CardContent>
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <tbody className="divide-y divide-border">
                     <tr><td colSpan={3} className="pb-1 pt-0 text-xs font-bold text-muted">المحافظ</td></tr>
@@ -149,6 +150,7 @@ export default function Wallets() {
                     <FlowRow label="تسليمات استلمها المكتب" amount={flows.settlements_received} sign="−" />
                   </tbody>
                 </table>
+                </div>
               </CardContent>
             </Card>
 

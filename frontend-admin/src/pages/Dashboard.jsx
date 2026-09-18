@@ -100,7 +100,7 @@ export default function Dashboard() {
       <QuickOrderModal open={quickOpen} onClose={() => setQuickOpen(false)} onCreated={load} />
 
       {/* Stats */}
-      <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${branchesFeature ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
+      <div className={`grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 ${branchesFeature ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
         <StatCard label="إجمالي الطلبات" value={stats.orders} />
         <StatCard label="المنتجات" value={stats.products} />
         <StatCard label="إجمالي الإيرادات" value={`${formatMoney(stats.revenue)} د.ل`} />
@@ -120,7 +120,10 @@ export default function Dashboard() {
             <CardTitle>الإيرادات الشهرية (آخر 6 أشهر)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex h-80 items-end justify-between gap-2">
+            {/* Six months of labelled bars need ~520px; below that the chart
+                scrolls inside the card rather than widening the page. */}
+            <div className="scroll-x -mx-2 px-2">
+            <div className="flex h-80 min-w-[520px] items-end justify-between gap-2 sm:min-w-0">
               {monthlyRevenue.map((m) => {
                 const revenue = Number(typeof m.revenue === 'number' ? m.revenue : String(m.revenue).replace(/,/g, ''))
                 const height = `${Number.isFinite(revenue) && maxRevenue > 0 ? (revenue / maxRevenue) * 100 : 0}%`
@@ -145,6 +148,7 @@ export default function Dashboard() {
                   </div>
                 )
               })}
+            </div>
             </div>
           </CardContent>
         </Card>

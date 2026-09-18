@@ -47,7 +47,7 @@ function Shell() {
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-background lg:flex-row">
       {/* Phone top bar */}
-      <header className="flex w-full min-w-0 items-center gap-2 border-b border-border bg-surface px-3 py-2 lg:hidden">
+      <header className="flex w-full min-w-0 items-center gap-2 border-b border-border bg-surface px-3 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] lg:hidden">
         <button type="button" onClick={() => setDrawer(true)} className="rounded-md p-2 text-muted hover:bg-background hover:text-foreground" aria-label="فتح القائمة"><Menu className="h-5 w-5" /></button>
         <img src="/favicon.svg" alt="" className="h-8 w-8 rounded-md object-contain" />
         <div className="flex-1 truncate font-bold text-foreground">الساحل</div>
@@ -63,12 +63,12 @@ function Shell() {
       {/* Phone drawer */}
       <div className={`fixed inset-0 z-[9000] overflow-hidden lg:hidden ${drawer ? '' : 'pointer-events-none'}`} aria-hidden={!drawer}>
         <div className={`absolute inset-0 bg-black/50 transition-opacity motion-reduce:transition-none ${drawer ? 'opacity-100' : 'opacity-0'}`} onClick={() => setDrawer(false)} />
-        <div className={`absolute inset-y-0 right-0 w-[min(84vw,300px)] shadow-lg transition-transform duration-200 motion-reduce:transition-none ${drawer ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className={`absolute inset-y-0 right-0 w-[min(84vw,300px)] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] shadow-lg transition-transform duration-200 motion-reduce:transition-none ${drawer ? 'translate-x-0' : 'translate-x-full'}`}>
           <Nav {...navProps} drawer onCloseDrawer={() => setDrawer(false)} />
         </div>
       </div>
 
-      <main className="min-w-0 flex-1 space-y-4 overflow-auto bg-white px-4 pb-6 lg:px-6 lg:pb-8">
+      <main className="min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto bg-white px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:px-6 lg:pb-8">
         <Outlet />
       </main>
 

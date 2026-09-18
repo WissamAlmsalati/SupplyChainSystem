@@ -234,6 +234,26 @@ Notifications are a full page: the inbox plus, with `NOTIFICATIONS_SEND`, sendin
 customers/delegates/admins/specific users (`POST notifications/send`, one row per recipient via
 `Notification::sendTo`) and a sent history grouped by batch (`GET notifications/sent`).
 
+### Phone layout and PWA (admin)
+
+The dashboard is used on a phone, so no page may need a sideways scroll to be read. `DataTable`
+renders the same `columns` twice: a table from `md:` up, and a card per row below it, where a
+column can say where it belongs with `mobile: 'title' | 'subtitle' | 'hide'`. Anything genuinely
+wide (a chart, a detail table) scrolls inside its own box; `main` is `overflow-x-hidden`, so a
+child that overflows is clipped rather than scrolled — give it a scroll wrapper. Filter rows in
+`main > header` are stacked by rules in `index.css`, which is why headers need no per-page work.
+Safe-area insets are applied inline with `calc()` at each edge element: a utility that sets
+padding to `env()` alone replaces that element's padding instead of adding to it, which silently
+flattens the page gutters.
+
+The admin is an installable PWA: `public/manifest.webmanifest`, icons under `public/icons`
+(rendered from `favicon.svg`), and `public/sw.js`, registered from `main.jsx` in production
+builds only. The worker caches the app shell and the hashed build output, never API responses,
+and bypasses `/api`, `/storage`, `/docs`, `/app` and `/customer` — the last because the customer
+app is a separate build under the same origin and inside this worker's scope. Bump `VERSION` in
+the worker to retire old caches. nginx serves the manifest as `application/manifest+json` and
+`/sw.js` with no-store, so a release is never hidden behind a cached worker.
+
 The admin app's `useApiResource` hook is the standard way to render a paginated list: it reads
 the backend's `meta` shape and persists the current page in the URL query string by default.
 State that crosses pages lives in React context (`AuthContext`, and in the customer app `CartContext`
