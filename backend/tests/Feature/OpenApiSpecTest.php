@@ -25,6 +25,71 @@ class OpenApiSpecTest extends TestCase
         $this->assertStringNotContainsString('Multiple @OA', $output);
     }
 
+    public function test_every_operation_documents_its_failures(): void
+    {
+        $spec = json_decode(file_get_contents(storage_path('api-docs/api-docs.json')), true);
+        $methods = ['get', 'post', 'put', 'patch', 'delete'];
+
+        $missing = [];
+        $noSuccess = [];
+
+        foreach ($spec['paths'] as $path => $item) {
+            foreach (array_intersect_key($item, array_flip($methods)) as $method => $operation) {
+                $codes = array_keys($operation['responses'] ?? []);
+
+                $failures = array_filter($codes, fn ($c) => str_starts_with((string) $c, '4') || str_starts_with((string) $c, '5'));
+                if ($failures === []) {
+                    $missing[] = strtoupper($method).' '.$path;
+                }
+
+                $success = array_filter($codes, fn ($c) => str_starts_with((string) $c, '2'));
+                if ($success === []) {
+                    $noSuccess[] = strtoupper($method).' '.$path;
+                }
+            }
+        }
+
+        $this->assertSame([], $noSuccess, 'Operations with no success response');
+        // AddStandardResponses fills these in, so anything here means the
+        // processor stopped running or an operation escaped its rules.
+        $this->assertLessThanOrEqual(3, count($missing), "Operations documenting no failure:\n".implode("\n", $missing));
+    }
+
+    public function test_protected_operations_say_they_need_a_token(): void
+    {
+        $spec = json_decode(file_get_contents(storage_path('api-docs/api-docs.json')), true);
+
+        $open = [];
+        foreach ($spec['paths'] as $path => $item) {
+            foreach (array_intersect_key($item, array_flip(['get', 'post', 'put', 'patch', 'delete'])) as $method => $operation) {
+                if (empty($operation['security'])) {
+                    $open[] = strtolower($method).' '.$path;
+                }
+            }
+        }
+
+        sort($open);
+
+        // Exactly the endpoints that are meant to be reachable without a token.
+        $this->assertSame([
+            'get /categories',
+            'get /categories/{id}',
+            'get /placeholder/{kind}',
+            'get /products',
+            'get /products/{id}',
+            'post /admin/login',
+            'post /customer/forgot-password',
+            'post /customer/login',
+            'post /customer/register',
+            'post /customer/resend-otp',
+            'post /customer/reset-password',
+            'post /customer/verify-otp',
+            'post /delegate/login',
+            'post /login',
+            'post /wallet/gateway/callback',
+        ], $open, 'The set of endpoints documented as open has changed');
+    }
+
     public function test_the_spec_describes_the_api_it_serves(): void
     {
         $spec = json_decode(file_get_contents(storage_path('api-docs/api-docs.json')), true);

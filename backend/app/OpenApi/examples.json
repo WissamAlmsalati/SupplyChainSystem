@@ -1,0 +1,1268 @@
+{
+    "get /products": {
+        "data": [
+            {
+                "id": 12,
+                "category_id": 5,
+                "name": "أغطية أكواب",
+                "brand": null,
+                "description": "أغطية أكواب بجودة عالية لتوريد المقاهي",
+                "tags": null,
+                "is_active": true,
+                "created_at": "2026-09-13T21:17:38.000000Z",
+                "updated_at": "2026-09-13T21:17:38.000000Z",
+                "deleted_at": null,
+                "variants_count": 1,
+                "image_url": "/api/v1/placeholder/product.svg",
+                "image_type": "placeholder",
+                "category": {
+                    "id": 5,
+                    "name": "أكواب وتغليف",
+                    "image": null,
+                    "parent_category_id": null,
+                    "created_at": "2026-09-13T21:17:38.000000Z",
+                    "updated_at": "2026-09-13T21:17:38.000000Z",
+                    "image_url": "/api/v1/placeholder/category.svg",
+                    "image_type": "placeholder"
+                },
+                "all_images": []
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 2,
+            "total": 12,
+            "last_page": 6,
+            "has_more": true
+        }
+    },
+    "get /categories": {
+        "data": [
+            {
+                "id": 5,
+                "name": "أكواب وتغليف",
+                "image": null,
+                "parent_category_id": null,
+                "created_at": "2026-09-13T21:17:38.000000Z",
+                "updated_at": "2026-09-13T21:17:38.000000Z",
+                "image_url": "/api/v1/placeholder/category.svg",
+                "image_type": "placeholder",
+                "parent_category": null
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 2,
+            "total": 5,
+            "last_page": 3,
+            "has_more": true
+        }
+    },
+    "get /orders": {
+        "data": [
+            {
+                "id": 60,
+                "order_number": "ORD-2026-09-18-12-002",
+                "user_id": 12,
+                "delegate_id": null,
+                "cart_id": null,
+                "status": "confirmed",
+                "source": "dashboard",
+                "address_id": 13,
+                "delivery_address_name": "الفرع الرئيسي - معدل",
+                "delivery_city": "طرابلس",
+                "delivery_street": "شارع الجمهورية",
+                "delivery_phones": [
+                    "0946387065"
+                ],
+                "delivery_latitude": "32.89100000",
+                "delivery_longitude": "13.19100000",
+                "delivery_zone_id": 1,
+                "subtotal": "7.00",
+                "delivery_fee": "6.00",
+                "total_amount": "13.00",
+                "placed_at": "2026-09-18T12:08:34.000000Z",
+                "created_at": "2026-09-18T12:08:34.000000Z",
+                "updated_at": "2026-09-18T12:57:38.000000Z",
+                "user": {
+                    "id": 12,
+                    "name": "مقهى الفحص الشامل",
+                    "email": null,
+                    "mobile_number": "0946387065",
+                    "user_type_id": 3,
+                    "is_active": true,
+                    "created_at": "2026-09-13T22:04:01.000000Z",
+                    "updated_at": "2026-09-13T22:04:10.000000Z",
+                    "deleted_at": null
+                },
+                "address": {
+                    "id": 13,
+                    "user_id": 12,
+                    "name": "الفرع الرئيسي - معدل",
+                    "city": "طرابلس",
+                    "street": "شارع الجمهورية",
+                    "contact_phones": [
+                        "0946387065"
+                    ],
+                    "latitude": "32.89100000",
+                    "longitude": "13.19100000",
+                    "delivery_zone_id": 1,
+                    "created_at": "2026-09-13T22:04:03.000000Z",
+                    "updated_at": "2026-09-13T22:04:04.000000Z",
+                    "deleted_at": null
+                },
+                "delivery_zone": {
+                    "id": 1,
+                    "warehouse_id": 1,
+                    "hex_id": "libya_طرابلس",
+                    "name": "منطقة طرابلس",
+                    "delivery_price": "6.00",
+                    "latitude": "32.88720000",
+                    "longitude": "13.19130000",
+                    "is_active": true,
+                    "created_at": "2026-09-13T21:17:38.000000Z",
+                    "updated_at": "2026-09-13T21:17:38.000000Z"
+                },
+                "delegate": null
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 1,
+            "total": 60,
+            "last_page": 60,
+            "has_more": true
+        }
+    },
+    "get /inventory": {
+        "data": [
+            {
+                "id": 66,
+                "warehouse_id": 3,
+                "product_variant_id": 22,
+                "quantity": 58,
+                "created_at": "2026-09-13T21:17:39.000000Z",
+                "updated_at": "2026-09-17T14:51:18.000000Z",
+                "warehouse": {
+                    "id": 3,
+                    "name": "مستودع مصراتة",
+                    "city": "مصراتة",
+                    "hex_id": null,
+                    "resolution": null,
+                    "latitude": "32.37540000",
+                    "longitude": "15.09250000",
+                    "created_at": "2026-09-13T21:17:38.000000Z",
+                    "updated_at": "2026-09-13T21:17:38.000000Z",
+                    "deleted_at": null
+                },
+                "product_variant": {
+                    "id": 22,
+                    "product_id": 12,
+                    "name": "× 100",
+                    "sku": "PRD-0012-01",
+                    "barcode": null,
+                    "price": "7.00",
+                    "cost_price": "4.90",
+                    "is_active": true,
+                    "created_at": "2026-09-13T21:17:38.000000Z",
+                    "updated_at": "2026-09-13T21:17:38.000000Z",
+                    "deleted_at": null,
+                    "product": {
+                        "id": 12,
+                        "category_id": 5,
+                        "name": "أغطية أكواب",
+                        "brand": null,
+                        "description": "أغطية أكواب بجودة عالية لتوريد المقاهي",
+                        "tags": null,
+                        "is_active": true,
+                        "created_at": "2026-09-13T21:17:38.000000Z",
+                        "updated_at": "2026-09-13T21:17:38.000000Z",
+                        "deleted_at": null,
+                        "image_url": "/api/v1/placeholder/product.svg",
+                        "image_type": "placeholder"
+                    }
+                }
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 2,
+            "total": 66,
+            "last_page": 33,
+            "has_more": true
+        }
+    },
+    "get /wallets": {
+        "data": [
+            {
+                "id": 1,
+                "user_id": 3,
+                "balance": "832.00",
+                "is_active": true,
+                "created_at": "2026-09-13T21:17:39.000000Z",
+                "updated_at": "2026-09-18T10:08:58.000000Z",
+                "pending_topups_count": 0,
+                "user": {
+                    "id": 3,
+                    "name": "مقهى طرابلس",
+                    "mobile_number": "0910000001",
+                    "email": "cafe1@example.com"
+                }
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 2,
+            "total": 7,
+            "last_page": 4,
+            "has_more": true,
+            "summary": {
+                "total_balance": 4079,
+                "wallets": 7
+            }
+        }
+    },
+    "get /custody": {
+        "data": [
+            {
+                "id": 10,
+                "name": "مندوب مصراتة",
+                "mobile_number": "0920000003",
+                "is_active": true,
+                "custody_balance": "1153.60",
+                "last_settlement_at": "2026-09-13 21:17:48",
+                "delegate_profile": {
+                    "id": 3,
+                    "user_id": 10,
+                    "custody_balance": "1153.60",
+                    "is_available": true
+                }
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 2,
+            "total": 3,
+            "last_page": 2,
+            "has_more": true,
+            "summary": {
+                "total_custody": 1824
+            }
+        }
+    },
+    "get /delegates": {
+        "data": [
+            {
+                "id": 10,
+                "name": "مندوب مصراتة",
+                "email": "delegate3@example.com",
+                "mobile_number": "0920000003",
+                "user_type_id": 4,
+                "is_active": true,
+                "created_at": "2026-09-13T21:17:41.000000Z",
+                "updated_at": "2026-09-13T21:17:41.000000Z",
+                "deleted_at": null,
+                "user_type": {
+                    "id": 4,
+                    "name": "delegate",
+                    "created_at": "2026-09-13T21:17:36.000000Z",
+                    "updated_at": "2026-09-13T21:17:36.000000Z"
+                },
+                "delegate_profile": {
+                    "id": 3,
+                    "user_id": 10,
+                    "is_available": true,
+                    "latitude": "32.38540000",
+                    "longitude": "15.10250000",
+                    "location_updated_at": "2026-09-13T21:17:41.000000Z",
+                    "custody_balance": "1153.60",
+                    "created_at": "2026-09-13T21:17:41.000000Z",
+                    "updated_at": "2026-09-13T22:04:08.000000Z"
+                }
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 1,
+            "total": 3,
+            "last_page": 3,
+            "has_more": true
+        }
+    },
+    "get /users": {
+        "data": [
+            {
+                "id": 12,
+                "name": "مقهى الفحص الشامل",
+                "email": null,
+                "mobile_number": "0946387065",
+                "user_type_id": 3,
+                "is_active": true,
+                "created_at": "2026-09-13T22:04:01.000000Z",
+                "updated_at": "2026-09-13T22:04:10.000000Z",
+                "deleted_at": null,
+                "user_type": {
+                    "id": 3,
+                    "name": "customer",
+                    "created_at": "2026-09-13T21:17:36.000000Z",
+                    "updated_at": "2026-09-13T21:17:36.000000Z"
+                }
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 1,
+            "total": 12,
+            "last_page": 12,
+            "has_more": true
+        }
+    },
+    "get /warehouses": {
+        "data": [
+            {
+                "id": 3,
+                "name": "مستودع مصراتة",
+                "city": "مصراتة",
+                "hex_id": null,
+                "resolution": null,
+                "latitude": "32.37540000",
+                "longitude": "15.09250000",
+                "created_at": "2026-09-13T21:17:38.000000Z",
+                "updated_at": "2026-09-13T21:17:38.000000Z",
+                "deleted_at": null,
+                "zones_count": 2,
+                "delivery_zones": [
+                    {
+                        "id": 3,
+                        "warehouse_id": 3,
+                        "hex_id": "libya_مصراتة",
+                        "name": "منطقة مصراتة",
+                        "delivery_price": "4.00",
+                        "latitude": "32.37540000",
+                        "longitude": "15.09250000",
+                        "is_active": true,
+                        "created_at": "2026-09-13T21:17:38.000000Z",
+                        "updated_at": "2026-09-13T21:17:38.000000Z"
+                    }
+                ]
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 15,
+            "total": 3,
+            "last_page": 1,
+            "has_more": false
+        }
+    },
+    "get /delivery-zones": {
+        "data": [
+            {
+                "id": 8,
+                "warehouse_id": 2,
+                "hex_id": "libya_اجدابيا",
+                "name": "منطقة اجدابيا",
+                "delivery_price": "5.00",
+                "latitude": "30.75540000",
+                "longitude": "20.22630000",
+                "is_active": true,
+                "created_at": "2026-09-13T21:17:38.000000Z",
+                "updated_at": "2026-09-13T21:17:38.000000Z"
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 2,
+            "total": 8,
+            "last_page": 4,
+            "has_more": true
+        }
+    },
+    "get /activity-logs": {
+        "data": [
+            {
+                "id": 859,
+                "user_id": null,
+                "user_name": "نظام",
+                "action": "created",
+                "entity_type": "AppUser",
+                "entity_id": 14,
+                "description": "تم الإنشاء: AppUser (تجربة delegate)",
+                "metadata": {
+                    "name": "تجربة delegate",
+                    "changes": []
+                },
+                "created_at": "2026-09-18T18:13:43.000000Z"
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 1,
+            "total": 859,
+            "last_page": 859,
+            "has_more": true
+        }
+    },
+    "get /dashboard": {
+        "stats": {
+            "orders": 60,
+            "products": 12,
+            "branches": 12,
+            "revenue": 9155,
+            "lowStock": 0
+        },
+        "ordersByStatus": {
+            "received": 40,
+            "confirmed": 6,
+            "out_for_delivery": 5,
+            "cancelled": 3,
+            "pending": 3,
+            "preparing": 2,
+            "delivered": 1
+        },
+        "topProducts": [
+            {
+                "id": 21,
+                "product_id": 11,
+                "name": "أكواب ورقية - 12 أونصة × 50",
+                "quantity": 34,
+                "revenue": 340
+            }
+        ],
+        "recentOrders": [
+            {
+                "id": 60,
+                "order_number": "ORD-2026-09-18-12-002",
+                "user_id": 12,
+                "delegate_id": null,
+                "cart_id": null,
+                "status": "confirmed",
+                "source": "dashboard",
+                "address_id": 13,
+                "delivery_address_name": "الفرع الرئيسي - معدل",
+                "delivery_city": "طرابلس",
+                "delivery_street": "شارع الجمهورية",
+                "delivery_phones": [
+                    "0946387065"
+                ],
+                "delivery_latitude": "32.89100000",
+                "delivery_longitude": "13.19100000",
+                "delivery_zone_id": 1,
+                "subtotal": "7.00",
+                "delivery_fee": "6.00",
+                "total_amount": "13.00",
+                "placed_at": "2026-09-18T12:08:34.000000Z",
+                "created_at": "2026-09-18T12:08:34.000000Z",
+                "updated_at": "2026-09-18T12:57:38.000000Z",
+                "user": {
+                    "id": 12,
+                    "name": "مقهى الفحص الشامل",
+                    "email": null,
+                    "mobile_number": "0946387065",
+                    "user_type_id": 3,
+                    "is_active": true,
+                    "created_at": "2026-09-13T22:04:01.000000Z",
+                    "updated_at": "2026-09-13T22:04:10.000000Z",
+                    "deleted_at": null
+                }
+            }
+        ]
+    },
+    "get /products/{id}": {
+        "id": 12,
+        "category_id": 5,
+        "name": "أغطية أكواب",
+        "brand": null,
+        "description": "أغطية أكواب بجودة عالية لتوريد المقاهي",
+        "tags": null,
+        "is_active": true,
+        "created_at": "2026-09-13T21:17:38.000000Z",
+        "updated_at": "2026-09-13T21:17:38.000000Z",
+        "deleted_at": null,
+        "image_url": "/api/v1/placeholder/product.svg",
+        "image_type": "placeholder",
+        "category": {
+            "id": 5,
+            "name": "أكواب وتغليف",
+            "image": null,
+            "parent_category_id": null,
+            "created_at": "2026-09-13T21:17:38.000000Z",
+            "updated_at": "2026-09-13T21:17:38.000000Z",
+            "image_url": "/api/v1/placeholder/category.svg",
+            "image_type": "placeholder"
+        },
+        "all_images": [],
+        "images": [],
+        "variants": [
+            {
+                "id": 22,
+                "product_id": 12,
+                "name": "× 100",
+                "sku": "PRD-0012-01",
+                "barcode": null,
+                "price": "7.00",
+                "cost_price": "4.90",
+                "is_active": true,
+                "created_at": "2026-09-13T21:17:38.000000Z",
+                "updated_at": "2026-09-13T21:17:38.000000Z",
+                "deleted_at": null,
+                "images": [],
+                "inventories": [
+                    {
+                        "id": 22,
+                        "warehouse_id": 1,
+                        "product_variant_id": 22,
+                        "quantity": 70,
+                        "created_at": "2026-09-13T21:17:38.000000Z",
+                        "updated_at": "2026-09-18T12:08:34.000000Z",
+                        "warehouse": {}
+                    }
+                ]
+            }
+        ]
+    },
+    "get /categories/{id}": {
+        "id": 5,
+        "name": "أكواب وتغليف",
+        "image": null,
+        "parent_category_id": null,
+        "created_at": "2026-09-13T21:17:38.000000Z",
+        "updated_at": "2026-09-13T21:17:38.000000Z",
+        "image_url": "/api/v1/placeholder/category.svg",
+        "image_type": "placeholder",
+        "parent_category": null,
+        "child_categories": [],
+        "products": [
+            {
+                "id": 11,
+                "category_id": 5,
+                "name": "أكواب ورقية",
+                "brand": null,
+                "description": "أكواب ورقية بجودة عالية لتوريد المقاهي",
+                "tags": null,
+                "is_active": true,
+                "created_at": "2026-09-13T21:17:38.000000Z",
+                "updated_at": "2026-09-13T21:17:38.000000Z",
+                "deleted_at": null,
+                "image_url": "/api/v1/placeholder/product.svg",
+                "image_type": "placeholder"
+            }
+        ]
+    },
+    "get /orders/{id}": {
+        "id": 60,
+        "order_number": "ORD-2026-09-18-12-002",
+        "user_id": 12,
+        "delegate_id": null,
+        "cart_id": null,
+        "status": "confirmed",
+        "source": "dashboard",
+        "address_id": 13,
+        "delivery_address_name": "الفرع الرئيسي - معدل",
+        "delivery_city": "طرابلس",
+        "delivery_street": "شارع الجمهورية",
+        "delivery_phones": [
+            "0946387065"
+        ],
+        "delivery_latitude": "32.89100000",
+        "delivery_longitude": "13.19100000",
+        "delivery_zone_id": 1,
+        "subtotal": "7.00",
+        "delivery_fee": "6.00",
+        "total_amount": "13.00",
+        "placed_at": "2026-09-18T12:08:34.000000Z",
+        "created_at": "2026-09-18T12:08:34.000000Z",
+        "updated_at": "2026-09-18T12:57:38.000000Z",
+        "next_statuses": [
+            "preparing"
+        ],
+        "user": {
+            "id": 12,
+            "name": "مقهى الفحص الشامل",
+            "email": null,
+            "mobile_number": "0946387065",
+            "user_type_id": 3,
+            "is_active": true,
+            "created_at": "2026-09-13T22:04:01.000000Z",
+            "updated_at": "2026-09-13T22:04:10.000000Z",
+            "deleted_at": null,
+            "customer_profile": {
+                "id": 7,
+                "user_id": 12,
+                "business_name": "الفحص الشامل",
+                "latitude": "32.90000000",
+                "longitude": "13.20000000",
+                "created_at": "2026-09-13T22:04:01.000000Z",
+                "updated_at": "2026-09-13T22:04:02.000000Z"
+            },
+            "wallet": {
+                "id": 7,
+                "user_id": 12,
+                "balance": "575.00",
+                "is_active": true,
+                "created_at": "2026-09-13T22:04:01.000000Z",
+                "updated_at": "2026-09-18T08:59:25.000000Z"
+            }
+        },
+        "address": {
+            "id": 13,
+            "user_id": 12,
+            "name": "الفرع الرئيسي - معدل",
+            "city": "طرابلس",
+            "street": "شارع الجمهورية",
+            "contact_phones": [
+                "0946387065"
+            ],
+            "latitude": "32.89100000",
+            "longitude": "13.19100000",
+            "delivery_zone_id": 1,
+            "created_at": "2026-09-13T22:04:03.000000Z",
+            "updated_at": "2026-09-13T22:04:04.000000Z",
+            "deleted_at": null
+        },
+        "delivery_zone": {
+            "id": 1,
+            "warehouse_id": 1,
+            "hex_id": "libya_طرابلس",
+            "name": "منطقة طرابلس",
+            "delivery_price": "6.00",
+            "latitude": "32.88720000",
+            "longitude": "13.19130000",
+            "is_active": true,
+            "created_at": "2026-09-13T21:17:38.000000Z",
+            "updated_at": "2026-09-13T21:17:38.000000Z"
+        },
+        "delegate": null,
+        "cart": null,
+        "items": [
+            {
+                "id": 123,
+                "order_id": 60,
+                "product_variant_id": 22,
+                "product_name": "أغطية أكواب",
+                "variant_name": "× 100",
+                "quantity": 1,
+                "unit_price": "7.00",
+                "product_variant": {
+                    "id": 22,
+                    "product_id": 12,
+                    "name": "× 100",
+                    "sku": "PRD-0012-01",
+                    "barcode": null,
+                    "price": "7.00",
+                    "cost_price": "4.90",
+                    "is_active": true,
+                    "created_at": "2026-09-13T21:17:38.000000Z",
+                    "updated_at": "2026-09-13T21:17:38.000000Z",
+                    "deleted_at": null,
+                    "product": {
+                        "id": 12,
+                        "category_id": 5,
+                        "name": "أغطية أكواب",
+                        "brand": null,
+                        "description": "أغطية أكواب بجودة عالية لتوريد المقاهي",
+                        "tags": null,
+                        "is_active": true,
+                        "created_at": "2026-09-13T21:17:38.000000Z",
+                        "updated_at": "2026-09-13T21:17:38.000000Z",
+                        "deleted_at": null,
+                        "image_url": "/api/v1/placeholder/product.svg",
+                        "image_type": "placeholder"
+                    }
+                }
+            }
+        ],
+        "payments": [],
+        "status_logs": [
+            {
+                "id": 289,
+                "order_id": 60,
+                "from_status": null,
+                "to_status": "pending",
+                "changed_by": {
+                    "id": 2,
+                    "name": "Admin",
+                    "email": "admin@example.com",
+                    "mobile_number": "0900000002",
+                    "user_type_id": 2,
+                    "is_active": true,
+                    "created_at": "2026-09-13T21:17:38.000000Z",
+                    "updated_at": "2026-09-13T21:17:38.000000Z",
+                    "deleted_at": null
+                },
+                "note": null,
+                "created_at": "2026-09-18T12:08:34.000000Z"
+            }
+        ]
+    },
+    "get /inventory/{id}": {
+        "id": 66,
+        "warehouse_id": 3,
+        "product_variant_id": 22,
+        "quantity": 58,
+        "created_at": "2026-09-13T21:17:39.000000Z",
+        "updated_at": "2026-09-17T14:51:18.000000Z",
+        "warehouse": {
+            "id": 3,
+            "name": "مستودع مصراتة",
+            "city": "مصراتة",
+            "hex_id": null,
+            "resolution": null,
+            "latitude": "32.37540000",
+            "longitude": "15.09250000",
+            "created_at": "2026-09-13T21:17:38.000000Z",
+            "updated_at": "2026-09-13T21:17:38.000000Z",
+            "deleted_at": null
+        },
+        "product_variant": {
+            "id": 22,
+            "product_id": 12,
+            "name": "× 100",
+            "sku": "PRD-0012-01",
+            "barcode": null,
+            "price": "7.00",
+            "cost_price": "4.90",
+            "is_active": true,
+            "created_at": "2026-09-13T21:17:38.000000Z",
+            "updated_at": "2026-09-13T21:17:38.000000Z",
+            "deleted_at": null,
+            "product": {
+                "id": 12,
+                "category_id": 5,
+                "name": "أغطية أكواب",
+                "brand": null,
+                "description": "أغطية أكواب بجودة عالية لتوريد المقاهي",
+                "tags": null,
+                "is_active": true,
+                "created_at": "2026-09-13T21:17:38.000000Z",
+                "updated_at": "2026-09-13T21:17:38.000000Z",
+                "deleted_at": null,
+                "image_url": "/api/v1/placeholder/product.svg",
+                "image_type": "placeholder"
+            }
+        }
+    },
+    "get /wallets/{id}": {
+        "id": 1,
+        "user_id": 3,
+        "balance": "832.00",
+        "is_active": true,
+        "created_at": "2026-09-13T21:17:39.000000Z",
+        "updated_at": "2026-09-18T10:08:58.000000Z",
+        "user": {
+            "id": 3,
+            "name": "مقهى طرابلس",
+            "mobile_number": "0910000001",
+            "email": "cafe1@example.com"
+        },
+        "topups": [
+            {
+                "id": 9,
+                "wallet_id": 1,
+                "user_id": 3,
+                "amount": "250.00",
+                "method": "bank_transfer",
+                "status": "rejected",
+                "reference_number": "TRX-222542",
+                "receipt_path": null,
+                "note": "تحويل من مصرف الجمهورية",
+                "collected_by": null,
+                "order_id": null,
+                "gateway_reference": null,
+                "reviewed_by": 2,
+                "reviewed_at": "2026-09-18T09:47:36.000000Z",
+                "rejection_reason": "مافيش واصل",
+                "created_at": "2026-09-13T21:17:42.000000Z",
+                "updated_at": "2026-09-18T09:47:36.000000Z",
+                "receipt_url": null,
+                "receipt_type": null,
+                "collector": null,
+                "reviewer": {
+                    "id": 2,
+                    "name": "Admin"
+                }
+            }
+        ]
+    },
+    "get /delegates/{id}": {
+        "id": 10,
+        "name": "مندوب مصراتة",
+        "email": "delegate3@example.com",
+        "mobile_number": "0920000003",
+        "user_type_id": 4,
+        "is_active": true,
+        "created_at": "2026-09-13T21:17:41.000000Z",
+        "updated_at": "2026-09-13T21:17:41.000000Z",
+        "deleted_at": null,
+        "user_type": {
+            "id": 4,
+            "name": "delegate",
+            "created_at": "2026-09-13T21:17:36.000000Z",
+            "updated_at": "2026-09-13T21:17:36.000000Z"
+        },
+        "delegate_profile": {
+            "id": 3,
+            "user_id": 10,
+            "is_available": true,
+            "latitude": "32.38540000",
+            "longitude": "15.10250000",
+            "location_updated_at": "2026-09-13T21:17:41.000000Z",
+            "custody_balance": "1153.60",
+            "created_at": "2026-09-13T21:17:41.000000Z",
+            "updated_at": "2026-09-13T22:04:08.000000Z"
+        },
+        "delegated_orders": [
+            {
+                "id": 55,
+                "order_number": "ORD-2026-00055",
+                "user_id": 7,
+                "delegate_id": 10,
+                "cart_id": null,
+                "status": "cancelled",
+                "source": "dashboard",
+                "address_id": 9,
+                "delivery_address_name": "فرع سبها الرئيسي",
+                "delivery_city": "سبها",
+                "delivery_street": "شارع الجمهورية",
+                "delivery_phones": [
+                    "0910000005"
+                ],
+                "delivery_latitude": "27.03770000",
+                "delivery_longitude": "14.42830000",
+                "delivery_zone_id": 5,
+                "subtotal": "6.00",
+                "delivery_fee": "5.00",
+                "total_amount": "11.00",
+                "placed_at": "2026-09-10T12:50:00.000000Z",
+                "created_at": "2026-09-13T21:17:48.000000Z",
+                "updated_at": "2026-09-13T21:17:48.000000Z"
+            }
+        ]
+    },
+    "get /users/{id}": {
+        "id": 12,
+        "name": "مقهى الفحص الشامل",
+        "email": null,
+        "mobile_number": "0946387065",
+        "user_type_id": 3,
+        "is_active": true,
+        "created_at": "2026-09-13T22:04:01.000000Z",
+        "updated_at": "2026-09-13T22:04:10.000000Z",
+        "deleted_at": null,
+        "user_type": {
+            "id": 3,
+            "name": "customer",
+            "created_at": "2026-09-13T21:17:36.000000Z",
+            "updated_at": "2026-09-13T21:17:36.000000Z"
+        },
+        "addresses": [
+            {
+                "id": 13,
+                "user_id": 12,
+                "name": "الفرع الرئيسي - معدل",
+                "city": "طرابلس",
+                "street": "شارع الجمهورية",
+                "contact_phones": [
+                    "0946387065"
+                ],
+                "latitude": "32.89100000",
+                "longitude": "13.19100000",
+                "delivery_zone_id": 1,
+                "created_at": "2026-09-13T22:04:03.000000Z",
+                "updated_at": "2026-09-13T22:04:04.000000Z",
+                "deleted_at": null
+            }
+        ],
+        "orders": [
+            {
+                "id": 56,
+                "order_number": "ORD-2026-00056",
+                "user_id": 12,
+                "delegate_id": null,
+                "cart_id": 8,
+                "status": "cancelled",
+                "source": "app",
+                "address_id": 13,
+                "delivery_address_name": "الفرع الرئيسي - معدل",
+                "delivery_city": "طرابلس",
+                "delivery_street": "شارع الجمهورية",
+                "delivery_phones": [
+                    "0946387065"
+                ],
+                "delivery_latitude": "32.89100000",
+                "delivery_longitude": "13.19100000",
+                "delivery_zone_id": 1,
+                "subtotal": "36.00",
+                "delivery_fee": "6.00",
+                "total_amount": "42.00",
+                "placed_at": "2026-09-13T22:04:06.000000Z",
+                "created_at": "2026-09-13T22:04:06.000000Z",
+                "updated_at": "2026-09-18T08:59:25.000000Z"
+            }
+        ],
+        "admin_profile": null,
+        "customer_profile": {
+            "id": 7,
+            "user_id": 12,
+            "business_name": "الفحص الشامل",
+            "latitude": "32.90000000",
+            "longitude": "13.20000000",
+            "created_at": "2026-09-13T22:04:01.000000Z",
+            "updated_at": "2026-09-13T22:04:02.000000Z"
+        },
+        "delegate_profile": null
+    },
+    "get /warehouses/{id}": {
+        "id": 3,
+        "name": "مستودع مصراتة",
+        "city": "مصراتة",
+        "hex_id": null,
+        "resolution": null,
+        "latitude": "32.37540000",
+        "longitude": "15.09250000",
+        "created_at": "2026-09-13T21:17:38.000000Z",
+        "updated_at": "2026-09-13T21:17:38.000000Z",
+        "deleted_at": null,
+        "inventories": [
+            {
+                "id": 45,
+                "warehouse_id": 3,
+                "product_variant_id": 1,
+                "quantity": 76,
+                "created_at": "2026-09-13T21:17:39.000000Z",
+                "updated_at": "2026-09-13T21:17:39.000000Z",
+                "product_variant": {
+                    "id": 1,
+                    "product_id": 1,
+                    "name": "250 جم",
+                    "sku": "PRD-0001-01",
+                    "barcode": null,
+                    "price": "12.00",
+                    "cost_price": "8.40",
+                    "is_active": true,
+                    "created_at": "2026-09-13T21:17:38.000000Z",
+                    "updated_at": "2026-09-13T21:17:38.000000Z",
+                    "deleted_at": null,
+                    "product": {
+                        "id": 1,
+                        "category_id": 1,
+                        "name": "بن عربي محمص",
+                        "brand": "الريف",
+                        "description": "بن عربي محمص بجودة عالية لتوريد المقاهي",
+                        "tags": null,
+                        "is_active": true,
+                        "created_at": "2026-09-13T21:17:38.000000Z",
+                        "updated_at": "2026-09-13T21:17:38.000000Z",
+                        "deleted_at": null,
+                        "image_url": "/api/v1/placeholder/product.svg",
+                        "image_type": "placeholder"
+                    }
+                }
+            }
+        ],
+        "delivery_zones": [
+            {
+                "id": 3,
+                "warehouse_id": 3,
+                "hex_id": "libya_مصراتة",
+                "name": "منطقة مصراتة",
+                "delivery_price": "4.00",
+                "latitude": "32.37540000",
+                "longitude": "15.09250000",
+                "is_active": true,
+                "created_at": "2026-09-13T21:17:38.000000Z",
+                "updated_at": "2026-09-13T21:17:38.000000Z"
+            }
+        ]
+    },
+    "get /delivery-zones/{id}": {
+        "id": 8,
+        "warehouse_id": 2,
+        "hex_id": "libya_اجدابيا",
+        "name": "منطقة اجدابيا",
+        "delivery_price": "5.00",
+        "latitude": "30.75540000",
+        "longitude": "20.22630000",
+        "is_active": true,
+        "created_at": "2026-09-13T21:17:38.000000Z",
+        "updated_at": "2026-09-13T21:17:38.000000Z",
+        "warehouse": {
+            "id": 2,
+            "name": "مستودع بنغازي",
+            "city": "بنغازي",
+            "hex_id": null,
+            "resolution": null,
+            "latitude": "32.11670000",
+            "longitude": "20.06670000",
+            "created_at": "2026-09-13T21:17:38.000000Z",
+            "updated_at": "2026-09-13T21:17:38.000000Z",
+            "deleted_at": null
+        },
+        "addresses": [],
+        "orders": []
+    },
+    "get /addresses/{id}": {
+        "id": 13,
+        "user_id": 12,
+        "name": "الفرع الرئيسي - معدل",
+        "city": "طرابلس",
+        "street": "شارع الجمهورية",
+        "contact_phones": [
+            "0946387065"
+        ],
+        "latitude": "32.89100000",
+        "longitude": "13.19100000",
+        "delivery_zone_id": 1,
+        "created_at": "2026-09-13T22:04:03.000000Z",
+        "updated_at": "2026-09-13T22:04:04.000000Z",
+        "deleted_at": null,
+        "user": {
+            "id": 12,
+            "name": "مقهى الفحص الشامل",
+            "email": null,
+            "mobile_number": "0946387065",
+            "user_type_id": 3,
+            "is_active": true,
+            "created_at": "2026-09-13T22:04:01.000000Z",
+            "updated_at": "2026-09-13T22:04:10.000000Z",
+            "deleted_at": null
+        },
+        "delivery_zone": {
+            "id": 1,
+            "warehouse_id": 1,
+            "hex_id": "libya_طرابلس",
+            "name": "منطقة طرابلس",
+            "delivery_price": "6.00",
+            "latitude": "32.88720000",
+            "longitude": "13.19130000",
+            "is_active": true,
+            "created_at": "2026-09-13T21:17:38.000000Z",
+            "updated_at": "2026-09-13T21:17:38.000000Z"
+        },
+        "orders": [
+            {
+                "id": 56,
+                "order_number": "ORD-2026-00056",
+                "user_id": 12,
+                "delegate_id": null,
+                "cart_id": 8,
+                "status": "cancelled",
+                "source": "app",
+                "address_id": 13,
+                "delivery_address_name": "الفرع الرئيسي - معدل",
+                "delivery_city": "طرابلس",
+                "delivery_street": "شارع الجمهورية",
+                "delivery_phones": [
+                    "0946387065"
+                ],
+                "delivery_latitude": "32.89100000",
+                "delivery_longitude": "13.19100000",
+                "delivery_zone_id": 1,
+                "subtotal": "36.00",
+                "delivery_fee": "6.00",
+                "total_amount": "42.00",
+                "placed_at": "2026-09-13T22:04:06.000000Z",
+                "created_at": "2026-09-13T22:04:06.000000Z",
+                "updated_at": "2026-09-18T08:59:25.000000Z"
+            }
+        ]
+    },
+    "get /addresses": {
+        "data": [
+            {
+                "id": 13,
+                "user_id": 12,
+                "name": "الفرع الرئيسي - معدل",
+                "city": "طرابلس",
+                "street": "شارع الجمهورية",
+                "contact_phones": [
+                    "0946387065"
+                ],
+                "latitude": "32.89100000",
+                "longitude": "13.19100000",
+                "delivery_zone_id": 1,
+                "created_at": "2026-09-13T22:04:03.000000Z",
+                "updated_at": "2026-09-13T22:04:04.000000Z",
+                "deleted_at": null,
+                "user": {
+                    "id": 12,
+                    "name": "مقهى الفحص الشامل",
+                    "email": null,
+                    "mobile_number": "0946387065",
+                    "user_type_id": 3,
+                    "is_active": true,
+                    "created_at": "2026-09-13T22:04:01.000000Z",
+                    "updated_at": "2026-09-13T22:04:10.000000Z",
+                    "deleted_at": null
+                },
+                "delivery_zone": {
+                    "id": 1,
+                    "warehouse_id": 1,
+                    "hex_id": "libya_طرابلس",
+                    "name": "منطقة طرابلس",
+                    "delivery_price": "6.00",
+                    "latitude": "32.88720000",
+                    "longitude": "13.19130000",
+                    "is_active": true,
+                    "created_at": "2026-09-13T21:17:38.000000Z",
+                    "updated_at": "2026-09-13T21:17:38.000000Z"
+                }
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 1,
+            "total": 12,
+            "last_page": 12,
+            "has_more": true
+        }
+    },
+    "get /user-types/{id}": {
+        "id": 4,
+        "name": "delegate",
+        "created_at": "2026-09-13T21:17:36.000000Z",
+        "updated_at": "2026-09-13T21:17:36.000000Z",
+        "permissions": [
+            {
+                "id": 1,
+                "code": "ORDER_ASSIGN",
+                "created_at": "2026-09-13T21:17:36.000000Z",
+                "updated_at": "2026-09-13T21:17:36.000000Z",
+                "pivot": {
+                    "user_type_id": 4,
+                    "permission_id": 1
+                }
+            }
+        ],
+        "app_users": [
+            {
+                "id": 8,
+                "name": "مندوب طرابلس",
+                "email": "delegate1@example.com",
+                "mobile_number": "0920000001",
+                "user_type_id": 4,
+                "is_active": true,
+                "created_at": "2026-09-13T21:17:40.000000Z",
+                "updated_at": "2026-09-13T21:17:40.000000Z",
+                "deleted_at": null
+            }
+        ]
+    },
+    "get /user-types": {
+        "data": [
+            {
+                "id": 4,
+                "name": "delegate",
+                "created_at": "2026-09-13T21:17:36.000000Z",
+                "updated_at": "2026-09-13T21:17:36.000000Z",
+                "permissions": [
+                    {
+                        "id": 1,
+                        "code": "ORDER_ASSIGN",
+                        "created_at": "2026-09-13T21:17:36.000000Z",
+                        "updated_at": "2026-09-13T21:17:36.000000Z",
+                        "pivot": {
+                            "user_type_id": 4,
+                            "permission_id": 1
+                        }
+                    }
+                ]
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 15,
+            "total": 4,
+            "last_page": 1,
+            "has_more": false
+        }
+    },
+    "get /product-variants/{id}": {
+        "id": 22,
+        "product_id": 12,
+        "name": "× 100",
+        "sku": "PRD-0012-01",
+        "barcode": null,
+        "price": "7.00",
+        "cost_price": "4.90",
+        "is_active": true,
+        "created_at": "2026-09-13T21:17:38.000000Z",
+        "updated_at": "2026-09-13T21:17:38.000000Z",
+        "deleted_at": null,
+        "product": {
+            "id": 12,
+            "category_id": 5,
+            "name": "أغطية أكواب",
+            "brand": null,
+            "description": "أغطية أكواب بجودة عالية لتوريد المقاهي",
+            "tags": null,
+            "is_active": true,
+            "created_at": "2026-09-13T21:17:38.000000Z",
+            "updated_at": "2026-09-13T21:17:38.000000Z",
+            "deleted_at": null,
+            "image_url": "/api/v1/placeholder/product.svg",
+            "image_type": "placeholder"
+        },
+        "inventories": [
+            {
+                "id": 22,
+                "warehouse_id": 1,
+                "product_variant_id": 22,
+                "quantity": 70,
+                "created_at": "2026-09-13T21:17:38.000000Z",
+                "updated_at": "2026-09-18T12:08:34.000000Z",
+                "warehouse": {
+                    "id": 1,
+                    "name": "مستودع طرابلس الرئيسي",
+                    "city": "طرابلس",
+                    "hex_id": null,
+                    "resolution": null,
+                    "latitude": "32.88720000",
+                    "longitude": "13.19130000",
+                    "created_at": "2026-09-13T21:17:38.000000Z",
+                    "updated_at": "2026-09-13T21:17:38.000000Z",
+                    "deleted_at": null
+                }
+            }
+        ],
+        "images": []
+    },
+    "get /product-variants": {
+        "data": [
+            {
+                "id": 22,
+                "product_id": 12,
+                "name": "× 100",
+                "sku": "PRD-0012-01",
+                "barcode": null,
+                "price": "7.00",
+                "cost_price": "4.90",
+                "is_active": true,
+                "created_at": "2026-09-13T21:17:38.000000Z",
+                "updated_at": "2026-09-13T21:17:38.000000Z",
+                "deleted_at": null,
+                "product": {
+                    "id": 12,
+                    "category_id": 5,
+                    "name": "أغطية أكواب",
+                    "brand": null,
+                    "description": "أغطية أكواب بجودة عالية لتوريد المقاهي",
+                    "tags": null,
+                    "is_active": true,
+                    "created_at": "2026-09-13T21:17:38.000000Z",
+                    "updated_at": "2026-09-13T21:17:38.000000Z",
+                    "deleted_at": null,
+                    "image_url": "/api/v1/placeholder/product.svg",
+                    "image_type": "placeholder"
+                }
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "per_page": 1,
+            "total": 22,
+            "last_page": 22,
+            "has_more": true
+        }
+    }
+}

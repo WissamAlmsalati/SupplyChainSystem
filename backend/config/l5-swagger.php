@@ -1,5 +1,9 @@
 <?php
 
+use App\OpenApi\Processors\AddStandardResponses;
+use L5Swagger\Generator;
+use OpenApi\scan;
+
 return [
     'default' => 'default',
     'documentations' => [
@@ -83,6 +87,10 @@ return [
                 ],
             ],
             'scanOptions' => [
+                // Runs after the paths are built and gives every operation the
+                // failures it can really produce, so 199 docblocks do not have
+                // to repeat the same four rules.
+                'processors' => [AddStandardResponses::class],
                 'default_processors_configuration' => [
                     'pathFilter' => [
                         // Every customer-app tag: Customer Mobile, Customer Wallet, Customer Favorites, Customer Recurring Carts…
@@ -166,14 +174,14 @@ return [
             /**
              * analyser: defaults to \OpenApi\StaticAnalyser .
              *
-             * @see \OpenApi\scan
+             * @see scan
              */
             'analyser' => null,
 
             /**
              * analysis: defaults to a new \OpenApi\Analysis .
              *
-             * @see \OpenApi\scan
+             * @see scan
              */
             'analysis' => null,
 
@@ -181,16 +189,20 @@ return [
              * Custom query path processors classes.
              *
              * @link https://github.com/zircote/swagger-php/tree/master/Examples/processors/schema-query-parameter
-             * @see \OpenApi\scan
+             * @see scan
              */
+            // Runs after the paths are built and gives every operation the
+            // failures it can really produce, so 199 docblocks do not have to
+            // repeat the same four rules.
             'processors' => [
+                AddStandardResponses::class,
                 // new \App\SwaggerProcessors\SchemaQueryParameter(),
             ],
 
             /**
              * pattern: string       $pattern File pattern(s) to scan (default: *.php) .
              *
-             * @see \OpenApi\scan
+             * @see scan
              */
             'pattern' => null,
 
@@ -205,7 +217,7 @@ return [
              * Allows to generate specs either for OpenAPI 3.0.0 or OpenAPI 3.1.0.
              * By default the spec will be in version 3.0.0
              */
-            'open_api_spec_version' => env('L5_SWAGGER_OPEN_API_SPEC_VERSION', \L5Swagger\Generator::OPEN_API_DEFAULT_SPEC_VERSION),
+            'open_api_spec_version' => env('L5_SWAGGER_OPEN_API_SPEC_VERSION', Generator::OPEN_API_DEFAULT_SPEC_VERSION),
         ],
 
         /*

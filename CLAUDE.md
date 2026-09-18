@@ -218,6 +218,20 @@ not what `PUT` means. `PUT` is still accepted beside it (`Route::match(['patch',
 same pair `apiResource` registers) so clients already deployed keep working, and
 `ApiConventionsTest` fails if a new update route takes only `PUT`.
 
+`app/OpenApi/Processors/AddStandardResponses.php` gives every operation the failures it can really
+produce, at generation time, from the rules the app follows: needs a token → `401` and `403`; an id
+in the path → `404`; a request body → `422`; a sign-in route → `429`. It also declares `bearerAuth`
+on protected operations (most never did, so the reference showed them as open) and fills in the
+success body — a real captured response from `app/OpenApi/examples.json` where one exists, the
+`{data, meta}` envelope for a collection, the `Created` envelope for a `201`. An operation that
+documents a code itself always keeps its own wording. It is registered under
+`defaults.scanOptions.processors` in `config/l5-swagger.php`; note that file has a second
+`processors` key further down, and in PHP the later one wins.
+
+Refresh `examples.json` by calling the endpoints and trimming the result — an example should be
+what the endpoint really answers, not an invention, and nested lists are cut to one item so a
+stranger's order history does not end up on the docs page.
+
 `app/OpenApi/Responses.php` defines the error envelopes once — `Unauthenticated`, `Forbidden`,
 `NotFound`, `ValidationError`, `TooManyRequests` — each with the body the app actually returns, so
 an endpoint documents a failure with
