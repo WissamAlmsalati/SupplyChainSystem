@@ -225,16 +225,22 @@ main > header {
 }
 
 /* ---------------------------------------------------------------------------
-   Sidebar: the one dark surface in the app. Deep brand teal, cream text, an
-   ember counter for anything that needs a person, and an active item drawn as
-   a light tab that runs into the page — you read "where am I" from the shape.
+   Sidebar. Two hues carry the whole column, both taken from the app's own
+   palette: 175° (the primary teal) for every surface and text level, and 32°
+   (the accent amber) for one job only — a number that needs a person. Each
+   value below is a measured step, not a pick: text levels land at 13.3 / 8.1 /
+   5.3 against the ground, so a group label, an idle link and the active page
+   are told apart by contrast alone, before color.
 --------------------------------------------------------------------------- */
 @theme {
-  --color-sidebar: #10403b;
-  --color-sidebar-2: #1a5a52;
-  --color-sidebar-fg: #f1f5f3;
-  --color-sidebar-muted: #9cc0ba;
-  --color-ember: #e9a23a;
+  --color-sidebar: #0b2f2c;        /* ground */
+  --color-sidebar-2: #175048;      /* raised: search field, today cells, hover */
+  --color-sidebar-line: #20635b;   /* decorative dividers */
+  --color-sidebar-edge: #2b8175;   /* component boundaries — 3.09:1, meets 1.4.11 */
+  --color-sidebar-fg: #f1f7f5;     /* 13.3:1 — brand, active label, counts at rest */
+  --color-sidebar-muted: #a9c9c3;  /* 8.1:1 — idle links */
+  --color-sidebar-faint: #7ba49e;  /* 5.3:1 — group labels, hints */
+  --color-ember: #f0a63c;          /* 7.0:1 — work waiting, nothing else */
 }
 
 .sidebar { color-scheme: dark; }
@@ -243,21 +249,28 @@ main > header {
   display: inline-flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
   color: var(--color-sidebar-muted);
+  transition: background-color 120ms, color 120ms;
 }
-.sb-icon-btn:hover { background: rgb(255 255 255 / 0.08); color: var(--color-sidebar-fg); }
+.sb-icon-btn:hover { background: var(--color-sidebar-2); color: var(--color-sidebar-fg); }
 
 .sb-search {
   display: inline-flex; align-items: center; gap: 8px; border-radius: 10px;
-  background: rgb(255 255 255 / 0.07); border: 1px solid rgb(255 255 255 / 0.08);
+  background: var(--color-sidebar-2); border: 1px solid var(--color-sidebar-edge);
   color: var(--color-sidebar-muted);
+  transition: border-color 120ms, color 120ms;
 }
-.sb-search:hover { background: rgb(255 255 255 / 0.11); color: var(--color-sidebar-fg); }
+.sb-search:hover { border-color: var(--color-sidebar-fg); color: var(--color-sidebar-fg); }
 
+/* The quick action speaks in the same voice as the search field above it, so
+   the only amber left at rest is a count — when nothing waits, the column is
+   calm, and a number appearing is the whole signal. */
 .sb-primary {
   display: inline-flex; align-items: center; gap: 8px; border-radius: 10px;
-  background: var(--color-ember); color: var(--color-sidebar); font-weight: 700; font-size: 14px;
+  background: var(--color-sidebar-2); border: 1px solid var(--color-sidebar-edge);
+  color: var(--color-sidebar-fg); font-weight: 600; font-size: 14px;
+  transition: background-color 120ms, border-color 120ms;
 }
-.sb-primary:hover { filter: brightness(1.06); }
+.sb-primary:hover { background: var(--color-sidebar-edge); border-color: var(--color-sidebar-fg); }
 
 .sb-link {
   position: relative; display: flex; align-items: center; gap: 12px;
@@ -266,13 +279,13 @@ main > header {
   font-size: 14px; font-weight: 500; color: var(--color-sidebar-muted);
   transition: background-color 120ms, color 120ms;
 }
-.sb-link:hover { background: rgb(255 255 255 / 0.07); color: var(--color-sidebar-fg); }
+.sb-link:hover { background: var(--color-sidebar-2); color: var(--color-sidebar-fg); }
 .sb-link-icon { justify-content: center; margin: 2px 8px; padding: 9px 0; border-radius: 10px; }
 
 /* Active: a light tab joined to the page, with the two curved notches that
    make it read as one piece with the content area. */
 .sb-active, .sb-active:hover {
-  background: var(--color-surface); color: var(--color-primary);
+  background: var(--color-surface); color: var(--color-primary); font-weight: 600;
   margin-left: 0; padding-left: 22px;
   border-radius: 12px 0 0 12px;
 }
@@ -289,5 +302,5 @@ main > header {
   outline: 2px solid var(--color-ember); outline-offset: -2px;
 }
 
-.sb-scroll { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.2) transparent; }
-.sb-scroll::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.2); }
+.sb-scroll { scrollbar-width: thin; scrollbar-color: var(--color-sidebar-edge) transparent; }
+.sb-scroll::-webkit-scrollbar-thumb { background: var(--color-sidebar-edge); }

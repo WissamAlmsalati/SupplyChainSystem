@@ -218,8 +218,13 @@ The admin shell (`components/Layout.jsx`) owns the sidebar (`Nav.jsx`), the ⌘K
 (`CommandPalette.jsx`, pages + orders + customers search), the phone drawer and the quick-order
 modal. `hooks/useLiveCounts.js` polls the one-row list endpoints for the sidebar badges (pending
 orders, cancellation requests, pending top-ups, unread notifications); a new badge is a new entry
-there plus a `count` key on the link in `Nav.jsx`. Sidebar colors are the `--color-sidebar*` and
-`--color-ember` tokens in `index.css`; the active item is drawn as a tab joined to the page.
+there plus a `count` key on the link in `Nav.jsx`. Sidebar colors are a measured ramp on two hues taken from the app palette (175° teal for every
+surface and text level, 32° amber for one job): the `--color-sidebar*` and `--color-ember` tokens
+in `index.css`, each commented with its contrast ratio. Text lands at 13.3 / 8.1 / 5.3 against the
+ground so group labels, idle links and the active page differ by contrast before color, and
+`--color-sidebar-edge` is the 3:1 value for component boundaries. Amber marks a count that needs a
+person and nothing else — when no work is waiting the column carries no amber at all, so keep new
+sidebar elements on the teal steps. The active item is drawn as a light tab joined to the page.
 
 Notifications are a full page: the inbox plus, with `NOTIFICATIONS_SEND`, sending announcements to
 customers/delegates/admins/specific users (`POST notifications/send`, one row per recipient via
@@ -246,3 +251,13 @@ a choice the next reader would otherwise want to "fix".
 
 Docs live in `docs/` (`customer-endpoints-demo.md`, `sequence-diagrams.md`). `bruno/` holds an API
 client collection, backed by `BrunoDemoSeeder`. `PROJECT.md` tracks goals and open questions.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

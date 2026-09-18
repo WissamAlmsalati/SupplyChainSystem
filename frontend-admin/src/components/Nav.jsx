@@ -134,11 +134,11 @@ export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = fals
     >
       {/* Brand + collapse */}
       <div className={`flex items-center gap-3 px-4 pt-5 pb-3 ${iconOnly ? 'flex-col' : ''}`}>
-        <img src="/favicon.svg" alt="" className="h-9 w-9 rounded-lg bg-white/90 object-contain p-0.5" />
+        <img src="/favicon.svg" alt="" className="h-9 w-9 rounded-lg bg-sidebar-fg object-contain p-0.5" />
         {!iconOnly && (
           <div className="min-w-0 flex-1 leading-tight">
             <div className="truncate text-[15px] font-bold">الساحل</div>
-            <div className="truncate text-xs text-sidebar-muted">لمستلزمات المقاهي</div>
+            <div className="truncate text-xs text-sidebar-faint">لمستلزمات المقاهي</div>
           </div>
         )}
         {drawer ? (
@@ -162,7 +162,7 @@ export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = fals
           {!iconOnly && (
             <>
               <span className="flex-1 truncate text-right text-sm">ابحث أو انتقل…</span>
-              <kbd className="rounded border border-white/15 px-1.5 text-[10px] text-sidebar-muted" dir="ltr">Ctrl K</kbd>
+              <kbd className="rounded border border-sidebar-edge px-1.5 text-[10px] text-sidebar-faint" dir="ltr">Ctrl K</kbd>
             </>
           )}
         </button>
@@ -171,13 +171,13 @@ export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = fals
 
       {/* Today: the numbers that need a person right now */}
       {!iconOnly && todayItems.length > 0 && (
-        <div className="mx-3 mb-3 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10">
+        <div className="mx-3 mb-3 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-sidebar-line bg-sidebar-line">
           {todayItems.map((i) => {
             const v = counts[i.key]
             return (
               <NavLink key={i.key} to={i.to} className="bg-sidebar px-2 py-2 text-center hover:bg-sidebar-2">
                 <div className={`text-lg font-black leading-6 tabular-nums ${v > 0 ? 'text-ember' : 'text-sidebar-fg/70'}`}>{v ?? '–'}</div>
-                <div className="text-[10px] leading-3 text-sidebar-muted">{i.label}</div>
+                <div className="text-[10px] leading-3 text-sidebar-faint">{i.label}</div>
               </NavLink>
             )
           })}
@@ -194,14 +194,14 @@ export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = fals
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.title)}
-                  className="flex w-full items-center gap-1 px-5 pb-1 pt-3 text-[12px] font-medium text-sidebar-muted hover:text-sidebar-fg"
+                  className="flex w-full items-center gap-1 px-5 pb-1 pt-3 text-[12px] font-medium text-sidebar-faint hover:text-sidebar-fg"
                   aria-expanded={!closed}
                 >
                   <span>{group.title}</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${closed ? '-rotate-90' : ''}`} />
                 </button>
               )}
-              {iconOnly && <div className="mx-4 my-2 border-t border-white/10" />}
+              {iconOnly && <div className="mx-4 my-2 border-t border-sidebar-line" />}
               {!closed && (
                 <ul>
                   {group.links.map((link) => {
@@ -242,14 +242,14 @@ export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = fals
       )}
 
       {/* User */}
-      <div className={`flex items-center gap-3 border-t border-white/10 px-4 py-3 ${iconOnly ? 'flex-col' : ''}`}>
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ember text-sm font-black text-sidebar" aria-hidden="true">
+      <div className={`flex items-center gap-3 border-t border-sidebar-line px-4 py-3 ${iconOnly ? 'flex-col' : ''}`}>
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sidebar-2 text-sm font-black text-sidebar-fg ring-1 ring-sidebar-edge" aria-hidden="true">
           {(user?.name ?? '؟').trim().charAt(0)}
         </div>
         {!iconOnly && (
           <div className="min-w-0 flex-1 leading-tight">
             <div className="truncate text-sm font-semibold">{user?.name}</div>
-            <div className="truncate text-xs text-sidebar-muted">{roleLabels[user?.user_type?.name] ?? user?.user_type?.name}</div>
+            <div className="truncate text-xs text-sidebar-faint">{roleLabels[user?.user_type?.name] ?? user?.user_type?.name}</div>
           </div>
         )}
         <button type="button" onClick={logout} className="sb-icon-btn" title="تسجيل الخروج" aria-label="تسجيل الخروج"><LogOut className="h-5 w-5" /></button>
