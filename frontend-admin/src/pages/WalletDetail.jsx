@@ -52,7 +52,7 @@ export default function WalletDetail() {
     setError('')
     try {
       const amount = Math.abs(Number(adjust.amount)) * (adjust.direction === 'debit' ? -1 : 1)
-      await client.post(`/wallets/${id}/adjust`, { amount, note: adjust.note })
+      await client.postOnce(`/wallets/${id}/adjust`, { amount, note: adjust.note })
       setAdjust(null)
       await Promise.all([loadWallet(), loadTransactions()])
     } catch (err) {

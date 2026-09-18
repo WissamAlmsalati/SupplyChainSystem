@@ -31,7 +31,7 @@ export default function DelegateDashboard() {
       const payload = { amount: Number(collect.amount), note: collect.note || null }
       if (collect.order_id) payload.order_id = Number(collect.order_id)
       else payload.mobile_number = collect.mobile_number
-      const res = await client.post('/delegate/wallet/collect', payload)
+      const res = await client.postOnce('/delegate/wallet/collect', payload)
       setCollectMessage(`${res.data?.message ?? 'تم التسجيل'} — ${res.data?.data?.user?.name ?? ''}`)
       setCollect({ mobile_number: '', order_id: '', amount: '', note: '' })
       loadCollections()

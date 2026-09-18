@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Al-Sahel Cafe Supplies API",
-        "description": "\n * The API behind الساحل لمستلزمات المقاهي: the admin dashboard, the customer app and the delegate app all talk to this one service.\n *\n * ### Authenticating\n *\n * Everything except sign-in, customer registration, password reset, the payment callback and the read-only storefront needs a bearer token. Each app has its own door, because a phone number is only unique within a user type:\n *\n * | App | Sign in at | With |\n * |---|---|---|\n * | Customer | `POST /customer/login` | phone + password |\n * | Delegate | `POST /delegate/login` | phone + password |\n * | Dashboard | `POST /admin/login` | email + password |\n *\n * ```\n * Authorization: Bearer 42|abc…\n * ```\n *\n * Tokens expire (30 days by default). A `401` means sign in again.\n *\n * ### What a response looks like\n *\n * A single record is returned as-is. A list is always `{ data, meta }`, where `meta` carries the paging and may add keys of its own — `summary` on custody, `status_counts` on top-up requests:\n *\n * ```json\n * { \"data\": [ … ], \"meta\": { \"current_page\": 1, \"per_page\": 15, \"total\": 58, \"last_page\": 4, \"has_more\": true } }\n * ```\n *\n * A `201` wraps its result: `{ success, message, data }`.\n *\n * ### When something goes wrong\n *\n * Failures share one shape, and `message` is Arabic that is safe to show a user unchanged:\n *\n * ```json\n * { \"success\": false, \"message\": \"البيانات المدخلة غير صحيحة\", \"errors\": { \"amount\": [\"المبلغ يتجاوز المتبقي على الطلب (40.00 د.ل)\"] } }\n * ```\n *\n * `401` not signed in · `403` signed in without the permission · `404` missing, or not yours · `422` refused by validation or by a rule of the business · `429` rate limited, with `Retry-After`.\n *\n * Note that `422` is not only about malformed input. An order cannot move to a state its lifecycle forbids, and a payment cannot exceed what the order still owes; both answer `422` with the reason.\n *\n * ### Updating a record\n *\n * Updates are `PATCH`: send the fields you want changed and leave the rest alone. `PUT` is still accepted everywhere `PATCH` is, so older clients keep working, but new code should send `PATCH`.\n *\n * ### Rate limits\n *\n * Sign-in and the OTP endpoints are limited per IP and per account; everything else shares a general ceiling. A `429` carries `Retry-After` in seconds.\n *\n * ### Searching in Arabic\n *\n * List `search` parameters fold Arabic spelling, so `مصراته` finds `مصراتة`, `بنغازى` finds `بنغازي`, and `١٢٥` finds `125`.\n * ",
+        "description": "\n * The API behind الساحل لمستلزمات المقاهي: the admin dashboard, the customer app and the delegate app all talk to this one service.\n *\n * ### Authenticating\n *\n * Everything except sign-in, customer registration, password reset, the payment callback and the read-only storefront needs a bearer token. Each app has its own door, because a phone number is only unique within a user type:\n *\n * | App | Sign in at | With |\n * |---|---|---|\n * | Customer | `POST /customer/login` | phone + password |\n * | Delegate | `POST /delegate/login` | phone + password |\n * | Dashboard | `POST /admin/login` | email + password |\n *\n * ```\n * Authorization: Bearer 42|abc…\n * ```\n *\n * Tokens expire (30 days by default). A `401` means sign in again.\n *\n * ### What a response looks like\n *\n * A single record is returned as-is. A list is always `{ data, meta }`, where `meta` carries the paging and may add keys of its own — `summary` on custody, `status_counts` on top-up requests:\n *\n * ```json\n * { \"data\": [ … ], \"meta\": { \"current_page\": 1, \"per_page\": 15, \"total\": 58, \"last_page\": 4, \"has_more\": true } }\n * ```\n *\n * A `201` wraps its result: `{ success, message, data }`.\n *\n * ### When something goes wrong\n *\n * Failures share one shape, and `message` is Arabic that is safe to show a user unchanged:\n *\n * ```json\n * { \"success\": false, \"message\": \"البيانات المدخلة غير صحيحة\", \"errors\": { \"amount\": [\"المبلغ يتجاوز المتبقي على الطلب (40.00 د.ل)\"] } }\n * ```\n *\n * `401` not signed in · `403` signed in without the permission · `404` missing, or not yours · `422` refused by validation or by a rule of the business · `429` rate limited, with `Retry-After`.\n *\n * Note that `422` is not only about malformed input. An order cannot move to a state its lifecycle forbids, and a payment cannot exceed what the order still owes; both answer `422` with the reason.\n *\n * ### Updating a record\n *\n * Updates are `PATCH`: send the fields you want changed and leave the rest alone. `PUT` is still accepted everywhere `PATCH` is, so older clients keep working, but new code should send `PATCH`.\n *\n * ### Sending a write safely twice\n *\n * A phone on a weak network retries, and people double-tap. Send an `Idempotency-Key` header\n * (any unique string up to 100 characters, a UUID is ideal) with a `POST` that creates an order,\n * a payment, a top-up, a settlement or a return. The first request does the work; a repeat with\n * the same key within 24 hours gets the first answer back, marked `Idempotent-Replay: true`,\n * and nothing is created twice. Make one key per user action and reuse it only when retrying\n * that action. The same key with a different body is answered `422`, and a repeat that arrives\n * while the first is still running is answered `409`. Failed attempts are not remembered, so\n * retrying after an error with the same key is safe. The header is optional.\n *\n * ### Rate limits\n *\n * Sign-in and the OTP endpoints are limited per IP and per account; everything else shares a general ceiling. A `429` carries `Retry-After` in seconds.\n *\n * ### Searching in Arabic\n *\n * List `search` parameters fold Arabic spelling, so `مصراته` finds `مصراتة`, `بنغازى` finds `بنغازي`, and `١٢٥` finds `125`.\n * ",
         "version": "1.0.0"
     },
     "servers": [
@@ -6243,6 +6243,154 @@
                 ]
             }
         },
+        "/reports/profit": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Gross profit on goods for a period",
+                "description": "Sales minus returns, against the cost each item had when it was sold. A restocked return undoes the sale and its cost; a damaged return undoes the sale but the cost stays. Lines sold before their cost was known are counted in revenue and reported as uncosted, never as pure profit. Delivery fees are shown apart.",
+                "operationId": "b4e0de8fee66c0600025926804abc720",
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "json",
+                                "pdf",
+                                "xlsx"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report (JSON), or a PDF / Excel download",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/PaginationMeta"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reports/delegates": {
+            "get": {
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Delegate performance for a period",
+                "description": "Per delegate: orders assigned, delivered and cancelled, success rate over finished orders, average minutes on the road and from order to door (both from the status log), cash collected, and the custody they hold today with the days since it was last settled.",
+                "operationId": "8ec30c2da08909ffddd952d8b04fd921",
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "json",
+                                "pdf",
+                                "xlsx"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report (JSON), or a PDF / Excel download",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/PaginationMeta"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/reports/custody/{delegate}": {
             "get": {
                 "tags": [
@@ -6577,6 +6725,222 @@
                                 }
                             }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/returns": {
+            "get": {
+                "tags": [
+                    "Returns"
+                ],
+                "summary": "List returns",
+                "operationId": "45049a1557a746f5d276bcd5f5c094c8",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Order number, customer name or phone",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "order_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns, newest first. `meta.summary` totals the filtered set.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/PaginationMeta"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Returns"
+                ],
+                "summary": "Record a return on a delivered order",
+                "description": "Restocked lines go back to the warehouse the sale left from; damaged lines are written off. The customer is refunded only what they paid beyond what the order now owes, so an unpaid order simply owes less. An order that has a return can no longer be cancelled. Send an `Idempotency-Key` header so a retry cannot record the return twice.",
+                "operationId": "153006f49309d21922dd7186f0dedaa6",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "order_id",
+                                    "reason",
+                                    "items"
+                                ],
+                                "properties": {
+                                    "order_id": {
+                                        "type": "integer",
+                                        "example": 58
+                                    },
+                                    "reason": {
+                                        "type": "string",
+                                        "example": "كراتين وصلت مبللة"
+                                    },
+                                    "refund_method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "wallet",
+                                            "cash",
+                                            "none"
+                                        ],
+                                        "example": "wallet"
+                                    },
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "order_item_id",
+                                                "quantity",
+                                                "condition"
+                                            ],
+                                            "properties": {
+                                                "order_item_id": {
+                                                    "type": "integer",
+                                                    "example": 131
+                                                },
+                                                "quantity": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                },
+                                                "condition": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "restock",
+                                                        "damaged"
+                                                    ],
+                                                    "example": "damaged"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Recorded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Created"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Not delivered yet, more than was delivered, or a paid order with no refund method",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "success": false,
+                                    "message": "الكمية المرتجعة من «أكواب ورقية» أكبر من المتبقي (3)",
+                                    "errors": {
+                                        "items": [
+                                            "الكمية المرتجعة من «أكواب ورقية» أكبر من المتبقي (3)"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/returns/{id}": {
+            "get": {
+                "tags": [
+                    "Returns"
+                ],
+                "summary": "One return with its lines",
+                "operationId": "7ba819f24548dcbc09cc6a6b0022a143",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Return"
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
@@ -13148,6 +13512,10 @@
         {
             "name": "Reports",
             "description": "Sales, custody, wallet and stock reports (JSON, PDF, Excel)"
+        },
+        {
+            "name": "Returns",
+            "description": "Goods returned after delivery: back to stock or written off, with the refund that follows"
         },
         {
             "name": "Admin Warehouses",

@@ -8,10 +8,12 @@ use App\Models\CustodyEntry;
 use App\Models\Order;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\Reports\DelegatePerformanceReport;
 use App\Services\Reports\InventoryReport;
 use App\Services\Reports\LedgerStatement;
 use App\Services\Reports\PdfRenderer;
 use App\Services\Reports\Period;
+use App\Services\Reports\ProfitReport;
 use App\Services\Reports\SalesReport;
 use App\Services\Reports\XlsxRenderer;
 use Illuminate\Http\Request;
@@ -78,9 +80,12 @@ class ReportController extends BaseApiController
                     ['عدد الطلبات', $data['summary']['orders']],
                     ['الطلبات الملغية', $data['summary']['cancelled']],
                     ['الإيرادات', $data['summary']['revenue']],
+                    ['المرتجعات', $data['summary']['returned']],
+                    ['صافي الإيرادات', $data['summary']['net_revenue']],
                     ['رسوم التوصيل', $data['summary']['delivery_fees']],
                     ['متوسط الطلب', $data['summary']['avg_order']],
                     ['المحصّل', $data['summary']['collected']],
+                    ['المسترد للزبائن', $data['summary']['refunded']],
                     ['المتبقي', $data['summary']['outstanding']],
                     ['القطع المباعة', $data['summary']['items_sold']],
                 ]],
@@ -90,6 +95,82 @@ class ReportController extends BaseApiController
                 'أعلى الزبائن' => ['headers' => ['الزبون', 'الطلبات', 'الإيرادات'], 'rows' => collect($data['top_customers'])->map(fn ($r) => [$r['name'], $r['orders'], $r['revenue']])],
                 'المناديب' => ['headers' => ['المندوب', 'الطلبات', 'الإيرادات'], 'rows' => collect($data['by_delegate'])->map(fn ($r) => [$r['name'], $r['orders'], $r['revenue']])],
                 'طرق الدفع' => ['headers' => ['الطريقة', 'العدد', 'المبلغ'], 'rows' => collect($data['payments'])->map(fn ($r) => [self::PAYMENT_LABELS[$r['method']] ?? $r['method'], $r['count'], $r['amount']])],
+            ], $name.'.xlsx'),
+            default => $this->jsonResponse($data),
+        };
+    }
+
+    /**
+     * @OA\Get(path="/reports/profit", tags={"Reports"}, summary="Gross profit on goods for a period",
+     *     description="Sales minus returns, against the cost each item had when it was sold. A restocked return undoes the sale and its cost; a damaged return undoes the sale but the cost stays. Lines sold before their cost was known are counted in revenue and reported as uncosted, never as pure profit. Delivery fees are shown apart.",
+     *
+     *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="format", in="query", @OA\Schema(type="string", enum={"json","pdf","xlsx"})),
+     *
+     *     @OA\Response(response=200, description="Report (JSON), or a PDF / Excel download"))
+     */
+    public function profit(Request $request, ProfitReport $profit)
+    {
+        $period = Period::fromRequest($request);
+        $data = $profit->build($period);
+        $name = 'profit-'.$period->slug();
+        $pct = fn ($v) => $v === null ? '—' : $v.'%';
+        $rows = fn (array $list, string $label) => collect($list)->map(fn ($r) => [$r[$label], $r['units'], $r['revenue'], $r['cost'], $r['profit'], $pct($r['margin_pct'])]);
+
+        return match ($this->format($request)) {
+            'pdf' => $this->pdf->render('reports.profit', ['title' => 'تقرير الأرباح', 'report' => $data], $name.'.pdf'),
+            'xlsx' => $this->xlsx->render([
+                'الملخص' => ['headers' => ['البند', 'القيمة'], 'rows' => [
+                    ['الفترة', $period->label()],
+                    ['الطلبات', $data['summary']['orders']],
+                    ['الوحدات المباعة (صافي)', $data['summary']['units']],
+                    ['إيراد البضاعة', $data['summary']['revenue']],
+                    ['تكلفة البضاعة', $data['summary']['cost']],
+                    ['مجمل الربح', $data['summary']['gross_profit']],
+                    ['هامش الربح', $pct($data['summary']['margin_pct'])],
+                    ['قيمة المرتجعات', $data['summary']['returned_value']],
+                    ['خسارة التالف (بالتكلفة)', $data['summary']['damaged_loss']],
+                    ['رسوم التوصيل', $data['summary']['delivery_fees']],
+                    ['سطور بلا تكلفة', $data['summary']['uncosted_lines']],
+                    ['إيراد بلا تكلفة معروفة', $data['summary']['uncosted_revenue']],
+                ]],
+                'المنتجات' => ['headers' => ['المنتج', 'الحجم', 'الوحدات', 'الإيراد', 'التكلفة', 'الربح', 'الهامش'], 'rows' => collect($data['by_product'])->map(fn ($r) => [$r['product'], $r['variant'], $r['units'], $r['revenue'], $r['cost'], $r['profit'], $pct($r['margin_pct'])])],
+                'التصنيفات' => ['headers' => ['التصنيف', 'الوحدات', 'الإيراد', 'التكلفة', 'الربح', 'الهامش'], 'rows' => $rows($data['by_category'], 'name')],
+                'الزبائن' => ['headers' => ['الزبون', 'الوحدات', 'الإيراد', 'التكلفة', 'الربح', 'الهامش'], 'rows' => $rows($data['by_customer'], 'name')],
+                'المدن' => ['headers' => ['المدينة', 'الوحدات', 'الإيراد', 'التكلفة', 'الربح', 'الهامش'], 'rows' => $rows($data['by_city'], 'name')],
+            ], $name.'.xlsx'),
+            default => $this->jsonResponse($data),
+        };
+    }
+
+    /**
+     * @OA\Get(path="/reports/delegates", tags={"Reports"}, summary="Delegate performance for a period",
+     *     description="Per delegate: orders assigned, delivered and cancelled, success rate over finished orders, average minutes on the road and from order to door (both from the status log), cash collected, and the custody they hold today with the days since it was last settled.",
+     *
+     *     @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
+     *     @OA\Parameter(name="format", in="query", @OA\Schema(type="string", enum={"json","pdf","xlsx"})),
+     *
+     *     @OA\Response(response=200, description="Report (JSON), or a PDF / Excel download"))
+     */
+    public function delegates(Request $request, DelegatePerformanceReport $performance)
+    {
+        $period = Period::fromRequest($request);
+        $data = $performance->build($period);
+        $name = 'delegates-'.$period->slug();
+
+        return match ($this->format($request)) {
+            'pdf' => $this->pdf->render('reports.delegates', ['title' => 'أداء المناديب', 'report' => $data], $name.'.pdf'),
+            'xlsx' => $this->xlsx->render([
+                'المناديب' => [
+                    'headers' => ['المندوب', 'الهاتف', 'مسندة', 'مسلّمة', 'ملغاة', 'قيد التنفيذ', 'نسبة النجاح %', 'متوسط التوصيل (د)', 'من الطلب للتسليم (د)', 'قيمة المسلّم', 'نقد محصّل', 'العهدة الآن', 'أيام منذ التسكير'],
+                    'rows' => collect($data['delegates'])->map(fn ($r) => [
+                        $r['name'], $r['mobile_number'], $r['assigned'], $r['delivered'], $r['cancelled'], $r['in_progress'],
+                        $r['success_rate'] ?? '—', $r['avg_delivery_minutes'] ?? '—', $r['avg_total_minutes'] ?? '—',
+                        $r['delivered_value'], $r['cash_collected'], $r['custody_balance'], $r['days_since_settlement'] ?? '—',
+                    ]),
+                ],
             ], $name.'.xlsx'),
             default => $this->jsonResponse($data),
         };
@@ -264,7 +345,10 @@ class ReportController extends BaseApiController
             'title' => 'فاتورة '.$order->order_number,
             'order' => $order,
             'paid' => $paid,
-            'due' => $order->status === OrderStatus::Cancelled ? 0.0 : round(max((float) $order->total_amount - $paid, 0), 2),
+            // Same arithmetic as the payment guard: returns lower what is owed.
+            'returned' => ($balance = $order->balanceCents())['returned'] / 100,
+            'refunded' => $balance['refunded'] / 100,
+            'due' => $order->status === OrderStatus::Cancelled ? 0.0 : max($balance['outstanding'], 0) / 100,
             'payment_labels' => self::PAYMENT_LABELS,
         ], 'invoice-'.$order->order_number.'.pdf');
     }

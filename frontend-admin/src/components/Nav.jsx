@@ -3,14 +3,14 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse, MapPin, Map, Tags, Users, Truck, ShieldCheck,
   ClipboardList, Bell, Star, Megaphone, PanelRightClose, PanelRightOpen, LogOut, Wallet, BanknoteArrowUp,
-  HandCoins, LayoutList, BarChart3, Search, Plus, ChevronDown, X,
+  HandCoins, LayoutList, BarChart3, Search, Plus, ChevronDown, X, Undo2, Gauge,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import NotificationBell from './NotificationBell'
 
 const icons = {
   LayoutDashboard, ShoppingCart, Package, Warehouse, MapPin, Map, Tags, Users, Truck, ShieldCheck,
-  ClipboardList, Bell, Star, Megaphone, Wallet, BanknoteArrowUp, HandCoins, LayoutList, BarChart3,
+  ClipboardList, Bell, Star, Megaphone, Wallet, BanknoteArrowUp, HandCoins, LayoutList, BarChart3, Undo2, Gauge,
 }
 
 // `count` names a key from useLiveCounts; the number shows as a badge.
@@ -20,6 +20,7 @@ export const groups = [
     links: [
       { to: '/', label: 'الرئيسية', icon: 'LayoutDashboard', permission: 'DASHBOARD_VIEW' },
       { to: '/orders', label: 'الطلبات', icon: 'ShoppingCart', permission: 'ORDERS_VIEW', count: 'pendingOrders' },
+      { to: '/returns', label: 'المرتجعات', icon: 'Undo2', permission: 'RETURNS_VIEW' },
       { to: '/products', label: 'المنتجات', icon: 'Package', permission: 'PRODUCTS_VIEW' },
       { to: '/inventory', label: 'المخزون', icon: 'Warehouse', permission: 'INVENTORY_VIEW' },
     ],
@@ -56,6 +57,7 @@ export const groups = [
       { to: '/users', label: 'الإدارة', icon: 'Users', permission: 'USERS_VIEW' },
       { to: '/customers', label: 'المقاهي', icon: 'Users', permission: 'USERS_VIEW' },
       { to: '/delegates', label: 'المناديب', icon: 'Truck', permission: 'DELEGATES_VIEW' },
+      { to: '/delegate-performance', label: 'أداء المناديب', icon: 'Gauge', permission: 'REPORTS_VIEW' },
       { to: '/user-types', label: 'الأدوار والصلاحيات', icon: 'ShieldCheck', permission: 'USER_TYPES_VIEW' },
     ],
   },

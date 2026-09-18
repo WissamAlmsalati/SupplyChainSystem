@@ -140,8 +140,19 @@ its table changes, and each wraps work in a transaction with `lockForUpdate()`:
 - `OrderPlacementService` — the single path for creating orders. It resolves prices server-side,
   snapshots address and product data onto the order, deducts stock, auto-assigns a delegate, and
   notifies admins. Never build an `Order` directly.
+- `ReturnService` — the only place a return is written: goods that come back after delivery
+  (`order_returns`, `order_return_items`). One transaction covers the record, the restock
+  (`StockService`, movement referenced to the return, back to the warehouse the sale left from) and
+  the refund (`WalletService::credit`, or cash from the office). Damaged lines never touch
+  inventory. Only what the customer paid beyond what the order now owes is refunded, so an unpaid
+  order simply owes less. Returns are never edited or deleted, and an order that has one can no
+  longer be cancelled, because cancelling restocks and refunds everything a second time.
 - `DelegateAssignmentService` — nearest available delegate, where "available" means active, flag
   set, and a location updated within the last 30 minutes.
+
+`Order::balanceCents()` is the one definition of where an order stands in money (total, returned,
+due, paid, refunded, outstanding). The payment guard, the returns service, the invoice and the
+order page all read it, so use it rather than summing payments again.
 
 `ProductSearch` handles catalog querying, faceting, and sorting for the customer app.
 `ArabicText::filter($query, $term, $columns)` is the shared Arabic-tolerant list search; admin
@@ -154,7 +165,12 @@ touch them (custody and wallet top-ups already use it).
 custody and wallet statements, `InventoryReport`) and `ReportController` serves each one as JSON,
 `?format=pdf` or `?format=xlsx`. PDFs are Blade views under `resources/views/reports/` rendered by
 `PdfRenderer` (mPDF, RTL, DejaVu Sans — no Chrome needed); Excel goes through `XlsxRenderer`
-(OpenSpout). `Period::fromRequest()` parses `from`/`to`/`all` for every report. Invoices live at
+(OpenSpout). `ProfitReport` measures gross profit against `order_items.unit_cost`, the cost snapshotted at
+placement the same way the price is: a restocked return undoes the sale and its cost, a damaged
+return undoes the sale but keeps the cost, and lines with no cost are reported as uncosted rather
+than counted as pure profit. `DelegatePerformanceReport` reads delivery times from
+`order_status_logs` and shows custody as of today (admin page `/delegate-performance`).
+`Period::fromRequest()` parses `from`/`to`/`all` for every report. Invoices live at
 `orders/{id}/invoice` (dashboard) and `customer/orders/{id}/invoice`; all `reports.*` routes need the
 single `REPORTS_VIEW` code. Frontends download through `lib/download.js`, which fetches a blob with
 the bearer token and names the file from `Content-Disposition`.
@@ -212,6 +228,14 @@ one type. A lookup by number alone would be a coin toss, so the route supplies t
 exactly like a wrong password, so the endpoint cannot be used to discover which numbers are
 registered as delegates. Every uniqueness rule on a phone number must carry the same scope — see
 `AppUserRequest`, `DelegateRequest` and the two register requests.
+
+A `POST` may carry an `Idempotency-Key` header (`app/Http/Middleware/Idempotency.php`, on the
+whole protected group). The first request does the work and its successful answer is cached for a
+day, scoped to user and path; a repeat is replayed with `Idempotent-Replay: true`, the same key
+with a different body is a `422`, and a repeat during the first is a `409`. Failures are not
+remembered. Both frontends send it through `client.postOnce()`, which keeps one key per
+"this path with this body" until the server answers; use it for anything that moves money or
+stock. The header is optional, so older clients are unaffected.
 
 Updates are `PATCH` — every one of them changes some fields and leaves the rest alone, which is
 not what `PUT` means. `PUT` is still accepted beside it (`Route::match(['patch', 'put'], …)`, the
@@ -317,6 +341,10 @@ premium-feature codes and notification types to `customer`.
 Comments prefixed `ponytail:` mark deliberate non-obvious decisions and workarounds, with the
 reason. Read them before changing the surrounding code, and follow the same style when you make
 a choice the next reader would otherwise want to "fix".
+
+`scripts/backup-db.sh` is the nightly database backup, run by cron on the server. It dumps from
+inside the MySQL container, refuses to keep a dump that did not complete, prunes after
+`KEEP_DAYS`, and ships off the machine when `OFFSITE` is set.
 
 Docs live in `docs/` (`customer-endpoints-demo.md`, `sequence-diagrams.md`). `bruno/` holds an API
 client collection, backed by `BrunoDemoSeeder`. `PROJECT.md` tracks goals and open questions.

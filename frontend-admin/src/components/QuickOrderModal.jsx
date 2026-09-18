@@ -91,7 +91,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
           unit_price: Number(it.unit_price),
         })),
       }
-      await client.post('/orders', payload)
+      await client.postOnce('/orders', payload)
       onCreated()
       handleClose()
     } catch (err) {

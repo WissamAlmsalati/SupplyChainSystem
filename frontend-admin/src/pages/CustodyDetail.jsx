@@ -50,7 +50,7 @@ export default function CustodyDetail() {
     setSaving(true)
     setError('')
     try {
-      const res = await client.post(`/custody/${id}/settle`, { amount: Number(settle.amount), note: settle.note || null })
+      const res = await client.postOnce(`/custody/${id}/settle`, { amount: Number(settle.amount), note: settle.note || null })
       setSettle(null)
       setReceipt(res.data?.data)
       setPage(1)

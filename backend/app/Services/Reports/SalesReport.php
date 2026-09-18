@@ -70,6 +70,12 @@ class SalesReport
             ->values();
         $collected = round((float) $payments->sum('amount'), 2);
 
+        // Returns lower what was really sold and what is still owed; without
+        // them a fully refunded order would look like money nobody collected.
+        $returns = \App\Models\OrderReturn::query()->whereIn('order_id', $soldIds);
+        $returned = round((float) (clone $returns)->sum('total_value'), 2);
+        $refunded = round((float) (clone $returns)->sum('refund_amount'), 2);
+
         return [
             'period' => $period->toArray(),
             'group_by' => $groupBy,
@@ -80,7 +86,10 @@ class SalesReport
                 'delivery_fees' => $deliveryFees,
                 'avg_order' => $ordersCount > 0 ? round($revenue / $ordersCount, 2) : 0.0,
                 'collected' => $collected,
-                'outstanding' => round(max($revenue - $collected, 0), 2),
+                'returned' => $returned,
+                'net_revenue' => round($revenue - $returned, 2),
+                'refunded' => $refunded,
+                'outstanding' => round(max(($revenue - $returned) - ($collected - $refunded), 0), 2),
                 'items_sold' => (int) OrderItem::query()->whereIn('order_id', $soldIds)->sum('quantity'),
             ],
             'series' => $series,

@@ -71,6 +71,8 @@ class OrderPlacementService
                 'variant_name' => $variants[$variantId]->name,
                 'quantity' => $qty,
                 'unit_price' => $variants[$variantId]->price,
+                // Kept like the price is: profit is measured against what it cost then.
+                'unit_cost' => $variants[$variantId]->cost_price,
             ])->values();
 
             $subtotal = round($lines->sum(fn ($l) => $l['quantity'] * (float) $l['unit_price']), 2);

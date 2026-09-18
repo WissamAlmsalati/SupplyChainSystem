@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn ($request) => $request->is('api/*') ? null : '/login');
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
+            'idempotent' => \App\Http\Middleware\Idempotency::class,
         ]);
 
         $proxies = env('TRUSTED_PROXIES');

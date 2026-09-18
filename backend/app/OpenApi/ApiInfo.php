@@ -51,6 +51,17 @@ namespace App\OpenApi;
  *
  * Updates are `PATCH`: send the fields you want changed and leave the rest alone. `PUT` is still accepted everywhere `PATCH` is, so older clients keep working, but new code should send `PATCH`.
  *
+ * ### Sending a write safely twice
+ *
+ * A phone on a weak network retries, and people double-tap. Send an `Idempotency-Key` header
+ * (any unique string up to 100 characters, a UUID is ideal) with a `POST` that creates an order,
+ * a payment, a top-up, a settlement or a return. The first request does the work; a repeat with
+ * the same key within 24 hours gets the first answer back, marked `Idempotent-Replay: true`,
+ * and nothing is created twice. Make one key per user action and reuse it only when retrying
+ * that action. The same key with a different body is answered `422`, and a repeat that arrives
+ * while the first is still running is answered `409`. Failed attempts are not remembered, so
+ * retrying after an error with the same key is safe. The header is optional.
+ *
  * ### Rate limits
  *
  * Sign-in and the OTP endpoints are limited per IP and per account; everything else shares a general ceiling. A `429` carries `Retry-After` in seconds.

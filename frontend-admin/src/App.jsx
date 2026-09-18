@@ -11,6 +11,8 @@ import UserDetail from './pages/UserDetail'
 import Customers from './pages/Customers'
 import Delegates from './pages/Delegates'
 import DelegateDetail from './pages/DelegateDetail'
+import DelegatePerformance from './pages/DelegatePerformance'
+import Returns from './pages/Returns'
 import Categories from './pages/Categories'
 import Warehouses from './pages/Warehouses'
 import WarehouseDetail from './pages/WarehouseDetail'
@@ -59,6 +61,8 @@ function App() {
         <Route path="/users/:id" element={<RequirePermission permission="USERS_VIEW"><UserDetail /></RequirePermission>} />
         <Route path="/customers" element={<RequirePermission permission="USERS_VIEW"><Customers /></RequirePermission>} />
         <Route path="/delegates" element={<RequirePermission permission="DELEGATES_VIEW"><Delegates /></RequirePermission>} />
+        <Route path="/delegate-performance" element={<RequirePermission permission="REPORTS_VIEW"><DelegatePerformance /></RequirePermission>} />
+        <Route path="/returns" element={<RequirePermission permission="RETURNS_VIEW"><Returns /></RequirePermission>} />
         <Route path="/delegates/:id" element={<RequirePermission permission="DELEGATES_VIEW"><DelegateDetail /></RequirePermission>} />
         <Route path="/categories" element={<RequirePermission permission="CATEGORIES_VIEW"><Categories /></RequirePermission>} />
         <Route path="/warehouses" element={<RequirePermission permission="WAREHOUSES_VIEW"><Warehouses /></RequirePermission>} />

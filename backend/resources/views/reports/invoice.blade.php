@@ -39,7 +39,9 @@
   @empty
     <tr><td colspan="4" class="muted">لا توجد دفعات مسجلة</td></tr>
   @endforelse
+    @if(($returned ?? 0) > 0)<tr><td colspan="3" class="right">مرتجعات</td><td class="num neg">- {{ $money($returned) }}</td></tr>@endif
     <tr><td colspan="3" class="right">المدفوع</td><td class="num">{{ $money($paid) }}</td></tr>
+    @if(($refunded ?? 0) > 0)<tr><td colspan="3" class="right">مسترد للزبون</td><td class="num">{{ $money($refunded) }}</td></tr>@endif
     <tr class="total"><td colspan="3" class="right">المتبقي</td><td class="num">{{ $money($due) }}</td></tr>
   </tbody>
 </table>

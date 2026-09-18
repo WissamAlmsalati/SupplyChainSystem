@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowRight, Printer, Check, X, Clock, CheckCircle2, Package, Truck, Home, PackageCheck,
-  MapPin, Phone, User, Repeat, Smartphone, LayoutDashboard, CreditCard, History, Boxes, Trash2, FileDown,
+  MapPin, Phone, User, Repeat, Smartphone, LayoutDashboard, CreditCard, History, Boxes, Trash2, FileDown, Undo2,
 } from 'lucide-react'
 import client from '../api/client'
 import Button from '../components/ui/Button'
@@ -46,6 +46,7 @@ const NEXT_ACTION = {
 }
 
 const PAYMENT_METHODS = { cash: 'نقداً', card: 'بطاقة', bank_transfer: 'تحويل بنكي', wallet: 'المحفظة' }
+const REFUND_METHODS = { wallet: 'إلى المحفظة', cash: 'نقداً' }
 const PAYMENT_STATUSES = { pending: 'معلّق', paid: 'مدفوع', failed: 'فاشل', refunded: 'مسترجع' }
 const MOVEMENT_TYPES = { sale: 'خصم للطلب', return: 'إرجاع للمخزون', purchase: 'إدخال بضاعة', adjustment: 'تعديل' }
 
@@ -107,6 +108,7 @@ export default function OrderDetail() {
   const invoiceRef = useRef(null)
   const { canEdit, canDelete } = useModulePermission('ORDERS')
   const { canCreate: canCreatePayment } = useModulePermission('PAYMENTS')
+  const { canCreate: canCreateReturn } = useModulePermission('RETURNS')
   const delegates = useApiList('/delegates?per_page=1000')
   const [statusModal, setStatusModal] = useState(false)
   const [newStatus, setNewStatus] = useState('')
@@ -114,6 +116,9 @@ export default function OrderDetail() {
   const [selectedDelegate, setSelectedDelegate] = useState('')
   const [paymentModal, setPaymentModal] = useState(false)
   const [payment, setPayment] = useState({ amount: '', method: 'cash', status: 'paid' })
+  // { lines: { [order_item_id]: { quantity, condition } }, reason, refund_method }
+  const [returnForm, setReturnForm] = useState(null)
+  const [returnError, setReturnError] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
@@ -183,11 +188,39 @@ export default function OrderDetail() {
     setPaymentModal(true)
   }
 
+  const openReturn = () => {
+    setReturnError('')
+    setReturnForm({ lines: {}, reason: '', refund_method: 'wallet' })
+  }
+
+  const saveReturn = async (e) => {
+    e.preventDefault()
+    const lines = Object.entries(returnForm.lines)
+      .filter(([, l]) => Number(l.quantity) > 0)
+      .map(([itemId, l]) => ({ order_item_id: Number(itemId), quantity: Number(l.quantity), condition: l.condition || 'restock' }))
+    if (!lines.length) {
+      setReturnError('حدد كمية مرتجعة لصنف واحد على الأقل')
+      return
+    }
+    setSaving(true)
+    setReturnError('')
+    try {
+      await client.postOnce('/returns', { order_id: order.id, reason: returnForm.reason, refund_method: returnForm.refund_method, items: lines })
+      setReturnForm(null)
+      await load()
+    } catch (err) {
+      const errors = err.response?.data?.errors
+      setReturnError(Object.values(errors ?? {})[0]?.[0] || err.response?.data?.message || 'فشل تسجيل المرتجع')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const savePayment = async (e) => {
     e.preventDefault()
     setSaving(true)
     try {
-      await client.post('/payments', {
+      await client.postOnce('/payments', {
         order_id: order.id,
         amount: Number(payment.amount),
         method: payment.method,
@@ -232,8 +265,16 @@ export default function OrderDetail() {
   const total = Number(order.total_amount) || 0
   const paid = (order.payments ?? []).filter((p) => p.status === 'paid').reduce((s, p) => s + Number(p.amount), 0)
   const refunded = (order.payments ?? []).filter((p) => p.status === 'refunded').reduce((s, p) => s + Number(p.amount), 0)
+  // The server does this sum once (Order::balanceCents) so returns count the
+  // same way here as in the payment guard; the local sum covers older payloads.
+  const money = order.balance
+  const returnedValue = money?.returned ?? 0
+  const paidNet = money ? money.paid - money.refunded : paid - refunded
   // A cancelled order owes nothing.
-  const balance = order.status === 'cancelled' ? 0 : total - paid + refunded
+  const balance = order.status === 'cancelled' ? 0 : money ? money.outstanding : total - paid + refunded
+  const returns = order.returns ?? []
+  const returnable = items.some((i) => Number(i.quantity) - Number(i.returned_quantity || 0) > 0)
+  const canReturn = canCreateReturn && ['delivered', 'received'].includes(order.status) && returnable
   const next = NEXT_ACTION[order.status]
   // Moves the API allows from the current status (OrderStatus::transitions()).
   const nextStatuses = order.next_statuses ?? []
@@ -250,7 +291,7 @@ export default function OrderDetail() {
     ? { label: 'ملغاة', className: 'border-red-600 text-red-600' }
     : balance <= 0.004
       ? { label: 'مدفوعة', className: 'border-green-700 text-green-700' }
-      : paid - refunded > 0
+      : paidNet > 0
         ? { label: 'مدفوعة جزئياً', className: 'border-amber-600 text-amber-600' }
         : { label: 'غير مدفوعة', className: 'border-stone-400 text-stone-400' }
 
@@ -398,7 +439,10 @@ export default function OrderDetail() {
                               {variant?.deleted_at && <Badge variant="danger">محذوف من الكتالوج</Badge>}
                             </div>
                           </td>
-                          <td className="py-3 text-center text-foreground">{item.quantity}</td>
+                          <td className="py-3 text-center text-foreground">
+                            {item.quantity}
+                            {Number(item.returned_quantity) > 0 && <div className="text-xs text-danger">رجع {item.returned_quantity}</div>}
+                          </td>
                           <td className="py-3 text-end text-foreground">
                             {formatMoney(item.unit_price)} د.ل
                             {priceChanged && <div className="text-xs text-muted">الحالي: {formatMoney(variant.price)}</div>}
@@ -415,6 +459,12 @@ export default function OrderDetail() {
                   <div className="flex justify-between text-muted"><span>المجموع</span><span>{formatMoney(order.subtotal ?? itemsTotal)} د.ل</span></div>
                   <div className="flex justify-between text-muted"><span>التوصيل</span><span>{formatMoney(deliveryFee)} د.ل</span></div>
                   <div className="flex justify-between border-t border-border pt-2 text-lg font-bold text-foreground"><span>الإجمالي</span><span>{formatMoney(total)} د.ل</span></div>
+                  {returnedValue > 0 && (
+                    <>
+                      <div className="flex justify-between text-danger"><span>مرتجعات</span><span>- {formatMoney(returnedValue)} د.ل</span></div>
+                      <div className="flex justify-between font-bold text-foreground"><span>المستحق بعد المرتجعات</span><span>{formatMoney(total - returnedValue)} د.ل</span></div>
+                    </>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -430,12 +480,12 @@ export default function OrderDetail() {
             <CardContent>
               <div className="mb-4 grid grid-cols-3 gap-3 text-center">
                 <div className="rounded-lg bg-background p-3">
-                  <div className="text-xs text-muted">الإجمالي</div>
-                  <div className="mt-1 font-bold text-foreground">{formatMoney(total)}</div>
+                  <div className="text-xs text-muted">{returnedValue > 0 ? 'المستحق' : 'الإجمالي'}</div>
+                  <div className="mt-1 font-bold text-foreground">{formatMoney(total - returnedValue)}</div>
                 </div>
                 <div className="rounded-lg bg-success-soft p-3">
                   <div className="text-xs text-muted">المدفوع</div>
-                  <div className="mt-1 font-bold text-success">{formatMoney(paid - refunded)}</div>
+                  <div className="mt-1 font-bold text-success">{formatMoney(paidNet)}</div>
                 </div>
                 <div className={`rounded-lg p-3 ${balance > 0.004 ? 'bg-warning-soft' : 'bg-background'}`}>
                   <div className="text-xs text-muted">المتبقي</div>
@@ -461,6 +511,46 @@ export default function OrderDetail() {
               )}
             </CardContent>
           </Card>
+
+          {(returns.length > 0 || canReturn) && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2"><Undo2 className="h-4 w-4 text-muted" /> المرتجعات</CardTitle>
+                {canReturn && <Button variant="secondary" size="sm" onClick={openReturn}>تسجيل مرتجع</Button>}
+              </CardHeader>
+              <CardContent>
+                {returns.length === 0 ? (
+                  <div className="text-sm text-muted">لا توجد مرتجعات على هذا الطلب.</div>
+                ) : (
+                  <ul className="divide-y divide-border text-sm">
+                    {returns.map((r) => (
+                      <li key={r.id} className="py-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium text-foreground">{r.reason}</span>
+                          <span className="font-semibold text-danger">- {formatMoney(r.total_value)} د.ل</span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                          <span>{formatDateTime(r.created_at)}</span>
+                          {r.created_by?.name && <span>سجّله {r.created_by.name}</span>}
+                          <span>{Number(r.refund_amount) > 0 ? `استرداد ${formatMoney(r.refund_amount)} د.ل ${REFUND_METHODS[r.refund_method] ?? ''}` : 'بدون استرداد'}</span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {(r.items ?? []).map((ri) => {
+                            const source = items.find((i) => i.id === ri.order_item_id)
+                            return (
+                              <Badge key={ri.id} variant={ri.condition === 'damaged' ? 'danger' : 'success'}>
+                                {ri.quantity} × {source?.product_name ?? 'صنف'} · {ri.condition === 'damaged' ? 'تالف' : 'للمخزون'}
+                              </Badge>
+                            )
+                          })}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {movements.length > 0 && (
             <Card>
@@ -714,7 +804,7 @@ export default function OrderDetail() {
               <div className="flex justify-between bg-primary px-4 py-3 text-base font-extrabold text-primary-foreground"><span>الإجمالي</span><span>{formatMoney(total)} د.ل</span></div>
               {!isCancelled && (
                 <>
-                  <div className="flex justify-between px-4 py-2"><span className="text-stone-500">المدفوع</span><span className="font-semibold text-green-700">{formatMoney(paid - refunded)}</span></div>
+                  <div className="flex justify-between px-4 py-2"><span className="text-stone-500">المدفوع</span><span className="font-semibold text-green-700">{formatMoney(paidNet)}</span></div>
                   <div className="flex justify-between border-t border-stone-200 px-4 py-2"><span className="font-bold text-stone-700">المتبقي</span><span className="font-extrabold text-stone-900">{formatMoney(Math.max(0, balance))} د.ل</span></div>
                 </>
               )}
@@ -779,6 +869,54 @@ export default function OrderDetail() {
             <Button type="submit" variant="primary" disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal title="تسجيل مرتجع" open={!!returnForm} onClose={() => setReturnForm(null)}>
+        {returnForm && (
+          <form onSubmit={saveReturn} className="space-y-4">
+            <div className="space-y-3">
+              {items.map((item) => {
+                const left = Number(item.quantity) - Number(item.returned_quantity || 0)
+                const line = returnForm.lines[item.id] ?? { quantity: '', condition: 'restock' }
+                const setLine = (patch) => setReturnForm({ ...returnForm, lines: { ...returnForm.lines, [item.id]: { ...line, ...patch } } })
+                return (
+                  <div key={item.id} className={`rounded-lg border border-border p-3 ${left === 0 ? 'opacity-50' : ''}`}>
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span className="min-w-0 font-medium text-foreground">{item.product_name} <span className="text-muted">{item.variant_name}</span></span>
+                      <span className="shrink-0 text-xs text-muted">{left === 0 ? 'رجع بالكامل' : `المتاح للإرجاع ${left}`}</span>
+                    </div>
+                    {left > 0 && (
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <input type="number" min="0" max={left} step="1" placeholder="الكمية" className={selectClass} value={line.quantity} onChange={(e) => setLine({ quantity: e.target.value })} />
+                        <select className={selectClass} value={line.condition} onChange={(e) => setLine({ condition: e.target.value })}>
+                          <option value="restock">سليم، يرجع للمخزون</option>
+                          <option value="damaged">تالف، لا يرجع للمخزون</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-muted">سبب الإرجاع</label>
+              <input type="text" maxLength={255} className={selectClass} value={returnForm.reason} onChange={(e) => setReturnForm({ ...returnForm, reason: e.target.value })} required />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-muted">استرداد المدفوع</label>
+              <select className={selectClass} value={returnForm.refund_method} onChange={(e) => setReturnForm({ ...returnForm, refund_method: e.target.value })}>
+                <option value="wallet">إلى محفظة الزبون</option>
+                <option value="cash">نقداً من المكتب</option>
+              </select>
+              <p className="mt-1.5 text-xs text-muted">يُسترد فقط ما دفعه الزبون زيادة على المستحق بعد المرتجع. الطلب غير المدفوع ينقص مستحقه ولا يتحرك أي مبلغ.</p>
+            </div>
+            {returnError && <div className="rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">{returnError}</div>}
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setReturnForm(null)}>إلغاء</Button>
+              <Button type="submit" variant="primary" disabled={saving}>{saving ? 'جاري الحفظ...' : 'تسجيل المرتجع'}</Button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       <Modal title="تسجيل دفعة" open={paymentModal} onClose={() => setPaymentModal(false)}>

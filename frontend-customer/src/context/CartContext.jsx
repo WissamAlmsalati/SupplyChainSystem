@@ -48,7 +48,7 @@ export function CartProvider({ children }) {
   }
 
   const checkout = async (addressId, paymentMethod = 'cash') => {
-    const res = await client.post('/customer/cart/checkout', { address_id: addressId, payment_method: paymentMethod })
+    const res = await client.postOnce('/customer/cart/checkout', { address_id: addressId, payment_method: paymentMethod })
     await refresh()
     return res.data
   }

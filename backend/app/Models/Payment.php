@@ -43,11 +43,8 @@ class Payment extends Model
             }
 
             $cents = fn ($v) => (int) round((float) $v * 100);
-            $paid = $order->payments()
-                ->where('status', PaymentStatus::Paid->value)
-                ->when($payment->exists, fn ($q) => $q->where('id', '!=', $payment->id))
-                ->sum('amount');
-            $outstanding = $cents($order->total_amount) - $cents($paid);
+            // Returns lower what the order owes, so they count here too.
+            $outstanding = $order->balanceCents($payment->exists ? $payment->id : null)['outstanding'];
 
             if ($cents($payment->amount) <= 0) {
                 throw ValidationException::withMessages(['amount' => 'المبلغ لازم يكون أكبر من صفر']);

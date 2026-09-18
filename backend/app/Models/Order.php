@@ -74,6 +74,14 @@ class Order extends Model
                     'status' => "لا يمكن نقل الطلب من «{$from->label()}» إلى «{$order->status->label()}»",
                 ]);
             }
+            // Cancelling restocks everything and refunds every payment. Once
+            // part of the order has already come back through a return, that
+            // would restock and refund the same goods twice.
+            if ($order->status === OrderStatus::Cancelled && $order->returns()->exists()) {
+                throw ValidationException::withMessages([
+                    'status' => 'الطلب عليه مرتجع مسجّل، سجّل مرتجعاً بباقي الأصناف بدل الإلغاء',
+                ]);
+            }
         });
 
         // Every status change is written to order_status_logs.
@@ -157,6 +165,42 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(OrderReturn::class);
+    }
+
+    /**
+     * Where the order stands in money, in one place so the payment guard, the
+     * returns service and the dashboard cannot disagree. Everything in cents.
+     *
+     * due = what was sold minus what came back; paid = payments minus what was
+     * handed back for returns; outstanding = due - paid.
+     *
+     * @return array{total:int, returned:int, due:int, paid:int, refunded:int, outstanding:int}
+     */
+    public function balanceCents(?int $exceptPaymentId = null): array
+    {
+        $cents = fn ($v) => (int) round((float) $v * 100);
+
+        $total = $cents($this->total_amount);
+        $returned = $cents($this->returns()->sum('total_value'));
+        $refunded = $cents($this->returns()->sum('refund_amount'));
+        $paid = $cents($this->payments()
+            ->where('status', \App\Enums\PaymentStatus::Paid->value)
+            ->when($exceptPaymentId, fn ($q) => $q->where('id', '!=', $exceptPaymentId))
+            ->sum('amount'));
+
+        return [
+            'total' => $total,
+            'returned' => $returned,
+            'due' => $total - $returned,
+            'paid' => $paid,
+            'refunded' => $refunded,
+            'outstanding' => ($total - $returned) - ($paid - $refunded),
+        ];
     }
 
     /**

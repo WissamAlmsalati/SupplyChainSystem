@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\Api\PromoController;
 use App\Http\Controllers\Api\RecurringCartController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\ReturnController;
 use App\Http\Controllers\Api\StockMovementController;
 use App\Http\Controllers\Api\UserTypeController;
 use App\Http\Controllers\Api\WalletController;
@@ -84,7 +85,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('categories/{category}', [CategoryController::class, 'show']);
 
-    Route::middleware(['auth:sanctum', 'permission'])->group(function () {
+    // 'idempotent' acts only on a POST that carries an Idempotency-Key header.
+    Route::middleware(['auth:sanctum', 'permission', 'idempotent'])->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::post('register', [AuthController::class, 'register']);
@@ -231,9 +233,17 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('orders/{order}/assign-delegate', [OrderController::class, 'assignDelegate'])->name('orders.assign-delegate');
         Route::get('orders/{order}/invoice', [ReportController::class, 'invoice'])->name('orders.invoice');
 
+        // Recorded, never edited: a return moves stock and money, so a mistake
+        // is corrected by an adjustment that leaves its own trace.
+        Route::get('returns', [ReturnController::class, 'index'])->name('returns.index');
+        Route::post('returns', [ReturnController::class, 'store'])->name('returns.store');
+        Route::get('returns/{orderReturn}', [ReturnController::class, 'show'])->name('returns.show');
+
         // Reports: JSON for the dashboard, ?format=pdf|xlsx for downloads. All need REPORTS_VIEW.
         Route::prefix('reports')->name('reports.')->group(function () {
             Route::get('sales', [ReportController::class, 'sales'])->name('sales');
+            Route::get('profit', [ReportController::class, 'profit'])->name('profit');
+            Route::get('delegates', [ReportController::class, 'delegates'])->name('delegates');
             Route::get('inventory', [ReportController::class, 'inventory'])->name('inventory');
             Route::get('orders', [ReportController::class, 'orders'])->name('orders');
             Route::get('custody/{delegate}', [ReportController::class, 'custody'])->name('custody');

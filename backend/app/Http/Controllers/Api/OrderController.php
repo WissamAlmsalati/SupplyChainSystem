@@ -43,7 +43,12 @@ class OrderController extends BaseApiController
     // Statuses the dashboard may move this order to next; drives the status UI.
     protected function withNextStatuses(Order $order): Order
     {
-        $order->setAttribute('next_statuses', $order->status->nextValues());
+        $next = $order->status->nextValues();
+        // The model refuses to cancel an order that has a return, so do not offer it.
+        if ($order->returns()->exists()) {
+            $next = array_values(array_diff($next, [\App\Enums\OrderStatus::Cancelled->value]));
+        }
+        $order->setAttribute('next_statuses', $next);
 
         return $order;
     }
@@ -146,10 +151,17 @@ class OrderController extends BaseApiController
             return $this->jsonResponse(['message' => 'غير مصرح'], 403);
         }
 
-        return $this->jsonResponse($this->withNextStatuses($order->load([
+        $order->load([
             'user.customerProfile', 'user.wallet', 'address', 'deliveryZone', 'delegate', 'cart',
             'items.productVariant.product', 'payments.collector:id,name', 'statusLogs.changedBy',
-        ])));
+            'returns.items', 'returns.createdBy:id,name',
+        ]);
+        $order->items->loadSum('returnItems as returned_quantity', 'quantity');
+
+        // The money position in one block, so the page does not redo the sums.
+        $order->setAttribute('balance', array_map(fn (int $c) => $c / 100, $order->balanceCents()));
+
+        return $this->jsonResponse($this->withNextStatuses($order));
     }
 
     /**

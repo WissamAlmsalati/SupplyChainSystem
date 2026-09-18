@@ -33,6 +33,16 @@ function Stat({ label, value, tone }) {
   )
 }
 
+const pct = (v) => (v === null || v === undefined ? '—' : `${v}%`)
+
+const profitColumns = [
+  { key: 'units', label: 'الوحدات', num: true },
+  { key: 'revenue', label: 'الإيراد', num: true, render: (r) => formatMoney(r.revenue) },
+  { key: 'cost', label: 'التكلفة', num: true, render: (r) => formatMoney(r.cost) },
+  { key: 'profit', label: 'الربح', num: true, render: (r) => <span className={r.profit < 0 ? 'text-danger' : 'text-success'}>{formatMoney(r.profit)}</span> },
+  { key: 'margin_pct', label: 'الهامش', num: true, render: (r) => pct(r.margin_pct) },
+]
+
 function SimpleTable({ columns, rows, empty = 'لا توجد بيانات' }) {
   if (!rows?.length) return <div className="text-sm text-muted">{empty}</div>
   return (
@@ -66,8 +76,14 @@ export default function Reports() {
 
   const params = tab === 'sales'
     ? { from, to, group_by: groupBy }
-    : { from, to, warehouse_id: warehouseId || undefined, low_stock_at: lowStockAt }
-  const endpoint = tab === 'sales' ? '/reports/sales' : '/reports/inventory'
+    : tab === 'profit'
+      ? { from, to }
+      : { from, to, warehouse_id: warehouseId || undefined, low_stock_at: lowStockAt }
+  const endpoint = { sales: '/reports/sales', profit: '/reports/profit', inventory: '/reports/inventory' }[tab]
+
+  // Each tab answers with a different shape, so the last tab's data must not
+  // be drawn by the next one while its own request is still on the way.
+  const switchTab = (key) => { if (key !== tab) { setData(null); setTab(key) } }
 
   const load = async () => {
     setLoading(true)
@@ -107,7 +123,7 @@ export default function Reports() {
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">التقارير</h1>
-          <p className="mt-1 text-sm text-muted">مبيعات، مخزون، وتصدير الطلبات. كشوف العهدة والمحافظ من صفحة كل مندوب أو محفظة.</p>
+          <p className="mt-1 text-sm text-muted">مبيعات، أرباح، مخزون، وتصدير الطلبات. كشوف العهدة والمحافظ من صفحة كل مندوب أو محفظة.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => download('pdf')} disabled={!!downloading || loading}><FileDown className="h-4 w-4" /> PDF</Button>
@@ -119,8 +135,8 @@ export default function Reports() {
       </header>
 
       <div className="mb-4 flex gap-1 rounded-lg border border-border bg-surface p-1 w-fit">
-        {[['sales', 'المبيعات'], ['inventory', 'المخزون']].map(([key, label]) => (
-          <button key={key} onClick={() => setTab(key)} className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${tab === key ? 'bg-primary text-primary-foreground' : 'text-muted hover:text-foreground'}`}>{label}</button>
+        {[['sales', 'المبيعات'], ['profit', 'الأرباح'], ['inventory', 'المخزون']].map(([key, label]) => (
+          <button key={key} onClick={() => switchTab(key)} className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${tab === key ? 'bg-primary text-primary-foreground' : 'text-muted hover:text-foreground'}`}>{label}</button>
         ))}
       </div>
 
@@ -128,7 +144,7 @@ export default function Reports() {
         <CardContent className="flex flex-wrap items-end gap-3 pt-5">
           <label className="text-sm text-muted">من<input type="date" className={`${inputClass} mt-1 block`} value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></label>
           <label className="text-sm text-muted">إلى<input type="date" className={`${inputClass} mt-1 block`} value={to} min={from} onChange={(e) => setTo(e.target.value)} /></label>
-          {tab === 'sales' ? (
+          {tab === 'profit' ? null : tab === 'sales' ? (
             <label className="text-sm text-muted">التجميع
               <select className={`${inputClass} mt-1 block`} value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
                 <option value="day">يومي</option><option value="month">شهري</option>
@@ -165,6 +181,8 @@ export default function Reports() {
             <Stat label="الإيرادات (د.ل)" value={formatMoney(s.revenue)} />
             <Stat label="متوسط الطلب" value={formatMoney(s.avg_order)} />
             <Stat label="القطع المباعة" value={s.items_sold} />
+            <Stat label="المرتجعات" value={formatMoney(s.returned)} tone={s.returned > 0 ? 'danger' : undefined} />
+            <Stat label="صافي الإيرادات" value={formatMoney(s.net_revenue)} />
             <Stat label="المحصّل" value={formatMoney(s.collected)} tone="success" />
             <Stat label="المتبقي" value={formatMoney(s.outstanding)} tone="danger" />
             <Stat label="رسوم التوصيل" value={formatMoney(s.delivery_fees)} />
@@ -188,6 +206,38 @@ export default function Reports() {
             </CardContent></Card>
             <Card><CardHeader><CardTitle>طرق الدفع</CardTitle></CardHeader><CardContent>
               <SimpleTable columns={[{ key: 'method', label: 'الطريقة', render: (r) => PAYMENT_LABELS[r.method] ?? r.method }, { key: 'count', label: 'العدد', num: true }, { key: 'amount', label: 'المبلغ', num: true, render: (r) => formatMoney(r.amount) }]} rows={data.payments} />
+            </CardContent></Card>
+          </div>
+        </>
+      ) : tab === 'profit' ? (
+        <>
+          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Stat label="إيراد البضاعة" value={formatMoney(s.revenue)} />
+            <Stat label="تكلفة البضاعة" value={formatMoney(s.cost)} />
+            <Stat label="مجمل الربح" value={formatMoney(s.gross_profit)} tone={s.gross_profit < 0 ? 'danger' : 'success'} />
+            <Stat label="هامش الربح" value={pct(s.margin_pct)} />
+            <Stat label="الطلبات / الوحدات" value={`${s.orders} / ${s.units}`} />
+            <Stat label="قيمة المرتجعات" value={formatMoney(s.returned_value)} />
+            <Stat label="خسارة التالف (بالتكلفة)" value={formatMoney(s.damaged_loss)} tone={s.damaged_loss > 0 ? 'danger' : undefined} />
+            <Stat label="رسوم التوصيل (خارج الربح)" value={formatMoney(s.delivery_fees)} />
+          </div>
+          {s.uncosted_lines > 0 && (
+            <div className="mb-6 rounded-lg border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-foreground">
+              {s.uncosted_lines} سطر بيع بلا تكلفة مسجّلة، إيرادها {formatMoney(s.uncosted_revenue)} د.ل. هذه السطور خارج حساب التكلفة والربح والهامش. أدخل سعر التكلفة في صفحة الصنف حتى تُحسب مبيعاته القادمة.
+            </div>
+          )}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="lg:col-span-2"><CardHeader><CardTitle>المنتجات</CardTitle></CardHeader><CardContent>
+              <SimpleTable columns={[{ key: 'product', label: 'المنتج', render: (r) => <>{r.product} <span className="text-muted">{r.variant}</span>{!r.cost_known && <span className="mr-2 rounded bg-warning-soft px-1.5 py-0.5 text-[11px] text-foreground">تكلفة ناقصة</span>}</> }, ...profitColumns]} rows={data.by_product} empty="لا توجد مبيعات في الفترة" />
+            </CardContent></Card>
+            <Card><CardHeader><CardTitle>التصنيفات</CardTitle></CardHeader><CardContent>
+              <SimpleTable columns={[{ key: 'name', label: 'التصنيف' }, ...profitColumns]} rows={data.by_category} />
+            </CardContent></Card>
+            <Card><CardHeader><CardTitle>المدن</CardTitle></CardHeader><CardContent>
+              <SimpleTable columns={[{ key: 'name', label: 'المدينة' }, ...profitColumns]} rows={data.by_city} />
+            </CardContent></Card>
+            <Card className="lg:col-span-2"><CardHeader><CardTitle>الزبائن</CardTitle></CardHeader><CardContent>
+              <SimpleTable columns={[{ key: 'name', label: 'الزبون', render: (r) => <Link className="hover:text-primary" to={`/users/${r.id}`}>{r.name}</Link> }, ...profitColumns]} rows={data.by_customer} />
             </CardContent></Card>
           </div>
         </>

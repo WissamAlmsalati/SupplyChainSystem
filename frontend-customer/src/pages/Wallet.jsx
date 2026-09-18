@@ -77,7 +77,7 @@ export default function Wallet() {
       if (form.reference_number) data.append('reference_number', form.reference_number)
       if (form.note) data.append('note', form.note)
       if (receipt) data.append('receipt', receipt)
-      const res = await client.postForm('/customer/wallet/topups', data)
+      const res = await client.postOnce('/customer/wallet/topups', data)
       setSuccess(res.data?.message || 'تم إرسال طلب الشحن')
       setMode(null)
       setForm({ amount: '', method: 'bank_transfer', reference_number: '', note: '' })
@@ -96,7 +96,7 @@ export default function Wallet() {
     setSaving(true)
     setError('')
     try {
-      const res = await client.post('/customer/wallet/topups/gateway', { amount: Number(form.amount) })
+      const res = await client.postOnce('/customer/wallet/topups/gateway', { amount: Number(form.amount) })
       window.location.href = res.data?.data?.checkout_url
     } catch (err) {
       setError(err.response?.data?.message || 'تعذر بدء الدفع الإلكتروني')

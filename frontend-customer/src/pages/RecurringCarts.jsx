@@ -52,7 +52,7 @@ export default function RecurringCarts() {
     setError('')
     setSuccess('')
     try {
-      const res = await client.post(`/customer/recurring-carts/${cart.id}/order`, {
+      const res = await client.postOnce(`/customer/recurring-carts/${cart.id}/order`, {
         address_id: Number(addressId),
         payment_method: payWithWallet[cart.id] ? 'wallet' : 'cash',
       })

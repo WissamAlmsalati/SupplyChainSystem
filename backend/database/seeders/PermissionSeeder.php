@@ -48,6 +48,9 @@ class PermissionSeeder extends Seeder
             'PREMIUM_FEATURES_EDIT',
             'REPORTS_VIEW',
             'NOTIFICATIONS_SEND',
+            // Returns are recorded, never edited or deleted.
+            'RETURNS_VIEW',
+            'RETURNS_CREATE',
         ];
 
         foreach ($viewOnly as $module) {
