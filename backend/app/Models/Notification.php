@@ -42,21 +42,35 @@ class Notification extends Model
 
     public static function notifyAdmins(string $title, ?string $message = null, ?string $link = null, string $type = 'info'): void
     {
-        $admins = AppUser::whereHas('userType', fn ($q) => $q->whereIn('name', ['admin', 'super_admin']))
-            ->pluck('id');
+        self::sendTo(
+            AppUser::whereHas('userType', fn ($q) => $q->whereIn('name', ['admin', 'super_admin']))->pluck('id'),
+            $title, $message, $link, $type,
+        );
+    }
 
-        $records = $admins->map(fn ($userId) => [
+    /**
+     * One notification row per recipient, inserted in a single statement.
+     * The batch shares one created_at, which is how "sent" history groups it.
+     *
+     * @param  iterable<int>  $userIds
+     */
+    public static function sendTo(iterable $userIds, string $title, ?string $message = null, ?string $link = null, string $type = 'info'): int
+    {
+        $now = now();
+        $records = collect($userIds)->unique()->values()->map(fn ($userId) => [
             'user_id' => $userId,
             'type' => $type,
             'title' => $title,
             'message' => $message,
             'link' => $link,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => $now,
+            'updated_at' => $now,
         ])->all();
 
-        if ($records) {
-            self::insert($records);
+        foreach (array_chunk($records, 500) as $chunk) {
+            self::insert($chunk);
         }
+
+        return count($records);
     }
 }

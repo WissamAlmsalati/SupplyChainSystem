@@ -214,6 +214,17 @@ admin client adds `postForm`/`putForm` helpers — `putForm` spoofs the method w
 over POST because PHP only parses multipart bodies on POST, so real PUT leaves `$_FILES` empty.
 Use those helpers for any upload.
 
+The admin shell (`components/Layout.jsx`) owns the sidebar (`Nav.jsx`), the ⌘K command palette
+(`CommandPalette.jsx`, pages + orders + customers search), the phone drawer and the quick-order
+modal. `hooks/useLiveCounts.js` polls the one-row list endpoints for the sidebar badges (pending
+orders, cancellation requests, pending top-ups, unread notifications); a new badge is a new entry
+there plus a `count` key on the link in `Nav.jsx`. Sidebar colors are the `--color-sidebar*` and
+`--color-ember` tokens in `index.css`; the active item is drawn as a tab joined to the page.
+
+Notifications are a full page: the inbox plus, with `NOTIFICATIONS_SEND`, sending announcements to
+customers/delegates/admins/specific users (`POST notifications/send`, one row per recipient via
+`Notification::sendTo`) and a sent history grouped by batch (`GET notifications/sent`).
+
 The admin app's `useApiResource` hook is the standard way to render a paginated list: it reads
 the backend's `meta` shape and persists the current page in the URL query string by default.
 State that crosses pages lives in React context (`AuthContext`, and in the customer app `CartContext`

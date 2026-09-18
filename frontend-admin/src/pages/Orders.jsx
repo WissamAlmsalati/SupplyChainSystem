@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useModulePermission } from '../hooks/usePermission'
 import { useApiResource } from '../hooks/useApiResource'
 import DataTable from '../components/DataTable'
@@ -11,8 +11,14 @@ import { FilterSelect, FilterDate } from '../components/ui/TableFilters'
 
 export default function Orders() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') ?? '')
+  // Sidebar counters link here with ?status=…; follow it even when already on the page.
+  useEffect(() => {
+    const s = searchParams.get('status')
+    if (s !== null) setFilterStatus(s)
+  }, [searchParams])
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const { items, loading, error, pagination, setPage, fetch } = useApiResource('/orders', { search, status: filterStatus, date_from: dateFrom, date_to: dateTo })

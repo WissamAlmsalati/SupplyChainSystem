@@ -1,20 +1,79 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Menu, Search } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import Nav from './Nav'
+import Nav, { useVisibleGroups } from './Nav'
+import CommandPalette from './CommandPalette'
+import NotificationBell from './NotificationBell'
+import QuickOrderModal from './QuickOrderModal'
+import { useLiveCounts } from '../hooks/useLiveCounts'
 
 export default function Layout() {
   const { user, ready } = useAuth()
-
   if (!ready) return null
   if (!user) return <Navigate to="/login" replace />
+  return <Shell />
+}
+
+function Shell() {
+  const location = useLocation()
+  const counts = useLiveCounts()
+  const visibleGroups = useVisibleGroups()
+  const [drawer, setDrawer] = useState(false)
+  const [palette, setPalette] = useState(false)
+  const [quickOrder, setQuickOrder] = useState(false)
+
+  const pages = useMemo(() => visibleGroups.flatMap((g) => g.links.map((l) => ({ to: l.to, label: l.label, group: g.title }))), [visibleGroups])
+
+  // Route change closes the phone drawer.
+  useEffect(() => { setDrawer(false) }, [location.pathname])
+
+  // Ctrl/⌘+K anywhere opens the palette; Esc closes the drawer.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPalette((v) => !v)
+      } else if (e.key === 'Escape') {
+        setDrawer(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const navProps = { counts, onSearch: () => setPalette(true), onQuickOrder: () => setQuickOrder(true) }
 
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-background lg:flex-row">
-      <Nav />
-      <main className="flex-1 space-y-4 overflow-auto bg-white px-4 pb-6 lg:px-6 lg:pb-8">
+      {/* Phone top bar */}
+      <header className="flex w-full min-w-0 items-center gap-2 border-b border-border bg-surface px-3 py-2 lg:hidden">
+        <button type="button" onClick={() => setDrawer(true)} className="rounded-md p-2 text-muted hover:bg-background hover:text-foreground" aria-label="فتح القائمة"><Menu className="h-5 w-5" /></button>
+        <img src="/favicon.svg" alt="" className="h-8 w-8 rounded-md object-contain" />
+        <div className="flex-1 truncate font-bold text-foreground">الساحل</div>
+        <button type="button" onClick={() => setPalette(true)} className="rounded-md p-2 text-muted hover:bg-background hover:text-foreground" aria-label="بحث"><Search className="h-5 w-5" /></button>
+        <NotificationBell />
+      </header>
+
+      {/* Desktop sidebar */}
+      <div className="hidden h-full shrink-0 lg:block">
+        <Nav {...navProps} />
+      </div>
+
+      {/* Phone drawer */}
+      <div className={`fixed inset-0 z-[9000] overflow-hidden lg:hidden ${drawer ? '' : 'pointer-events-none'}`} aria-hidden={!drawer}>
+        <div className={`absolute inset-0 bg-black/50 transition-opacity motion-reduce:transition-none ${drawer ? 'opacity-100' : 'opacity-0'}`} onClick={() => setDrawer(false)} />
+        <div className={`absolute inset-y-0 right-0 w-[min(84vw,300px)] shadow-lg transition-transform duration-200 motion-reduce:transition-none ${drawer ? 'translate-x-0' : 'translate-x-full'}`}>
+          <Nav {...navProps} drawer onCloseDrawer={() => setDrawer(false)} />
+        </div>
+      </div>
+
+      <main className="min-w-0 flex-1 space-y-4 overflow-auto bg-white px-4 pb-6 lg:px-6 lg:pb-8">
         <Outlet />
       </main>
+
+      <CommandPalette open={palette} onClose={() => setPalette(false)} pages={pages} />
+      <QuickOrderModal open={quickOrder} onClose={() => setQuickOrder(false)} onCreated={() => setQuickOrder(false)} />
     </div>
   )
 }
-

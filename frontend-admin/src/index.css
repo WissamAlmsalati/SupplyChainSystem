@@ -223,3 +223,71 @@ main > header {
     border-collapse: collapse;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Sidebar: the one dark surface in the app. Deep brand teal, cream text, an
+   ember counter for anything that needs a person, and an active item drawn as
+   a light tab that runs into the page — you read "where am I" from the shape.
+--------------------------------------------------------------------------- */
+@theme {
+  --color-sidebar: #10403b;
+  --color-sidebar-2: #1a5a52;
+  --color-sidebar-fg: #f1f5f3;
+  --color-sidebar-muted: #9cc0ba;
+  --color-ember: #e9a23a;
+}
+
+.sidebar { color-scheme: dark; }
+
+.sb-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+  color: var(--color-sidebar-muted);
+}
+.sb-icon-btn:hover { background: rgb(255 255 255 / 0.08); color: var(--color-sidebar-fg); }
+
+.sb-search {
+  display: inline-flex; align-items: center; gap: 8px; border-radius: 10px;
+  background: rgb(255 255 255 / 0.07); border: 1px solid rgb(255 255 255 / 0.08);
+  color: var(--color-sidebar-muted);
+}
+.sb-search:hover { background: rgb(255 255 255 / 0.11); color: var(--color-sidebar-fg); }
+
+.sb-primary {
+  display: inline-flex; align-items: center; gap: 8px; border-radius: 10px;
+  background: var(--color-ember); color: var(--color-sidebar); font-weight: 700; font-size: 14px;
+}
+.sb-primary:hover { filter: brightness(1.06); }
+
+.sb-link {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  margin: 1px 0 1px 10px; padding: 8px 14px 8px 12px;
+  border-radius: 10px 0 0 10px; /* rounded toward the page (left in RTL) */
+  font-size: 14px; font-weight: 500; color: var(--color-sidebar-muted);
+  transition: background-color 120ms, color 120ms;
+}
+.sb-link:hover { background: rgb(255 255 255 / 0.07); color: var(--color-sidebar-fg); }
+.sb-link-icon { justify-content: center; margin: 2px 8px; padding: 9px 0; border-radius: 10px; }
+
+/* Active: a light tab joined to the page, with the two curved notches that
+   make it read as one piece with the content area. */
+.sb-active, .sb-active:hover {
+  background: var(--color-surface); color: var(--color-primary);
+  margin-left: 0; padding-left: 22px;
+  border-radius: 12px 0 0 12px;
+}
+.sb-active::before, .sb-active::after {
+  content: ""; position: absolute; left: 0; width: 12px; height: 12px;
+  background: radial-gradient(circle at 0 0, transparent 12px, var(--color-surface) 12.5px);
+}
+.sb-active::before { top: -12px; transform: scaleY(-1); }
+.sb-active::after { bottom: -12px; }
+.sb-link-icon.sb-active { margin-left: 0; padding-left: 0; border-radius: 12px 0 0 12px; }
+.sb-link-icon.sb-active::before, .sb-link-icon.sb-active::after { display: none; }
+
+.sb-link:focus-visible, .sb-icon-btn:focus-visible, .sb-search:focus-visible, .sb-primary:focus-visible {
+  outline: 2px solid var(--color-ember); outline-offset: -2px;
+}
+
+.sb-scroll { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.2) transparent; }
+.sb-scroll::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.2); }

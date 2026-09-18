@@ -1,60 +1,25 @@
-import { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard,
-  ShoppingCart,
-  Package,
-  Warehouse,
-  MapPin,
-  Map,
-  Tags,
-  Users,
-  Truck,
-  ShieldCheck,
-  ClipboardList,
-  Bell,
-  Star,
-  Megaphone,
-  PanelLeftClose,
-  PanelLeftOpen,
-  LogOut,
-  Wallet,
-  BanknoteArrowUp,
-  HandCoins,
-  LayoutList,
-  BarChart3,
+  LayoutDashboard, ShoppingCart, Package, Warehouse, MapPin, Map, Tags, Users, Truck, ShieldCheck,
+  ClipboardList, Bell, Star, Megaphone, PanelRightClose, PanelRightOpen, LogOut, Wallet, BanknoteArrowUp,
+  HandCoins, LayoutList, BarChart3, Search, Plus, ChevronDown, X,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import Button from './ui/Button'
+import NotificationBell from './NotificationBell'
 
 const icons = {
-  LayoutDashboard,
-  ShoppingCart,
-  Package,
-  Warehouse,
-  MapPin,
-  Map,
-  Tags,
-  Users,
-  Truck,
-  ShieldCheck,
-  ClipboardList,
-  Bell,
-  Star,
-  Megaphone,
-  Wallet,
-  BanknoteArrowUp,
-  HandCoins,
-  LayoutList,
-  BarChart3,
+  LayoutDashboard, ShoppingCart, Package, Warehouse, MapPin, Map, Tags, Users, Truck, ShieldCheck,
+  ClipboardList, Bell, Star, Megaphone, Wallet, BanknoteArrowUp, HandCoins, LayoutList, BarChart3,
 }
 
-const groups = [
+// `count` names a key from useLiveCounts; the number shows as a badge.
+export const groups = [
   {
     title: 'العمليات',
     links: [
       { to: '/', label: 'الرئيسية', icon: 'LayoutDashboard', permission: 'DASHBOARD_VIEW' },
-      { to: '/orders', label: 'الطلبات', icon: 'ShoppingCart', permission: 'ORDERS_VIEW' },
+      { to: '/orders', label: 'الطلبات', icon: 'ShoppingCart', permission: 'ORDERS_VIEW', count: 'pendingOrders' },
       { to: '/products', label: 'المنتجات', icon: 'Package', permission: 'PRODUCTS_VIEW' },
       { to: '/inventory', label: 'المخزون', icon: 'Warehouse', permission: 'INVENTORY_VIEW' },
     ],
@@ -63,7 +28,7 @@ const groups = [
     title: 'المالية',
     links: [
       { to: '/wallets', label: 'المحافظ والسيولة', icon: 'Wallet', permission: 'WALLETS_VIEW' },
-      { to: '/wallet-topups', label: 'طلبات الشحن', icon: 'BanknoteArrowUp', permission: 'WALLET_TOPUPS_VIEW' },
+      { to: '/wallet-topups', label: 'طلبات الشحن', icon: 'BanknoteArrowUp', permission: 'WALLET_TOPUPS_VIEW', count: 'pendingTopups' },
       { to: '/custody', label: 'عهد المناديب', icon: 'HandCoins', permission: 'CUSTODY_VIEW' },
       { to: '/reports', label: 'التقارير', icon: 'BarChart3', permission: 'REPORTS_VIEW' },
     ],
@@ -82,23 +47,14 @@ const groups = [
     links: [
       { to: '/categories', label: 'التصنيفات', icon: 'Tags', permission: 'CATEGORIES_VIEW' },
       { to: '/featured-sections', label: 'الأقسام المميزة', icon: 'LayoutList', permission: 'FEATURED_SECTIONS_VIEW' },
+      { to: '/promos', label: 'البروموهات', icon: 'Megaphone' },
     ],
   },
   {
     title: 'الإدارة',
     links: [
-      {
-        to: '/users',
-        label: 'الإدارة',
-        icon: 'Users',
-        permission: 'USERS_VIEW',
-      },
-      {
-        to: '/customers',
-        label: 'المقاهي',
-        icon: 'Users',
-        permission: 'USERS_VIEW',
-      },
+      { to: '/users', label: 'الإدارة', icon: 'Users', permission: 'USERS_VIEW' },
+      { to: '/customers', label: 'المقاهي', icon: 'Users', permission: 'USERS_VIEW' },
       { to: '/delegates', label: 'المناديب', icon: 'Truck', permission: 'DELEGATES_VIEW' },
       { to: '/user-types', label: 'الأدوار والصلاحيات', icon: 'ShieldCheck', permission: 'USER_TYPES_VIEW' },
     ],
@@ -107,25 +63,26 @@ const groups = [
     title: 'النظام',
     links: [
       { to: '/activity-logs', label: 'سجل النشاطات', icon: 'ClipboardList', permission: 'ACTIVITY_LOGS_VIEW' },
-      { to: '/notifications', label: 'الإشعارات', icon: 'Bell' },
-      { to: '/promos', label: 'البروموهات', icon: 'Megaphone' },
+      { to: '/notifications', label: 'الإشعارات', icon: 'Bell', count: 'unreadNotifications' },
       { to: '/premium-features', label: 'الميزات المميزة', icon: 'Star' },
     ],
   },
 ]
 
-export default function Nav() {
-  const { user, logout, hasAnyPermission } = useAuth()
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return window.localStorage.getItem('nav-collapsed') === 'true'
-  })
+const roleLabels = { super_admin: 'مدير عام', admin: 'مدير', customer: 'زبون', delegate: 'مندوب' }
 
-  useEffect(() => {
-    window.localStorage.setItem('nav-collapsed', String(collapsed))
-  }, [collapsed])
+function readJson(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch {
+    return fallback
+  }
+}
 
-  const visibleGroups = groups
+export function useVisibleGroups() {
+  const { user, hasAnyPermission } = useAuth()
+  return useMemo(() => groups
     .map((group) => ({
       ...group,
       links: group.links.filter((link) => {
@@ -134,98 +91,168 @@ export default function Nav() {
         return true
       }),
     }))
-    .filter((group) => group.links.length > 0)
+    .filter((group) => group.links.length > 0), [user, hasAnyPermission])
+}
+
+function Badge({ value, collapsed }) {
+  if (!value) return null
+  if (collapsed) return <span className="absolute top-1.5 left-1.5 h-2 w-2 rounded-full bg-ember ring-2 ring-sidebar" aria-label={String(value)} />
+  return <span className="ms-auto min-w-6 rounded-full bg-ember px-1.5 text-center text-[11px] font-bold leading-5 text-sidebar tabular-nums">{value > 99 ? '99+' : value}</span>
+}
+
+/**
+ * The sidebar. On desktop it is a fixed column (full or icon-only); on
+ * phones the same component renders inside a slide-in drawer (see Layout).
+ */
+export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = false, onCloseDrawer }) {
+  const { user, logout, hasPermission } = useAuth()
+  const location = useLocation()
+  const visibleGroups = useVisibleGroups()
+  const [collapsed, setCollapsed] = useState(() => !drawer && readJson('nav-collapsed', false))
+  const [closedGroups, setClosedGroups] = useState(() => readJson('nav-closed-groups', {}))
+
+  useEffect(() => {
+    if (!drawer) window.localStorage.setItem('nav-collapsed', JSON.stringify(collapsed))
+  }, [collapsed, drawer])
+  useEffect(() => {
+    window.localStorage.setItem('nav-closed-groups', JSON.stringify(closedGroups))
+  }, [closedGroups])
+
+  const toggleGroup = (title) => setClosedGroups((s) => ({ ...s, [title]: !s[title] }))
+  const iconOnly = collapsed && !drawer
+  const todayItems = [
+    { key: 'pendingOrders', label: 'طلبات جديدة', to: '/orders?status=pending', permission: 'ORDERS_VIEW' },
+    { key: 'cancellationRequests', label: 'طلبات إلغاء', to: '/orders?status=cancellation_requested', permission: 'ORDERS_VIEW' },
+    { key: 'pendingTopups', label: 'شحن للمراجعة', to: '/wallet-topups?status=pending', permission: 'WALLET_TOPUPS_VIEW' },
+  ].filter((i) => hasPermission(i.permission))
 
   return (
     <aside
-      className={`flex h-auto flex-col border-b border-border bg-surface transition-all duration-200 lg:h-full lg:flex-shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-l ${
-        collapsed ? 'lg:w-20' : 'lg:w-64'
+      className={`sidebar flex h-full flex-col bg-sidebar text-sidebar-fg transition-[width] duration-200 motion-reduce:transition-none ${
+        drawer ? 'w-full' : iconOnly ? 'w-[76px]' : 'w-[268px]'
       }`}
     >
-      <div className={`flex items-center p-5 ${collapsed ? 'lg:flex-col lg:justify-center lg:gap-2' : 'justify-between'}`}>
-        <div className="flex items-center gap-3">
-          <img
-            src="/favicon.svg"
-            alt="logo"
-            className="h-10 w-10 rounded-lg object-contain"
-          />
-          {!collapsed && (
-            <div>
-              <div className="font-bold text-foreground">الساحل</div>
-              <div className="text-xs text-muted">لمستلزمات المقاهي</div>
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => setCollapsed((c) => !c)}
-          className="rounded-md p-2 text-muted hover:bg-background hover:text-foreground"
-          title={collapsed ? 'توسيع' : 'تصغير'}
-        >
-          {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-        </button>
+      {/* Brand + collapse */}
+      <div className={`flex items-center gap-3 px-4 pt-5 pb-3 ${iconOnly ? 'flex-col' : ''}`}>
+        <img src="/favicon.svg" alt="" className="h-9 w-9 rounded-lg bg-white/90 object-contain p-0.5" />
+        {!iconOnly && (
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="truncate text-[15px] font-bold">الساحل</div>
+            <div className="truncate text-xs text-sidebar-muted">لمستلزمات المقاهي</div>
+          </div>
+        )}
+        {drawer ? (
+          <button type="button" onClick={onCloseDrawer} className="sb-icon-btn" aria-label="إغلاق القائمة"><X className="h-5 w-5" /></button>
+        ) : (
+          <button type="button" onClick={() => setCollapsed((c) => !c)} className="sb-icon-btn" title={collapsed ? 'توسيع القائمة' : 'تصغير القائمة'} aria-label={collapsed ? 'توسيع القائمة' : 'تصغير القائمة'}>
+            {collapsed ? <PanelRightOpen className="h-5 w-5" /> : <PanelRightClose className="h-5 w-5" />}
+          </button>
+        )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-3 lg:overflow-visible">
-        <div className="space-y-5">
-          {visibleGroups.map((group) => (
-            <div key={group.title}>
-              {!collapsed && (
-                <div className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted">
-                  {group.title}
-                </div>
-              )}
-              <ul className="space-y-1">
-                {group.links.map((link) => {
-                  const Icon = link.icon ? icons[link.icon] : null
-                  const [linkPath] = link.to.split('?')
-                  return (
-                    <li key={link.to}>
-                      <NavLink
-                        to={link.to}
-                        title={collapsed ? link.label : undefined}
-                        end={false}
-                        isActive={(_, location) => {
-                          if (link.isActive) return link.isActive(location)
-                          return location.pathname === linkPath
-                        }}
-                        className={({ isActive }) =>
-                          `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                            collapsed ? 'lg:justify-center' : ''
-                          } ${
-                            isActive
-                              ? 'bg-primary !text-white'
-                              : 'text-muted hover:bg-background hover:text-foreground'
-                          }`
-                        }
-                      >
-                        {Icon && <Icon className="h-5 w-5 flex-shrink-0" />}
-                        {!collapsed && link.label}
-                      </NavLink>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          ))}
+      {/* Search + bell */}
+      <div className={`flex items-center gap-2 px-3 pb-3 ${iconOnly ? 'flex-col' : ''}`}>
+        <button
+          type="button"
+          onClick={onSearch}
+          className={`sb-search ${iconOnly ? 'h-10 w-10 justify-center px-0' : 'h-10 flex-1 px-3'}`}
+          title="بحث سريع (Ctrl+K)"
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          {!iconOnly && (
+            <>
+              <span className="flex-1 truncate text-right text-sm">ابحث أو انتقل…</span>
+              <kbd className="rounded border border-white/15 px-1.5 text-[10px] text-sidebar-muted" dir="ltr">Ctrl K</kbd>
+            </>
+          )}
+        </button>
+        <NotificationBell tone="dark" />
+      </div>
+
+      {/* Today: the numbers that need a person right now */}
+      {!iconOnly && todayItems.length > 0 && (
+        <div className="mx-3 mb-3 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10">
+          {todayItems.map((i) => {
+            const v = counts[i.key]
+            return (
+              <NavLink key={i.key} to={i.to} className="bg-sidebar px-2 py-2 text-center hover:bg-sidebar-2">
+                <div className={`text-lg font-black leading-6 tabular-nums ${v > 0 ? 'text-ember' : 'text-sidebar-fg/70'}`}>{v ?? '–'}</div>
+                <div className="text-[10px] leading-3 text-sidebar-muted">{i.label}</div>
+              </NavLink>
+            )
+          })}
         </div>
+      )}
+
+      {/* Links */}
+      <nav className="sb-scroll flex-1 overflow-y-auto overflow-x-hidden pb-3 ps-0 pe-0">
+        {visibleGroups.map((group) => {
+          const closed = !!closedGroups[group.title] && !iconOnly
+          return (
+            <div key={group.title} className="mb-1">
+              {!iconOnly && (
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.title)}
+                  className="flex w-full items-center gap-1 px-5 pb-1 pt-3 text-[12px] font-medium text-sidebar-muted hover:text-sidebar-fg"
+                  aria-expanded={!closed}
+                >
+                  <span>{group.title}</span>
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${closed ? '-rotate-90' : ''}`} />
+                </button>
+              )}
+              {iconOnly && <div className="mx-4 my-2 border-t border-white/10" />}
+              {!closed && (
+                <ul>
+                  {group.links.map((link) => {
+                    const Icon = link.icon ? icons[link.icon] : null
+                    const [linkPath] = link.to.split('?')
+                    const isActive = location.pathname === linkPath || (linkPath !== '/' && location.pathname.startsWith(linkPath + '/'))
+                    const badge = link.count ? counts[link.count] : null
+                    return (
+                      <li key={link.to} className="relative">
+                        <NavLink
+                          to={link.to}
+                          title={iconOnly ? link.label : undefined}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={`sb-link ${isActive ? 'sb-active' : ''} ${iconOnly ? 'sb-link-icon' : ''}`}
+                        >
+                          {Icon && <Icon className="h-[18px] w-[18px] shrink-0" />}
+                          {!iconOnly && <span className="truncate">{link.label}</span>}
+                          <Badge value={badge} collapsed={iconOnly} />
+                        </NavLink>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          )
+        })}
       </nav>
 
-      <div className="border-t border-border p-4">
-        {!collapsed && (
-          <>
-            <div className="mb-1 font-semibold text-foreground">{user?.name}</div>
-            <div className="mb-3 text-xs text-muted break-words">{user?.email}</div>
-          </>
+      {/* Quick action */}
+      {hasPermission('ORDERS_CREATE') && (
+        <div className={`px-3 pb-3 ${iconOnly ? 'flex justify-center' : ''}`}>
+          <button type="button" onClick={onQuickOrder} className={`sb-primary ${iconOnly ? 'h-10 w-10 justify-center' : 'h-10 w-full px-3'}`} title="طلب سريع">
+            <Plus className="h-4 w-4" />
+            {!iconOnly && <span>طلب سريع</span>}
+          </button>
+        </div>
+      )}
+
+      {/* User */}
+      <div className={`flex items-center gap-3 border-t border-white/10 px-4 py-3 ${iconOnly ? 'flex-col' : ''}`}>
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ember text-sm font-black text-sidebar" aria-hidden="true">
+          {(user?.name ?? '؟').trim().charAt(0)}
+        </div>
+        {!iconOnly && (
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="truncate text-sm font-semibold">{user?.name}</div>
+            <div className="truncate text-xs text-sidebar-muted">{roleLabels[user?.user_type?.name] ?? user?.user_type?.name}</div>
+          </div>
         )}
-        <Button
-          variant="secondary"
-          className={`${collapsed ? 'lg:px-2' : 'w-full'}`}
-          onClick={logout}
-          title="تسجيل الخروج"
-        >
-          {collapsed ? <LogOut className="h-5 w-5" /> : 'تسجيل الخروج'}
-        </Button>
+        <button type="button" onClick={logout} className="sb-icon-btn" title="تسجيل الخروج" aria-label="تسجيل الخروج"><LogOut className="h-5 w-5" /></button>
       </div>
     </aside>
   )

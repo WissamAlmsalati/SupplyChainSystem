@@ -157,6 +157,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::get('custody/settlements', [DelegateCustodyController::class, 'settlements'])->name('custody.settlements');
         });
 
+        // Announcements from the dashboard to customers/delegates/admins (NOTIFICATIONS_SEND).
+        Route::post('notifications/send', [NotificationController::class, 'send'])->name('notifications.send');
+        Route::get('notifications/sent', [NotificationController::class, 'sent'])->name('notifications.sent');
         Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
         Route::put('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
         Route::apiResource('notifications', NotificationController::class)->only(['index', 'show', 'destroy']);

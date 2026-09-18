@@ -47,6 +47,7 @@ class PermissionSeeder extends Seeder
             'PREMIUM_FEATURES_VIEW',
             'PREMIUM_FEATURES_EDIT',
             'REPORTS_VIEW',
+            'NOTIFICATIONS_SEND',
         ];
 
         foreach ($viewOnly as $module) {

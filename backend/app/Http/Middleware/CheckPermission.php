@@ -45,6 +45,9 @@ class CheckPermission
         'dashboard.monthly' => 'DASHBOARD_VIEW',
         'orders.assign-delegate' => 'ORDER_ASSIGN',
         'premium-features.update' => 'PREMIUM_FEATURES_EDIT',
+        // Sending is the one notifications action that is not about your own rows.
+        'notifications.send' => 'NOTIFICATIONS_SEND',
+        'notifications.sent' => 'NOTIFICATIONS_SEND',
     ];
 
     /**
