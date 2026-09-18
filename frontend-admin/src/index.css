@@ -282,25 +282,36 @@ main > header {
 .sb-link:hover { background: var(--color-sidebar-2); color: var(--color-sidebar-fg); }
 .sb-link-icon { justify-content: center; margin: 2px 8px; padding: 9px 0; border-radius: 10px; }
 
-/* Active: a light tab joined to the page, with the two curved notches that
-   make it read as one piece with the content area. */
+/* Active: a light tab that runs into the page. It has to sit flush against the
+   content area, so nothing may inset this edge — see .sb-scroll below for why
+   the scrollbar lives on the far side. */
 .sb-active, .sb-active:hover {
   background: var(--color-surface); color: var(--color-primary); font-weight: 600;
   margin-left: 0; padding-left: 22px;
   border-radius: 12px 0 0 12px;
 }
-.sb-active::before, .sb-active::after {
-  content: ""; position: absolute; left: 0; width: 12px; height: 12px;
-  background: radial-gradient(circle at 0 0, transparent 12px, var(--color-surface) 12.5px);
-}
-.sb-active::before { top: -12px; transform: scaleY(-1); }
-.sb-active::after { bottom: -12px; }
 .sb-link-icon.sb-active { margin-left: 0; padding-left: 0; border-radius: 12px 0 0 12px; }
-.sb-link-icon.sb-active::before, .sb-link-icon.sb-active::after { display: none; }
+
+/* Label flyout for the collapsed column: fixed to the viewport so the scroll
+   container cannot clip it, and anchored to the left of the icon (toward the
+   page) by the handler that measures the icon. */
+.sb-tip {
+  position: fixed; z-index: 9500; transform: translate(-100%, -50%);
+  padding: 5px 10px; border-radius: 8px; white-space: nowrap;
+  background: var(--color-sidebar-2); border: 1px solid var(--color-sidebar-edge);
+  color: var(--color-sidebar-fg); font-size: 13px; font-weight: 500;
+  box-shadow: var(--shadow-md); pointer-events: none;
+}
 
 .sb-link:focus-visible, .sb-icon-btn:focus-visible, .sb-search:focus-visible, .sb-primary:focus-visible {
   outline: 2px solid var(--color-ember); outline-offset: -2px;
 }
 
-.sb-scroll { scrollbar-width: thin; scrollbar-color: var(--color-sidebar-edge) transparent; }
-.sb-scroll::-webkit-scrollbar-thumb { background: var(--color-sidebar-edge); }
+/* The list scrolls, and a scrollbar on the page-facing edge would push the
+   active tab off it. Flipping the container to ltr moves the scrollbar to the
+   outer screen edge; each child restores rtl for its own text. */
+.sb-scroll { direction: ltr; scrollbar-width: thin; scrollbar-color: var(--color-sidebar-edge) transparent; }
+.sb-scroll > * { direction: rtl; }
+.sb-scroll::-webkit-scrollbar { width: 6px; }
+.sb-scroll::-webkit-scrollbar-track { background: transparent; }
+.sb-scroll::-webkit-scrollbar-thumb { background: var(--color-sidebar-edge); border-radius: var(--radius-full); }

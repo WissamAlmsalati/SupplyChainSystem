@@ -120,6 +120,19 @@ export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = fals
 
   const toggleGroup = (title) => setClosedGroups((s) => ({ ...s, [title]: !s[title] }))
   const iconOnly = collapsed && !drawer
+
+  // Collapsed, an icon is all there is, so the label has to come back on hover
+  // and on keyboard focus. The flyout is position: fixed because the list is a
+  // scroll container and would clip anything reaching past its edge.
+  const [tip, setTip] = useState(null)
+  const openTip = (label) => (e) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    setTip({ label, top: r.top + r.height / 2, left: r.left })
+  }
+  const closeTip = () => setTip(null)
+  const tipProps = (label) => (iconOnly
+    ? { onMouseEnter: openTip(label), onMouseLeave: closeTip, onFocus: openTip(label), onBlur: closeTip }
+    : {})
   const todayItems = [
     { key: 'pendingOrders', label: 'طلبات جديدة', to: '/orders?status=pending', permission: 'ORDERS_VIEW' },
     { key: 'cancellationRequests', label: 'طلبات إلغاء', to: '/orders?status=cancellation_requested', permission: 'ORDERS_VIEW' },
@@ -156,7 +169,9 @@ export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = fals
           type="button"
           onClick={onSearch}
           className={`sb-search ${iconOnly ? 'h-10 w-10 justify-center px-0' : 'h-10 flex-1 px-3'}`}
-          title="بحث سريع (Ctrl+K)"
+          title={iconOnly ? undefined : 'بحث سريع (Ctrl+K)'}
+          aria-label="بحث سريع"
+          {...tipProps('بحث سريع')}
         >
           <Search className="h-4 w-4 shrink-0" />
           {!iconOnly && (
@@ -213,9 +228,10 @@ export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = fals
                       <li key={link.to} className="relative">
                         <NavLink
                           to={link.to}
-                          title={iconOnly ? link.label : undefined}
+                          aria-label={iconOnly ? link.label : undefined}
                           aria-current={isActive ? 'page' : undefined}
                           className={`sb-link ${isActive ? 'sb-active' : ''} ${iconOnly ? 'sb-link-icon' : ''}`}
+                          {...tipProps(link.label)}
                         >
                           {Icon && <Icon className="h-[18px] w-[18px] shrink-0" />}
                           {!iconOnly && <span className="truncate">{link.label}</span>}
@@ -234,7 +250,7 @@ export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = fals
       {/* Quick action */}
       {hasPermission('ORDERS_CREATE') && (
         <div className={`px-3 pb-3 ${iconOnly ? 'flex justify-center' : ''}`}>
-          <button type="button" onClick={onQuickOrder} className={`sb-primary ${iconOnly ? 'h-10 w-10 justify-center' : 'h-10 w-full px-3'}`} title="طلب سريع">
+          <button type="button" onClick={onQuickOrder} className={`sb-primary ${iconOnly ? 'h-10 w-10 justify-center' : 'h-10 w-full px-3'}`} aria-label="طلب سريع" {...tipProps('طلب سريع')}>
             <Plus className="h-4 w-4" />
             {!iconOnly && <span>طلب سريع</span>}
           </button>
@@ -252,8 +268,12 @@ export default function Nav({ counts = {}, onSearch, onQuickOrder, drawer = fals
             <div className="truncate text-xs text-sidebar-faint">{roleLabels[user?.user_type?.name] ?? user?.user_type?.name}</div>
           </div>
         )}
-        <button type="button" onClick={logout} className="sb-icon-btn" title="تسجيل الخروج" aria-label="تسجيل الخروج"><LogOut className="h-5 w-5" /></button>
+        <button type="button" onClick={logout} className="sb-icon-btn" title={iconOnly ? undefined : 'تسجيل الخروج'} aria-label="تسجيل الخروج" {...tipProps('تسجيل الخروج')}><LogOut className="h-5 w-5" /></button>
       </div>
+
+      {iconOnly && tip && (
+        <div className="sb-tip" role="tooltip" style={{ top: tip.top, left: tip.left - 8 }}>{tip.label}</div>
+      )}
     </aside>
   )
 }

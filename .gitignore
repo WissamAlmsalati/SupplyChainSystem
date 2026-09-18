@@ -33,3 +33,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Generated knowledge-graph cache (rebuilt by the graphify skill)
+/graphify-out
