@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatDateTime } from '../lib/wallet'
 import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import Button from '../components/ui/Button'
@@ -50,7 +51,7 @@ export default function UserDetail() {
       render: (r) => <StatusBadge status={r.status} />,
     },
     { key: 'total_amount', label: 'الإجمالي', render: (r) => `${formatMoney(r.total_amount)} د.ل` },
-    { key: 'placed_at', label: 'التاريخ', render: (r) => r.placed_at ? new Date(r.placed_at).toLocaleDateString('en-US') : '-' },
+    { key: 'placed_at', label: 'التاريخ', render: (r) => formatDateTime(r.placed_at) },
   ]
 
   const logColumns = [

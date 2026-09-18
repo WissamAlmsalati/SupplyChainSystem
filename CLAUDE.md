@@ -186,6 +186,11 @@ by the scheduler. Rate limiters are defined in `AppServiceProvider` and backed b
 `otp` guards the registration and password-reset OTP endpoints. A 429 is rendered in the same
 Arabic envelope as other API errors.
 
+Order numbers are `ORD-YYYY-MM-DD-HH-NNN`, counted within the hour the order was placed and
+rendered in `config('app.business_timezone')` (Libya) while storage stays UTC — so the number reads
+as the hour the office experienced. `Order::generateOrderNumber()` takes the `placed_at` it should
+describe. Numbers issued under the older `ORD-YYYY-NNNNN` format are left alone.
+
 `OrderStatus` is the order lifecycle plus Arabic labels, and its `groups()` method defines the
 active/completed/cancelled tabs the apps render. Keep tab logic there rather than in the clients.
 

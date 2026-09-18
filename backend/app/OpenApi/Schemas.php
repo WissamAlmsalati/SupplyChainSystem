@@ -26,7 +26,7 @@ namespace App\OpenApi;
  *
  * @OA\Schema(schema="CustomerOrderCard", type="object",
  *     @OA\Property(property="id", type="integer", example=39),
- *     @OA\Property(property="order_number", type="string", example="ORD-2026-00039"),
+ *     @OA\Property(property="order_number", type="string", example="ORD-2026-09-18-14-003"),
  *     @OA\Property(property="status", type="string", example="received", enum={"pending","confirmed","preparing","out_for_delivery","delivered","received","cancellation_requested","cancelled"}),
  *     @OA\Property(property="status_label", type="string", example="مستلم"),
  *     @OA\Property(property="source", type="string", enum={"app","dashboard"}),

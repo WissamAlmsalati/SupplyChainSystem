@@ -69,6 +69,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Business Timezone
+    |--------------------------------------------------------------------------
+    |
+    | Timestamps are stored in UTC, but anything a person reads as a clock time
+    | — an order number carrying the hour it was placed, for instance — is
+    | rendered in the timezone the office actually works in.
+    |
+    */
+
+    'business_timezone' => env('APP_BUSINESS_TIMEZONE', 'Africa/Tripoli'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

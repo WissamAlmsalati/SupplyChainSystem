@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatDateTime } from '../lib/wallet'
 import { useParams, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import { useModulePermission } from '../hooks/usePermission'
@@ -228,7 +229,7 @@ export default function ProductDetail() {
                 <div>
                   <span className="mb-1 block text-xs font-medium text-muted">تاريخ الإنشاء</span>
                   <div className="text-sm text-foreground">
-                    {product.created_at ? new Date(product.created_at).toLocaleDateString('en-GB') : '-'}
+                    {formatDateTime(product.created_at)}
                   </div>
                 </div>
                 {product.tags?.length > 0 && (

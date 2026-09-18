@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatDateTime } from '../lib/wallet'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useModulePermission } from '../hooks/usePermission'
 import { useApiResource } from '../hooks/useApiResource'
@@ -31,18 +32,21 @@ export default function Orders() {
     {
       key: 'source',
       label: 'المصدر',
+      // OrderSource is 'dashboard' or 'app'; anything else is unknown, not "app".
       render: (r) =>
-        r.source === 'add order from dashboard' ? (
+        r.source === 'dashboard' ? (
           <Badge variant="primary">لوحة التحكم</Badge>
+        ) : r.source === 'app' ? (
+          <Badge variant="default">تطبيق الزبون</Badge>
         ) : (
-          <Badge variant="default">مستخدم التطبيق</Badge>
+          <span className="text-muted">-</span>
         ),
     },
     { key: 'total_amount', label: 'الإجمالي' },
     { key: 'user', label: 'المستخدم', render: (r) => r.user?.name ?? '-' },
     { key: 'address', label: 'العنوان', render: (r) => r.delivery_address_name ?? '-' },
     { key: 'delegate', label: 'المندوب', render: (r) => r.delegate?.name ?? <span className="text-muted">-</span> },
-    { key: 'created_at', label: 'تاريخ الإنشاء', render: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString('en-US') : '-' },
+    { key: 'created_at', label: 'تاريخ الإنشاء', render: (r) => formatDateTime(r.created_at) },
   ]
 
   return (

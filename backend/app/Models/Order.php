@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 class Order extends Model
@@ -54,9 +55,9 @@ class Order extends Model
     protected static function booted(): void
     {
         static::creating(function (Order $order) {
-            $order->order_number ??= self::generateOrderNumber();
-            $order->status ??= OrderStatus::Pending;
             $order->placed_at ??= now();
+            $order->order_number ??= self::generateOrderNumber($order->placed_at);
+            $order->status ??= OrderStatus::Pending;
         });
 
         // Only the moves in OrderStatus::transitions() are allowed, whoever asks
@@ -158,29 +159,34 @@ class Order extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public static function generateOrderNumber(): string
+    /**
+     * ORD-YYYY-MM-DD-HH-NNN, counted within the hour it was placed. The number
+     * says when the order came in, which is how the office talks about them
+     * ("the 2pm ones"), and the counter starting again each hour keeps it short
+     * and keeps two clerks from racing over the same next number all day.
+     * Numbers issued under the old ORD-YYYY-NNNNN format are left alone.
+     */
+    public static function generateOrderNumber(?Carbon $at = null): string
     {
-        $prefix = 'ORD-' . date('Y') . '-';
+        // Shown to people in Libya, so the hour is theirs, not the server's UTC.
+        $prefix = 'ORD-'.($at ?? now())->copy()->setTimezone(config('app.business_timezone'))->format('Y-m-d-H').'-';
         $maxAttempts = 10;
 
         for ($i = 0; $i < $maxAttempts; $i++) {
-            $last = self::where('order_number', 'like', $prefix . '%')
+            $last = self::where('order_number', 'like', $prefix.'%')
                 ->orderByDesc('order_number')
                 ->value('order_number');
 
-            $sequence = 1;
-            if ($last) {
-                $sequence = (int) substr($last, strlen($prefix)) + 1;
-            }
-
-            $number = $prefix . str_pad($sequence, 5, '0', STR_PAD_LEFT);
+            $sequence = $last ? ((int) substr($last, strlen($prefix)) + 1) : 1;
+            $number = $prefix.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
 
             if (! self::where('order_number', $number)->exists()) {
                 return $number;
             }
         }
 
-        // Fallback with microtime if collisions persist under heavy concurrency
-        return $prefix . str_pad((int) (microtime(true) * 1000), 10, '0', STR_PAD_LEFT);
+        // Two clerks on the same second in the same hour: fall back to something
+        // unique rather than hand back a number that is already taken.
+        return $prefix.substr((string) (int) (microtime(true) * 1000), -6);
     }
 }
