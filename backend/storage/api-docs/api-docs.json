@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Al-Sahel Cafe Supplies API",
-        "description": "\nThe API behind الساحل لمستلزمات المقاهي: the admin dashboard, the customer app and the delegate app all talk to this one service.\n\n### Authenticating\n\nEverything except sign-in, customer registration, password reset, the payment callback and the read-only storefront needs a bearer token.\n\n```\nPOST /api/v1/login   →   { \"token\": \"42|abc…\" }\nAuthorization: Bearer 42|abc…\n```\n\nTokens expire (30 days by default). A `401` means sign in again.\n\n### What a response looks like\n\nA single record is returned as-is. A list is always `{ data, meta }`, where `meta` carries the paging and may add keys of its own — `summary` on custody, `status_counts` on top-up requests:\n\n```json\n{ \"data\": [ … ], \"meta\": { \"current_page\": 1, \"per_page\": 15, \"total\": 58, \"last_page\": 4, \"has_more\": true } }\n```\n\nA `201` wraps its result: `{ success, message, data }`.\n\n### When something goes wrong\n\nFailures share one shape, and `message` is Arabic that is safe to show a user unchanged:\n\n```json\n{ \"success\": false, \"message\": \"البيانات المدخلة غير صحيحة\", \"errors\": { \"amount\": [\"المبلغ يتجاوز المتبقي على الطلب (40.00 د.ل)\"] } }\n```\n\n`401` not signed in · `403` signed in without the permission · `404` missing, or not yours · `422` refused by validation or by a rule of the business · `429` rate limited, with `Retry-After`.\n\nNote that `422` is not only about malformed input. An order cannot move to a state its lifecycle forbids, and a payment cannot exceed what the order still owes; both answer `422` with the reason.\n\n### Updating a record\n\nUpdates are `PATCH`: send the fields you want changed and leave the rest alone. `PUT` is still accepted everywhere `PATCH` is, so older clients keep working, but new code should send `PATCH`.\n\n### Rate limits\n\nSign-in and the OTP endpoints are limited per IP and per account; everything else shares a general ceiling. A `429` carries `Retry-After` in seconds.\n\n### Searching in Arabic\n\nList `search` parameters fold Arabic spelling, so `مصراته` finds `مصراتة`, `بنغازى` finds `بنغازي`, and `١٢٥` finds `125`.\n",
+        "description": "\n * The API behind الساحل لمستلزمات المقاهي: the admin dashboard, the customer app and the delegate app all talk to this one service.\n *\n * ### Authenticating\n *\n * Everything except sign-in, customer registration, password reset, the payment callback and the read-only storefront needs a bearer token. Each app has its own door, because a phone number is only unique within a user type:\n *\n * | App | Sign in at | With |\n * |---|---|---|\n * | Customer | `POST /customer/login` | phone + password |\n * | Delegate | `POST /delegate/login` | phone + password |\n * | Dashboard | `POST /admin/login` | email + password |\n *\n * ```\n * Authorization: Bearer 42|abc…\n * ```\n *\n * Tokens expire (30 days by default). A `401` means sign in again.\n *\n * ### What a response looks like\n *\n * A single record is returned as-is. A list is always `{ data, meta }`, where `meta` carries the paging and may add keys of its own — `summary` on custody, `status_counts` on top-up requests:\n *\n * ```json\n * { \"data\": [ … ], \"meta\": { \"current_page\": 1, \"per_page\": 15, \"total\": 58, \"last_page\": 4, \"has_more\": true } }\n * ```\n *\n * A `201` wraps its result: `{ success, message, data }`.\n *\n * ### When something goes wrong\n *\n * Failures share one shape, and `message` is Arabic that is safe to show a user unchanged:\n *\n * ```json\n * { \"success\": false, \"message\": \"البيانات المدخلة غير صحيحة\", \"errors\": { \"amount\": [\"المبلغ يتجاوز المتبقي على الطلب (40.00 د.ل)\"] } }\n * ```\n *\n * `401` not signed in · `403` signed in without the permission · `404` missing, or not yours · `422` refused by validation or by a rule of the business · `429` rate limited, with `Retry-After`.\n *\n * Note that `422` is not only about malformed input. An order cannot move to a state its lifecycle forbids, and a payment cannot exceed what the order still owes; both answer `422` with the reason.\n *\n * ### Updating a record\n *\n * Updates are `PATCH`: send the fields you want changed and leave the rest alone. `PUT` is still accepted everywhere `PATCH` is, so older clients keep working, but new code should send `PATCH`.\n *\n * ### Rate limits\n *\n * Sign-in and the OTP endpoints are limited per IP and per account; everything else shares a general ceiling. A `429` carries `Retry-After` in seconds.\n *\n * ### Searching in Arabic\n *\n * List `search` parameters fold Arabic spelling, so `مصراته` finds `مصراتة`, `بنغازى` finds `بنغازي`, and `١٢٥` finds `125`.\n * ",
         "version": "1.0.0"
     },
     "servers": [
@@ -154,8 +154,8 @@
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Log in and receive an access token",
-                "description": "Customer users must login with phone_number and password. The response is a bare bearer token with no permissions. Admin and delegate users may use email instead of phone_number and will receive permissions in the response.",
+                "summary": "Log in and receive an access token (staff)",
+                "description": "Each app has its own door: `/customer/login`, `/delegate/login` and `/admin/login`. Each looks the account up within its own user type, because a phone number is only unique per type — the same number may belong to a customer and to a delegate. This unscoped route remains for clients not yet moved over.",
                 "operationId": "67d6d0fdd54fba132e1b6f55ca254183",
                 "requestBody": {
                     "required": true,
@@ -1498,7 +1498,7 @@
                     "Customer Products"
                 ],
                 "summary": "Home-screen product sections (paginated): title + first products in one object",
-                "description": "Each section shows up to its products_limit products. Sections are either hand-picked by the admin (source=manual, admin order) or rule-based (source=filter, e.g. sort=popular for best sellers or price_asc for cheapest). Sections without available products are left out of the page.\n\n**View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /customer/featured-sections/{id}/products` (see the guide at the top of Customer Products).",
+                "description": "Each section shows up to its products_limit products. Sections are either hand-picked by the admin (source=manual, admin order) or rule-based (source=filter, e.g. sort=popular for best sellers or price_asc for cheapest). Sections without available products are left out of the page.\n     *\n     * **View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /customer/featured-sections/{id}/products` (see the guide at the top of Customer Products).",
                 "operationId": "f05c788bf54b143a2df152702791e131",
                 "parameters": [
                     {
@@ -1643,7 +1643,7 @@
                     "Customer Products"
                 ],
                 "summary": "All products of a section (paginated) for 'view all'",
-                "description": "Screen opened from a section's «عرض الكل» button.\n\n1. Request `page=1` and show `section.title` and `meta.total`.\n2. On scroll end, while `meta.current_page < meta.last_page`, request the next `page` and append the results.\n\nPage 1 starts from the beginning of the section (it repeats the products already shown on the home screen, in the same order) — render the response as-is. The order is fixed by the section type. Returns 404 when the section is hidden or deleted.",
+                "description": "Screen opened from a section's «عرض الكل» button.\n     *\n     * 1. Request `page=1` and show `section.title` and `meta.total`.\n     * 2. On scroll end, while `meta.current_page < meta.last_page`, request the next `page` and append the results.\n     *\n     * Page 1 starts from the beginning of the section (it repeats the products already shown on the home screen, in the same order) — render the response as-is. The order is fixed by the section type. Returns 404 when the section is hidden or deleted.",
                 "operationId": "3e6816fbda006e319b933132cdca6644",
                 "parameters": [
                     {
@@ -7122,6 +7122,239 @@
                     }
                 ]
             }
+        },
+        "/customer/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Customer sign-in",
+                "description": "Looks the number up among customers only. The same number may also exist as a delegate; that account cannot sign in here.",
+                "operationId": "f1e9082d1f116b0755c14a585d778313",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "phone_number",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "0912345678"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "secret123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Signed in.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "token": {
+                                            "type": "string",
+                                            "example": "42|8PlDIsOOdQ1Rs0KyzWfyzqnUZhL7j49eoerVoK"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Wrong password, or the number is not a customer. The wording is the same either way, so the endpoint cannot be used to discover which numbers are registered.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "بيانات الدخول غير صحيحة"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The account exists but is awaiting approval.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "الحساب غير نشط، يرجى انتظار موافقة الإدارة"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/delegate/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Delegate sign-in",
+                "description": "Looks the number up among delegates only.",
+                "operationId": "9b4e5ed70252829533243c91ce504502",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "phone_number",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "0920000001"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Signed in.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "token": {
+                                            "type": "string"
+                                        },
+                                        "permissions": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "example": [
+                                                "ORDERS_VIEW",
+                                                "ORDER_ASSIGN"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/admin/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Dashboard sign-in",
+                "description": "Email and password, looked up among admins and super admins. The response carries the permission codes the dashboard uses to decide what to show.",
+                "operationId": "452d08630fe66573c8bc0a9537642e23",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "admin@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Signed in.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "token": {
+                                            "type": "string"
+                                        },
+                                        "permissions": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "example": [
+                                                "DASHBOARD_VIEW",
+                                                "ORDERS_VIEW",
+                                                "REPORTS_VIEW",
+                                                "NOTIFICATIONS_SEND"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                },
+                "security": []
+            }
         }
     },
     "components": {
@@ -8150,11 +8383,11 @@
         },
         {
             "name": "Customer Products",
-            "description": "التصنيفات، المنتجات والبحث بالفلاتر، تفاصيل المنتج وأحجامه، والأقسام المميزة.\n\n## أقسام الرئيسية و«عرض الكل»\n\n**1. الرئيسية** — `GET /customer/featured-sections`\n\nكل قسم يرجع أول N منتج فقط (N يحدده الأدمن) مع:\n- `products_total`: عدد كل منتجات القسم\n- `has_more`: `true` إذا كان هناك منتجات أكثر من المعروضة\n\nاعرض عنوان القسم ومنتجاته، وإذا كان `has_more = true` أضف زر **«عرض الكل (products_total)»**.\n\n**2. شاشة «عرض الكل»** — `GET /customer/featured-sections/{id}/products?page=1&per_page=20`\n\n```json\n{\n  \"section\": { \"id\": 1, \"title\": \"الأكثر مبيعاً\", \"source\": \"filter\", \"sort\": \"popular\" },\n  \"data\": [ \"...كروت المنتجات...\" ],\n  \"meta\": { \"current_page\": 1, \"per_page\": 20, \"total\": 12, \"last_page\": 1 }\n}\n```\n\nالعنوان من `section.title` والعدد من `meta.total`.\n\n**3. تحميل المزيد (infinite scroll)** — عند الوصول لآخر القائمة وطالما `meta.current_page < meta.last_page` اطلب `page` التالية وأضف النتائج تحت الموجودة.\n\n**ملاحظات**\n- الصفحة الأولى تبدأ من بداية القسم (تشمل منتجات الرئيسية نفسها بنفس الترتيب) — اعرض الرد كما هو ولا تدمجه مع منتجات الرئيسية.\n- الترتيب ثابت حسب نوع القسم: الأكثر مبيعاً بالمبيعات، الأقل سعراً بالسعر، واليدوي بترتيب الأدمن.\n- القسم المخفي أو المحذوف يرجع `404` — ارجع للرئيسية أو اعرض «القسم غير متاح».\n- الكارت نفسه في كل الشاشات: `is_favorite` للقلب، `in_stock` للتوفر، و`default_variant_id` لإضافة سريعة عبر `POST /customer/cart/items`.\n- `per_page` الافتراضي 20 والحد الأقصى 100."
+            "description": "التصنيفات، المنتجات والبحث بالفلاتر، تفاصيل المنتج وأحجامه، والأقسام المميزة.\n *\n * ## أقسام الرئيسية و«عرض الكل»\n *\n * **1. الرئيسية** — `GET /customer/featured-sections`\n *\n * كل قسم يرجع أول N منتج فقط (N يحدده الأدمن) مع:\n * - `products_total`: عدد كل منتجات القسم\n * - `has_more`: `true` إذا كان هناك منتجات أكثر من المعروضة\n *\n * اعرض عنوان القسم ومنتجاته، وإذا كان `has_more = true` أضف زر **«عرض الكل (products_total)»**.\n *\n * **2. شاشة «عرض الكل»** — `GET /customer/featured-sections/{id}/products?page=1&per_page=20`\n *\n * ```json\n * {\n *   \"section\": { \"id\": 1, \"title\": \"الأكثر مبيعاً\", \"source\": \"filter\", \"sort\": \"popular\" },\n *   \"data\": [ \"...كروت المنتجات...\" ],\n *   \"meta\": { \"current_page\": 1, \"per_page\": 20, \"total\": 12, \"last_page\": 1 }\n * }\n * ```\n *\n * العنوان من `section.title` والعدد من `meta.total`.\n *\n * **3. تحميل المزيد (infinite scroll)** — عند الوصول لآخر القائمة وطالما `meta.current_page < meta.last_page` اطلب `page` التالية وأضف النتائج تحت الموجودة.\n *\n * **ملاحظات**\n * - الصفحة الأولى تبدأ من بداية القسم (تشمل منتجات الرئيسية نفسها بنفس الترتيب) — اعرض الرد كما هو ولا تدمجه مع منتجات الرئيسية.\n * - الترتيب ثابت حسب نوع القسم: الأكثر مبيعاً بالمبيعات، الأقل سعراً بالسعر، واليدوي بترتيب الأدمن.\n * - القسم المخفي أو المحذوف يرجع `404` — ارجع للرئيسية أو اعرض «القسم غير متاح».\n * - الكارت نفسه في كل الشاشات: `is_favorite` للقلب، `in_stock` للتوفر، و`default_variant_id` لإضافة سريعة عبر `POST /customer/cart/items`.\n * - `per_page` الافتراضي 20 والحد الأقصى 100."
         },
         {
             "name": "Customer Favorites",
-            "description": "إضافة المنتجات للمفضلة وإزالتها وعرضها.\n\n## القلب الأحمر `is_favorite`\n\nكل منتج يرجع للتطبيق يحمل `is_favorite` (`true` = اعرض القلب أحمر) للمستخدم الحالي:\n\n| المكان | الحقل |\n|---|---|\n| قائمة المنتجات والبحث `GET /customer/products` | `data[].is_favorite` |\n| تفاصيل المنتج `GET /customer/products/{id}` | `is_favorite` |\n| أقسام الرئيسية `GET /customer/featured-sections` | `data[].products[].is_favorite` |\n| عرض الكل `GET /customer/featured-sections/{id}/products` | `data[].is_favorite` |\n| المفضلة `GET /customer/favorites` | `data[].is_favorite` (دائماً `true`) |\n| السلة `GET /customer/cart` | `data.items[].product_variant.product.is_favorite` |\n| الطلبيات المتكررة `GET /customer/recurring-carts` و `/{id}` | `items[].product_variant.product.is_favorite` |\n\n**عند الضغط على القلب:** `POST /customer/favorites` بـ `{ \"product_id\": 5 }` للإضافة، و `DELETE /customer/favorites/{productId}` للإزالة. الاستدعاءان آمنان للتكرار ويرجعان `is_favorite` و `favorites_count`، فحدّث القلب محلياً مباشرة دون إعادة تحميل القائمة.\n\nلتلوين القلوب في شاشة لا تحمل الحقل يمكن جلب الأرقام مرة واحدة من `GET /customer/favorites/ids`."
+            "description": "إضافة المنتجات للمفضلة وإزالتها وعرضها.\n *\n * ## القلب الأحمر `is_favorite`\n *\n * كل منتج يرجع للتطبيق يحمل `is_favorite` (`true` = اعرض القلب أحمر) للمستخدم الحالي:\n *\n * | المكان | الحقل |\n * |---|---|\n * | قائمة المنتجات والبحث `GET /customer/products` | `data[].is_favorite` |\n * | تفاصيل المنتج `GET /customer/products/{id}` | `is_favorite` |\n * | أقسام الرئيسية `GET /customer/featured-sections` | `data[].products[].is_favorite` |\n * | عرض الكل `GET /customer/featured-sections/{id}/products` | `data[].is_favorite` |\n * | المفضلة `GET /customer/favorites` | `data[].is_favorite` (دائماً `true`) |\n * | السلة `GET /customer/cart` | `data.items[].product_variant.product.is_favorite` |\n * | الطلبيات المتكررة `GET /customer/recurring-carts` و `/{id}` | `items[].product_variant.product.is_favorite` |\n *\n * **عند الضغط على القلب:** `POST /customer/favorites` بـ `{ \"product_id\": 5 }` للإضافة، و `DELETE /customer/favorites/{productId}` للإزالة. الاستدعاءان آمنان للتكرار ويرجعان `is_favorite` و `favorites_count`، فحدّث القلب محلياً مباشرة دون إعادة تحميل القائمة.\n *\n * لتلوين القلوب في شاشة لا تحمل الحقل يمكن جلب الأرقام مرة واحدة من `GET /customer/favorites/ids`."
         },
         {
             "name": "Customer Cart",

@@ -24,8 +24,8 @@ class AuthController extends BaseApiController
      * @OA\Post(
      *     path="/login",
      *     tags={"Auth"},
-     *     summary="Log in and receive an access token",
-     *     description="Customer users must login with phone_number and password. The response is a bare bearer token with no permissions. Admin and delegate users may use email instead of phone_number and will receive permissions in the response.",
+     *     summary="Log in and receive an access token (staff)",
+     *     description="Each app has its own door: `/customer/login`, `/delegate/login` and `/admin/login`. Each looks the account up within its own user type, because a phone number is only unique per type — the same number may belong to a customer and to a delegate. This unscoped route remains for clients not yet moved over.",
      *     security={},
      *
      *     @OA\RequestBody(
@@ -56,7 +56,14 @@ class AuthController extends BaseApiController
         $email = $request->validated('email');
         $phone = $request->validated('phone_number');
 
+        // Each app signs in at its own route, and the route says which audience
+        // it serves. That matters because a phone number is only unique within
+        // a user type: the same number can belong to a customer and to a
+        // delegate, and looking it up without the type would be a coin toss.
+        $roles = $request->route()?->defaults['roles'] ?? null;
+
         $user = AppUser::query()
+            ->when($roles, fn ($q) => $q->whereHas('userType', fn ($t) => $t->whereIn('name', $roles)))
             ->when(
                 $email,
                 fn ($q, $email) => $q->where('email', $email),
@@ -64,6 +71,9 @@ class AuthController extends BaseApiController
             )
             ->first();
 
+        // Deliberately the same answer whether the account does not exist or
+        // belongs to another app: otherwise this endpoint would confirm which
+        // numbers are registered as delegates.
         if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
             return $this->jsonResponse(['message' => 'بيانات الدخول غير صحيحة'], 401);
         }

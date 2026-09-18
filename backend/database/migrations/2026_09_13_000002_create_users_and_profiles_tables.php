@@ -12,12 +12,15 @@ return new class extends Migration
             $table->id();
             $table->string('name', 100);
             $table->string('email', 150)->nullable()->unique();
-            $table->string('mobile_number', 20)->nullable()->unique();
+            // Unique per user type, not globally: the same person can be a
+            // customer and a driver, which are two accounts here.
+            $table->string('mobile_number', 20)->nullable();
             $table->string('password');
             $table->foreignId('user_type_id')->constrained()->restrictOnDelete();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes();
+            $table->unique(['mobile_number', 'user_type_id'], 'users_mobile_number_user_type_unique');
         });
 
         // One profile table per user type; a user has exactly one type.

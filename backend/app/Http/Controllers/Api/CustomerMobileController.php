@@ -649,17 +649,13 @@ class CustomerMobileController extends BaseApiController
     /**
      * @OA\Get(path="/customer/featured-sections", tags={"Customer Products"}, summary="Home-screen product sections (paginated): title + first products in one object",
      *     description="Each section shows up to its products_limit products. Sections are either hand-picked by the admin (source=manual, admin order) or rule-based (source=filter, e.g. sort=popular for best sellers or price_asc for cheapest). Sections without available products are left out of the page.
-
-     **View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /customer/featured-sections/{id}/products` (see the guide at the top of Customer Products).",
-     *     security={{"bearerAuth":{}}},
      *
+     * **View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /customer/featured-sections/{id}/products` (see the guide at the top of Customer Products).",
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
      *     @OA\Parameter(name="per_page", in="query", description="Sections per page", @OA\Schema(type="integer", default=10, maximum=50)),
-     *
      *     @OA\Response(response=200, description="Sections",
-     *
      *         @OA\JsonContent(
-     *
      *             @OA\Property(property="data", type="array", @OA\Items(
      *                 @OA\Property(property="id", type="integer"),
      *                 @OA\Property(property="title", type="string", example="الأكثر مبيعاً"),
@@ -717,12 +713,15 @@ class CustomerMobileController extends BaseApiController
     /**
      * @OA\Get(path="/customer/featured-sections/{id}/products", tags={"Customer Products"}, summary="All products of a section (paginated) for 'view all'",
      *     description="Screen opened from a section's «عرض الكل» button.
-
+     *
+     * 1. Request `page=1` and show `section.title` and `meta.total`.
+     * 2. On scroll end, while `meta.current_page < meta.last_page`, request the next `page` and append the results.
+     *
+     * Page 1 starts from the beginning of the section (it repeats the products already shown on the home screen, in the same order) — render the response as-is. The order is fixed by the section type. Returns 404 when the section is hidden or deleted.",
      *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
      *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=20, maximum=100)),
-     *
      *     @OA\Response(response=200, description="section {id,title,source,sort}, data: product cards in the section's order, meta: pagination"),
      *     @OA\Response(response=404, description="Section not found or hidden"))
      */

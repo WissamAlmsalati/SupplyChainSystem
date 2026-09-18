@@ -57,7 +57,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->middleware('throttle:api')->group(function () {
+    // One action, a door per app. `roles` tells it which user types to search,
+    // because a phone number is only unique within a type — the same number can
+    // be a customer and a delegate, and a lookup without the type is a coin toss.
+    // Plain /login stays as an unscoped alias for clients not yet moved over.
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth');
+    Route::post('customer/login', [AuthController::class, 'login'])->defaults('roles', ['customer'])->middleware('throttle:auth')->name('customer.login');
+    Route::post('delegate/login', [AuthController::class, 'login'])->defaults('roles', ['delegate'])->middleware('throttle:auth')->name('delegate.login');
+    Route::post('admin/login', [AuthController::class, 'login'])->defaults('roles', ['admin', 'super_admin'])->middleware('throttle:auth')->name('admin.login');
     Route::get('placeholder/{kind}', [PlaceholderController::class, 'show'])->name('placeholder');
     // OTP endpoints share the "otp" limiter: 6-digit codes must not be guessable.
     Route::middleware('throttle:otp')->group(function () {

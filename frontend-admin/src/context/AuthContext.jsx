@@ -44,7 +44,9 @@ export function AuthProvider({ children }) {
   }, [fetchFeatures])
 
   const login = async (email, password) => {
-    const { data } = await client.post('/login', { email, password })
+    // Each app signs in at its own door; this one looks the account up among
+    // admins and super admins.
+    const { data } = await client.post('/admin/login', { email, password })
     localStorage.setItem('token', data.token)
     const res = await client.get('/me')
     const normalized = normalizeUser(res.data)

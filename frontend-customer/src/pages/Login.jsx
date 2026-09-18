@@ -3,6 +3,9 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
+  // Until the driver app is its own build, this screen serves both and the
+  // choice decides which login route it posts to.
+  const [role, setRole] = useState('customer')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -15,16 +18,8 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const user = await login(phoneNumber, password)
-      if (user?.user_type?.name === 'delegate') {
-        navigate('/delegate')
-        return
-      }
-      if (user?.user_type?.name !== 'customer') {
-        setError('هذا التطبيق مخصص لمديري المقاهي والمناديب فقط.')
-        return
-      }
-      navigate('/')
+      const user = await login(phoneNumber, password, role)
+      navigate(user?.user_type?.name === 'delegate' ? '/delegate' : '/')
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تسجيل الدخول')
     } finally {
@@ -42,7 +37,23 @@ export default function Login() {
             className="mx-auto mb-4 h-20 w-auto"
           />
           <h1 className="text-2xl font-bold text-foreground">الساحل لمستلزمات المقاهي</h1>
-          <p className="mt-1 text-sm text-muted">تسجيل الدخول إلى حساب مقهاك أو حساب المندوب</p>
+          <p className="mt-1 text-sm text-muted">{role === 'customer' ? 'تسجيل الدخول إلى حساب مقهاك' : 'تسجيل دخول المناديب'}</p>
+        </div>
+
+        <div className="mb-5 flex rounded-lg border border-border bg-background p-1">
+          {[['customer', 'مقهى'], ['delegate', 'مندوب']].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => { setRole(value); setError('') }}
+              aria-pressed={role === value}
+              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                role === value ? 'bg-primary text-primary-foreground' : 'text-muted hover:text-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {error && (

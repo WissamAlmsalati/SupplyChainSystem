@@ -19,8 +19,10 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  const login = async (phoneNumber, password) => {
-    const { data } = await client.post('/login', { phone_number: phoneNumber, password })
+  // A phone number is only unique within a user type, so the app has to say
+  // which one it is signing in as — there is a door per app.
+  const login = async (phoneNumber, password, role = 'customer') => {
+    const { data } = await client.post(`/${role}/login`, { phone_number: phoneNumber, password })
     localStorage.setItem('token', data.token)
     const res = await client.get('/me')
     localStorage.setItem('user', JSON.stringify(res.data))
