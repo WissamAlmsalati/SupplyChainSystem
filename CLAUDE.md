@@ -53,8 +53,10 @@ php artisan test -c phpunit.host.xml                          # on the host: fil
 against the dev MySQL and count rate-limit hits in the shared Redis. PHPUnit's force only
 writes `$_ENV`, while Laravel reads `$_SERVER` first, so `tests/TestCase.php` mirrors the forced
 values into `$_SERVER` before booting. Keep that in place.
-The container's PHP lacks JPEG support in GD, so the handful of tests that upload receipt images
-(WalletTest, one CustodyTest) only pass on the host. Every test starts with roles and permission
+The image builds GD with JPEG (`docker-php-ext-configure gd --with-jpeg`), which the tests that
+upload receipt images need; an image built before that change fails those seven tests only. The app
+needs Node at runtime for H3 (see below); where it is missing, address and zone endpoints answer
+with a sentence instead of a 500, but zones cannot be resolved until it is back. Every test starts with roles and permission
 codes seeded once per process (`AccessControlSeeder` via `$seed` in `tests/TestCase.php`), so
 test setups must use `firstOrCreate` for user types and permissions.
 

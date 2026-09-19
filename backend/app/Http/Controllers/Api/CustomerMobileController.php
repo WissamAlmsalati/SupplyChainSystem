@@ -342,8 +342,16 @@ class CustomerMobileController extends BaseApiController
     // The zone is found from the coordinates, never taken from the request: it sets the fee.
     private function zoneFor(float $latitude, float $longitude): DeliveryZone
     {
-        return app(AddressZoneResolver::class)->resolve($latitude, $longitude)
-            ?? throw ValidationException::withMessages(['latitude' => 'موقعك خارج نطاق التوصيل حالياً']);
+        try {
+            $zone = app(AddressZoneResolver::class)->resolve($latitude, $longitude);
+        } catch (\RuntimeException $e) {
+            // The hexagon service (Node) did not answer. The office needs to know;
+            // the customer needs a sentence, not a 500.
+            report($e);
+            throw ValidationException::withMessages(['latitude' => 'تعذّر تحديد منطقة التوصيل الآن، حاول بعد قليل']);
+        }
+
+        return $zone ?? throw ValidationException::withMessages(['latitude' => 'موقعك خارج نطاق التوصيل حالياً']);
     }
 
     // Delivery price for the customer's registered location — used when the
@@ -358,7 +366,12 @@ class CustomerMobileController extends BaseApiController
             return null;
         }
 
-        $cell = H3Service::latLngToCell((float) $profile->latitude, (float) $profile->longitude, 4);
+        // A hint for a customer with no address yet. If the hexagon service is
+        // down, the list of addresses must still load; it simply has no hint.
+        $cell = rescue(fn () => H3Service::latLngToCell((float) $profile->latitude, (float) $profile->longitude, 4), null);
+        if ($cell === null) {
+            return null;
+        }
 
         $zone = DeliveryZone::where('is_active', true)
             ->where('hex_id', $cell)

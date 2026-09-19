@@ -12,6 +12,7 @@ use App\Models\PremiumFeature;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Warehouse;
+use App\Services\AddressZoneResolver;
 use App\Services\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -94,6 +95,21 @@ class FirstOrderJourneyTest extends TestCase
         $this->postJson('/api/v1/customer/addresses', ['name' => 'بعيد', 'latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))
             ->assertUnprocessable()->assertJsonPath('errors.latitude.0', 'موقعك خارج نطاق التوصيل حالياً');
         $this->patchJson("/api/v1/customer/addresses/{$id}", ['latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))->assertUnprocessable();
+    }
+
+    public function test_a_hexagon_service_that_is_down_costs_a_sentence_not_a_500(): void
+    {
+        $this->app->bind(AddressZoneResolver::class, fn () => new class extends AddressZoneResolver
+        {
+            public function resolve(float $latitude, float $longitude): ?DeliveryZone
+            {
+                throw new \RuntimeException('H3 service failed: node: not found');
+            }
+        });
+        $user = AppUser::factory()->customer()->create();
+
+        $this->postJson('/api/v1/customer/addresses', ['name' => 'فرع', 'latitude' => 32.88, 'longitude' => 13.19], $this->headers($user))
+            ->assertUnprocessable()->assertJsonPath('errors.latitude.0', 'تعذّر تحديد منطقة التوصيل الآن، حاول بعد قليل');
     }
 
     public function test_an_app_order_to_an_uncovered_address_is_refused_rather_than_shipped_free(): void

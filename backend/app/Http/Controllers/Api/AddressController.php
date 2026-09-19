@@ -68,8 +68,6 @@ class AddressController extends BaseApiController
      */
     public function store(AddressRequest $request): JsonResponse
     {
-        // ponytail: customer_branches premium feature gates address creation for everyone;
-        // frontend hides the add button, this guard blocks direct API calls.
         $data = $request->validated();
 
         if ($this->isCustomer()) {
@@ -81,9 +79,10 @@ class AddressController extends BaseApiController
             return $this->jsonResponse(['message' => 'إضافة فروع أخرى غير متاحة — الميزة معطلة'], 403);
         }
 
-        // The point decides the zone. The office may still set one by hand for
-        // a place no zone covers yet; without either, the address has no fee.
-        $zone = app(AddressZoneResolver::class)->resolve((float) $data['latitude'], (float) $data['longitude']);
+        // The point decides the zone. The office may still set one by hand, for a
+        // place no zone covers yet or while the hexagon service is down; without
+        // either, the address has no fee.
+        $zone = rescue(fn () => app(AddressZoneResolver::class)->resolve((float) $data['latitude'], (float) $data['longitude']), null);
         if ($zone) {
             $data['delivery_zone_id'] = $zone->id;
         }
@@ -136,7 +135,7 @@ class AddressController extends BaseApiController
         }
 
         if (array_key_exists('latitude', $data) || array_key_exists('longitude', $data)) {
-            $zone = app(AddressZoneResolver::class)->resolve((float) ($data['latitude'] ?? $address->latitude), (float) ($data['longitude'] ?? $address->longitude));
+            $zone = rescue(fn () => app(AddressZoneResolver::class)->resolve((float) ($data['latitude'] ?? $address->latitude), (float) ($data['longitude'] ?? $address->longitude)), null);
             if ($zone) {
                 $data['delivery_zone_id'] = $zone->id;
             }
