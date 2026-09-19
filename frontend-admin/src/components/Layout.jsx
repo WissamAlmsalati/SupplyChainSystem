@@ -25,6 +25,11 @@ function Shell() {
 
   const pages = useMemo(() => visibleGroups.flatMap((g) => g.links.map((l) => ({ to: l.to, label: l.label, group: g.title }))), [visibleGroups])
 
+  // Things the palette can do, not just places it can go.
+  const paletteActions = useMemo(() => [
+    { label: 'طلب سريع جديد', hint: 'إنشاء طلب لزبون من لوحة التحكم', keywords: 'انشاء اضافة طلبية order new', run: () => setQuickOrder(true) },
+  ], [])
+
   // Route change closes the phone drawer.
   useEffect(() => { setDrawer(false) }, [location.pathname])
 
@@ -74,7 +79,7 @@ function Shell() {
         <Outlet />
       </main>
 
-      <CommandPalette open={palette} onClose={() => setPalette(false)} pages={pages} />
+      <CommandPalette open={palette} onClose={() => setPalette(false)} pages={pages} actions={paletteActions} />
       <QuickOrderModal open={quickOrder} onClose={() => setQuickOrder(false)} onCreated={() => setQuickOrder(false)} />
     </div>
   )

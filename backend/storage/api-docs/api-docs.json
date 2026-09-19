@@ -6959,6 +6959,112 @@
                 ]
             }
         },
+        "/search": {
+            "get": {
+                "tags": [
+                    "Search"
+                ],
+                "summary": "Search everything the signed-in user may see",
+                "description": "Every word must match, but each may match a different field, even on a related row: `احمد طرابلس` finds Ahmed's orders delivered to Tripoli. Matching is Arabic-tolerant. A group appears only when the user holds that module's VIEW permission. `#52` or `52` also finds the row with that id. Dashboard accounts only; the customer and delegate apps are refused.",
+                "operationId": "5af168292c946c5fcf799b292f436488",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "At least 2 characters, or a number",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "only",
+                        "in": "query",
+                        "description": "Search one group and return more of it (see `scopes` in the answer for the keys)",
+                        "schema": {
+                            "type": "string",
+                            "example": "orders"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Matches grouped by kind. `url` is the dashboard page to open. `has_more` means the group holds more than was returned; ask again with `only`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "query": "احمد",
+                                    "total": 2,
+                                    "groups": [
+                                        {
+                                            "key": "orders",
+                                            "label": "الطلبات",
+                                            "has_more": false,
+                                            "items": [
+                                                {
+                                                    "id": 60,
+                                                    "title": "ORD-2026-09-18-12-002",
+                                                    "subtitle": "مقهى أحمد · طرابلس · 365.00 د.ل",
+                                                    "badge": "مؤكد",
+                                                    "url": "/orders/60"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "key": "customers",
+                                            "label": "المقاهي",
+                                            "has_more": false,
+                                            "items": [
+                                                {
+                                                    "id": 12,
+                                                    "title": "مقهى أحمد",
+                                                    "subtitle": "0912345678",
+                                                    "badge": null,
+                                                    "url": "/users/12"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "scopes": [
+                                        {
+                                            "key": "orders",
+                                            "label": "الطلبات"
+                                        },
+                                        {
+                                            "key": "customers",
+                                            "label": "المقاهي"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Signed in as a customer or a delegate.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "غير مصرح"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/wallet/gateway/callback": {
             "post": {
                 "tags": [
@@ -13959,6 +14065,10 @@
         {
             "name": "Returns",
             "description": "Goods returned after delivery: back to stock or written off, with the refund that follows"
+        },
+        {
+            "name": "Search",
+            "description": "One search box over everything the dashboard holds"
         },
         {
             "name": "Admin Warehouses",

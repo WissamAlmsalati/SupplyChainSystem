@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\PromoController;
 use App\Http\Controllers\Api\RecurringCartController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ReturnController;
+use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\StockMovementController;
 use App\Http\Controllers\Api\UserTypeController;
 use App\Http\Controllers\Api\WalletController;
@@ -105,6 +106,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () use ($account
         Route::get('me', [AuthController::class, 'me']);
         Route::post('register', [AuthController::class, 'register']);
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        // No module code: the controller decides group by group, and refuses the app roles.
+        Route::get('search', SearchController::class)->name('search');
         Route::get('dashboard/monthly/{year}/{month}', [DashboardController::class, 'monthlyStats'])->name('dashboard.monthly');
         Route::get('customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
         Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');

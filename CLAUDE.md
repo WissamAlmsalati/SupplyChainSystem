@@ -179,6 +179,22 @@ than counted as pure profit. `DelegatePerformanceReport` reads delivery times fr
 single `REPORTS_VIEW` code. Frontends download through `lib/download.js`, which fetches a blob with
 the bearer token and names the file from `Content-Disposition`.
 
+### Global search
+
+`GET /search?q=` (`SearchController`, `app/Services/GlobalSearch.php`) is the one box over everything
+the dashboard holds, and what the ⌘K palette calls. Every word must match, but each may match a
+different field, even on a related row ("احمد طرابلس" finds Ahmed's orders delivered to Tripoli);
+matching goes through `ArabicText`; `#52` also finds the row with that id. Results come grouped,
+best first: main field starts with the query, then any own field, then rows found only through a
+relation. `only=<group>` returns more of one group, and `scopes` lists the groups the user may
+search. **A new searchable thing is one entry in `GlobalSearch::sources()`** — label, VIEW code,
+columns, relations, and how a row reads as a result.
+
+The route has no module code of its own: each group is gated by the VIEW code its list page needs,
+so search never shows what the pages hide. The controller turns the customer and delegate roles
+away outright, because the customer role holds `ORDERS_VIEW` for its own scoped endpoints and
+would otherwise search every order in the system.
+
 ### Arabic-tolerant search
 
 `App\Support\ArabicText` folds alef/ta-marbuta/ya variants, strips harakat and tatweel, and maps
@@ -301,7 +317,8 @@ over POST because PHP only parses multipart bodies on POST, so real PUT leaves `
 Use those helpers for any upload.
 
 The admin shell (`components/Layout.jsx`) owns the sidebar (`Nav.jsx`), the ⌘K command palette
-(`CommandPalette.jsx`, pages + orders + customers search), the phone drawer and the quick-order
+(`CommandPalette.jsx`: pages and actions matched locally, everything else through `GET /search`,
+with scope chips, recents, and highlighting folded by `lib/arabicText.js` the way the API folds), the phone drawer and the quick-order
 modal. `hooks/useLiveCounts.js` polls the one-row list endpoints for the sidebar badges (pending
 orders, cancellation requests, pending top-ups, unread notifications); a new badge is a new entry
 there plus a `count` key on the link in `Nav.jsx`. Sidebar colors are a measured ramp on two hues taken from the app palette (175° teal for every
