@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { HeartIcon } from './FavoriteButton'
 import { usePremiumFeatureActive } from '../hooks/usePremiumFeatureActive'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import client from '../api/client'
 
 function MenuIcon({ className }) {
   return (
@@ -49,6 +50,19 @@ export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth()
   const branchesFeature = usePremiumFeatureActive('customer_branches')
   const { itemCount } = useCart()
+  // Unread notifications: asked for on a slow beat, when the tab comes back,
+  // and whenever the inbox says something was read.
+  const [unread, setUnread] = useState(0)
+  useEffect(() => {
+    if (!user) return undefined
+    const door = user?.user_type?.name === 'delegate' ? 'delegate' : 'customer'
+    const ask = () => client.get(`/${door}/notifications/unread-count`).then((r) => setUnread(Number(r.data?.count) || 0)).catch(() => {})
+    ask()
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') ask() }, 45000)
+    window.addEventListener('focus', ask)
+    window.addEventListener('notifications:changed', ask)
+    return () => { clearInterval(timer); window.removeEventListener('focus', ask); window.removeEventListener('notifications:changed', ask) }
+  }, [user])
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [profileOpen, setProfileOpen] = useState(false)
@@ -100,6 +114,12 @@ export default function Header({ onMenuClick }) {
               <HeartIcon className="h-5 w-5" />
             </Link>
           )}
+          <Link to="/notifications" className="relative rounded-lg p-2 text-muted hover:bg-background hover:text-foreground" aria-label="الإشعارات" title="الإشعارات">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
+            {unread > 0 && (
+              <span className="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-bold text-white">{unread > 9 ? '9+' : unread}</span>
+            )}
+          </Link>
           <Link
             to="/cart"
             className="relative rounded-lg p-2 text-muted hover:bg-background hover:text-foreground"

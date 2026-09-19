@@ -107,6 +107,15 @@ code `RESOURCE_VERB`. `ROUTE_MAP` holds the exceptions (`orders.assign-delegate`
 - `super_admin` bypasses everything. `addresses` is remapped to the historic `CUSTOMER_BRANCHES_*`
   codes so existing roles keep working.
 
+- **The app roles are refused on every dashboard route**, whatever codes they hold: the customer
+  role holds `ORDERS_VIEW` for historic reasons and the flat routes do not scope by owner, so a cafe
+  could otherwise download any cafe's invoice. An inactive account is refused on every request, and
+  switching one off, or changing its password, revokes its tokens.
+- Only a super admin manages super admins; built-in roles cannot be renamed or deleted; nobody grants
+  a permission they do not hold, edits their own role, or removes themselves or the last super admin.
+- What the goods cost (`cost_price`, `unit_cost`) is hidden from every serialization unless the viewer
+  is a dashboard account (`HidesCostFromApps`); hidden is the default, so a new endpoint is safe.
+
 ### Response shape
 
 Controllers extend `BaseApiController`, which owns the envelope. Use `paginated()` for every
@@ -122,13 +131,24 @@ Arabic stays readable. Framework exceptions are converted to the same Arabic-mes
 ### Order lifecycle is a state machine
 
 `OrderStatus::transitions()` is the only definition of which status may follow which
-(pending → confirmed → preparing → out_for_delivery → delivered → received; cancellation is
+(pending → confirmed → preparing → out_for_delivery → delivered → received; out_for_delivery may
+also become `delivery_failed`, which goes out again or is cancelled; cancellation is
 allowed up to and including delivered; rejecting a `cancellation_requested` returns to pending;
 `received` and `cancelled` are final). The `Order` model enforces it in an `updating` hook and
 throws a 422 with an Arabic message, so the dashboard, delegate and customer endpoints cannot
 disagree. `GET /orders/{id}` and the delegate's order view return `next_statuses`, and both UIs
-render only those. Delegates may set `out_for_delivery` and `delivered`; customers only
-`received` and a cancellation request.
+render only those. Delegates may set `out_for_delivery`, `delivered` and `delivery_failed` (with a
+`DeliveryFailureReason`; `other` needs a note); customers only `received` and a cancellation request.
+Each departure counts in `orders.delivery_attempts`, and the reason is kept on the order and in the
+status log. An order that has a return can no longer be cancelled.
+
+`OrderNotifier` is called from the Order model's hooks, so every path that changes an order tells
+the cafe (each step, a failed delivery, a rejected cancellation) and the delegate (a job assigned, a
+job cancelled under them); nobody is told about their own action. Notifications carry `entity_type`
+and `entity_id` beside the web `link`, because `/orders/52` means nothing to a Flutter app.
+**Model event listeners must be blocks, not `fn () => cond && ...`**: a listener that returns false
+stops every listener after it, and that expression is false whenever the condition is not met. It
+once silently switched off custody collection and restocking; the tests caught it.
 
 ### Services own the write paths
 
@@ -157,6 +177,26 @@ its table changes, and each wraps work in a transaction with `lockForUpdate()`:
 `Order::balanceCents()` is the one definition of where an order stands in money (total, returned,
 due, paid, refunded, outstanding). The payment guard, the returns service, the invoice and the
 order page all read it, so use it rather than summing payments again.
+
+Money rules worth knowing before touching payments: a `wallet` payment only exists through
+`WalletService::payFromWallet()` (debit and row together); cash a delegate collects "for an order"
+pays that order first, so delivering it does not book the cash twice; payments backed by another
+ledger (wallet, a delegate's collection, a refund) cannot be edited or deleted, only corrected by an
+adjustment; cancelling returns every payment to the wallet whatever its method; a cash refund on a
+return stays pending until `ReturnService::payRefund()` records who handed it over, optionally out of
+a delegate's custody.
+
+`BusinessTime` answers every "which day is this" question: storage is UTC, the office is on Tripoli
+time. Report periods, date filters, dashboard ranges, SQL day buckets and printed times all go through
+it, so an order placed at 00:30 belongs to the new day. Bind its `startOf()/dayStart()` results into
+queries (they are UTC); a Carbon in another zone is bound as it stands, unconverted.
+
+The delivery zone, and so the fee, is resolved on the server from the coordinates
+(`AddressZoneResolver`); clients never choose it, a point outside every zone is a 422, and an app
+order to an uncovered address is refused. A cafe's first address is always allowed (registration
+creates it from the pinned location); the `customer_branches` feature limits the second onwards.
+Stock is drained from the warehouse that serves the zone first, and the order records that
+`warehouse_id` as where to load from.
 
 `ProductSearch` handles catalog querying, faceting, and sorting for the customer app.
 `ArabicText::filter($query, $term, $columns)` is the shared Arabic-tolerant list search; admin
@@ -270,6 +310,12 @@ not what `PUT` means. `PUT` is still accepted beside it (`Route::match(['patch',
 same pair `apiResource` registers) so clients already deployed keep working, and
 `ApiConventionsTest` fails if a new update route takes only `PUT`.
 
+Push: `POST|DELETE {app}/devices` (and flat `/devices`) store the FCM registration token of an
+install in `device_tokens`; the app is taken from the door the request came through. Logout accepts
+`device_token`, and switching an account off deletes its tokens. Nothing sends pushes yet: that needs
+Firebase credentials, and the sender should read this table. Orders accept a `note` (stored as
+`customer_note`) wherever they are placed.
+
 `app/OpenApi/Processors/AddStandardResponses.php` gives every operation the failures it can really
 produce, at generation time, from the rules the app follows: needs a token → `401` and `403`; an id
 in the path → `404`; a request body → `422`; a sign-in route → `429`. It also declares `bearerAuth`
@@ -372,8 +418,13 @@ Comments prefixed `ponytail:` mark deliberate non-obvious decisions and workarou
 reason. Read them before changing the surrounding code, and follow the same style when you make
 a choice the next reader would otherwise want to "fix".
 
+MySQL and phpMyAdmin bind to `127.0.0.1` (`DB_BIND` / `PMA_BIND` override); from elsewhere, tunnel
+over SSH. Only the web container runs migrations (`migrate --isolated`); worker, scheduler and reverb
+leave them alone. nginx takes 12 MB bodies and PHP 10 MB uploads (`docker/php/uploads.ini`).
+
 `scripts/backup-db.sh` is the nightly database backup, run by cron on the server. It dumps from
-inside the MySQL container, refuses to keep a dump that did not complete, prunes after
+inside the MySQL container, archives the uploaded files (receipts, product images) beside it,
+refuses to keep a dump that did not complete, prunes after
 `KEEP_DAYS`, and ships off the machine when `OFFSITE` is set.
 
 Docs live in `docs/` (`customer-endpoints-demo.md`, `sequence-diagrams.md`). `bruno/` holds an API

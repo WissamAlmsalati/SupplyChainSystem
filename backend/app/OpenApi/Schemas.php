@@ -245,6 +245,8 @@ namespace App\OpenApi;
  *     required={"address_id", "items"},
  *
  *     @OA\Property(property="address_id", type="integer"),
+ *     @OA\Property(property="payment_method", type="string", enum={"cash","wallet"}, default="cash"),
+ *     @OA\Property(property="note", type="string", nullable=true, maxLength=500, example="اتركه عند الباب الخلفي", description="For the office and the driver; shown on the order, the driver's screen and the invoice"),
  *     @OA\Property(
  *         property="items",
  *         type="array",

@@ -16,6 +16,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
   const [deliveryZoneId, setDeliveryZoneId] = useState('')
   const [deliveryFee, setDeliveryFee] = useState('0')
   const [items, setItems] = useState([{ product_variant_id: '', quantity: 1, unit_price: '' }])
+  const [note, setNote] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -85,6 +86,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
       const payload = {
         user_id: Number(userId),
         address_id: Number(addressId),
+        note: note.trim() || null,
         items: items.map((it) => ({
           product_variant_id: Number(it.product_variant_id),
           quantity: Number(it.quantity),
@@ -107,6 +109,7 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
     setDeliveryZoneId('')
     setDeliveryFee('0')
     setItems([{ product_variant_id: '', quantity: 1, unit_price: '' }])
+    setNote('')
     setError('')
     onClose()
   }
@@ -233,6 +236,18 @@ export default function QuickOrderModal({ open, onClose, onCreated }) {
         <div className="flex items-center justify-between rounded-lg bg-primary-soft px-4 py-3 text-primary">
           <span className="font-medium">الإجمالي</span>
           <span className="text-lg font-bold">{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} د.ل</span>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-muted">ملاحظة للمندوب والمكتب</label>
+          <textarea
+            rows={2}
+            maxLength={500}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="مثال: التسليم من الباب الخلفي، أو الاتصال قبل الوصول"
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-2">

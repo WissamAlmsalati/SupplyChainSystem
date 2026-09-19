@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\DeliveryFailureReason;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Services\CustodyService;
+use App\Services\OrderNotifier;
 use App\Services\StockService;
 use App\Services\WalletService;
 use App\Support\BusinessTime;
@@ -21,7 +23,14 @@ class Order extends Model
 {
     use HasFactory, LogsActivity;
 
+    /** A note for the status log entry of the change being saved (not a column). */
+    public ?string $statusNote = null;
+
     protected $fillable = [
+        'customer_note',
+        'delivery_failure_reason',
+        'delivery_failure_note',
+        'delivery_attempts',
         'order_number',
         'user_id',
         'delegate_id',
@@ -42,6 +51,20 @@ class Order extends Model
         'placed_at',
     ];
 
+    protected $appends = ['delivery_failure_label'];
+
+    // The driver's reason in words, for every client that shows the order.
+    public function getDeliveryFailureLabelAttribute(): ?string
+    {
+        $reason = DeliveryFailureReason::tryFrom((string) $this->delivery_failure_reason);
+
+        return match (true) {
+            $reason === null => null,
+            $reason === DeliveryFailureReason::Other => $this->delivery_failure_note ?: $reason->label(),
+            default => $reason->label(),
+        };
+    }
+
     protected $casts = [
         'status' => OrderStatus::class,
         'source' => OrderSource::class,
@@ -52,6 +75,7 @@ class Order extends Model
         'delivery_fee' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'placed_at' => 'datetime',
+        'delivery_attempts' => 'integer',
     ];
 
     protected static function booted(): void
@@ -76,6 +100,10 @@ class Order extends Model
                     'status' => "لا يمكن نقل الطلب من «{$from->label()}» إلى «{$order->status->label()}»",
                 ]);
             }
+            // Every departure is an attempt, whoever sends the van out.
+            if ($order->status === OrderStatus::OutForDelivery) {
+                $order->delivery_attempts = (int) $order->delivery_attempts + 1;
+            }
             // Cancelling restocks everything and refunds every payment. Once
             // part of the order has already come back through a return, that
             // would restock and refund the same goods twice.
@@ -88,11 +116,28 @@ class Order extends Model
 
         // Every status change is written to order_status_logs.
         static::created(fn (Order $order) => $order->logStatus(null));
+        // A driver learns of a job when it is given to them, whoever gave it.
+        // ponytail: written as blocks on purpose. A listener that returns false
+        // stops every listener after it, and `cond && ...` returns false whenever
+        // the condition is not met, which silently switched off the status hook below.
+        static::created(function (Order $order) {
+            if ($order->delegate_id) {
+                app(OrderNotifier::class)->delegateAssigned($order);
+            }
+        });
+        static::updated(function (Order $order) {
+            if ($order->wasChanged('delegate_id') && $order->delegate_id) {
+                app(OrderNotifier::class)->delegateAssigned($order);
+            }
+        });
         static::updated(function (Order $order) {
             if (! $order->wasChanged('status')) {
                 return;
             }
-            $order->logStatus($order->getOriginal('status'));
+            $from = $order->getOriginal('status');
+            $order->logStatus($from);
+            // Tell the people waiting on this order; see OrderNotifier.
+            app(OrderNotifier::class)->statusChanged($order, $from instanceof OrderStatus ? $from : OrderStatus::from($from));
             // Delivering a cash order means its delegate collected the unpaid amount.
             if ($order->status === OrderStatus::Delivered) {
                 app(CustodyService::class)->collectOrderCash($order);
@@ -111,7 +156,9 @@ class Order extends Model
             'from_status' => $from instanceof OrderStatus ? $from->value : $from,
             'to_status' => $this->status->value,
             'changed_by' => auth()->id(),
+            'note' => $this->statusNote,
         ]);
+        $this->statusNote = null;
     }
 
     // Copies the address into the order's delivery snapshot fields.

@@ -27,6 +27,8 @@ class OrderRequest extends FormRequest
                 'items.*.product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
                 'items.*.quantity' => ['required', 'integer', 'min:1'],
                 'payment_method' => ['nullable', Rule::in([PaymentMethod::Cash->value, PaymentMethod::Wallet->value])],
+                // What the cafe wants the office and the driver to know ("اتركه عند الباب الخلفي").
+                'note' => ['nullable', 'string', 'max:500'],
             ];
         }
 

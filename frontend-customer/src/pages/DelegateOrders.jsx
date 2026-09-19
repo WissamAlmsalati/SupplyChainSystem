@@ -7,6 +7,7 @@ const statusLabels = {
   confirmed: 'مؤكد',
   preparing: 'قيد التجهيز',
   out_for_delivery: 'في الطريق',
+  delivery_failed: 'تعذّر التوصيل',
   delivered: 'تم التوصيل',
   received: 'تم الاستلام',
   cancellation_requested: 'طلب إلغاء',
@@ -20,6 +21,11 @@ const statusColors = {
   delivered: '#16a34a',
   cancelled: '#dc2626',
   failed: '#dc2626',
+  delivery_failed: '#dc2626',
+  out_for_delivery: '#9333ea',
+  confirmed: '#2563eb',
+  preparing: '#0f766e',
+  received: '#16a34a',
 }
 
 const availableStatuses = Object.keys(statusLabels)
@@ -33,7 +39,6 @@ export default function DelegateOrders() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [updating, setUpdating] = useState(null)
   const [statusFilter, setStatusFilter] = useState('')
 
   const load = async (filter = statusFilter) => {
@@ -53,18 +58,6 @@ export default function DelegateOrders() {
   useEffect(() => {
     load()
   }, [statusFilter])
-
-  const updateStatus = async (order, status) => {
-    setUpdating(order.id)
-    try {
-      await client.post(`/delegate/orders/${order.id}/status`, { status })
-      load()
-    } catch (err) {
-      setError(err.response?.data?.message || 'فشل تحديث الحالة')
-    } finally {
-      setUpdating(null)
-    }
-  }
 
   return (
     <>
@@ -124,16 +117,10 @@ export default function DelegateOrders() {
                   <td className="px-4 py-3">{o.user?.name ?? '-'}</td>
                   <td className="px-4 py-3">{o.delivery_address_name ?? '-'}</td>
                   <td className="px-4 py-3">
-                    <select
-                      value={o.status}
-                      disabled={updating === o.id}
-                      onChange={(e) => updateStatus(o, e.target.value)}
-                      className="rounded-md border border-border-strong bg-background px-2 py-1 text-xs"
-                    >
-                      {availableStatuses.map((s) => (
-                        <option key={s} value={s}>{statusLabels[s]}</option>
-                      ))}
-                    </select>
+                    {/* ponytail: a badge, not a picker. A dropdown of every status in a list
+                        row made "delivered" one slip away, and delivering books cash into the
+                        driver's custody. The moves, with their confirmation, are on the order page. */}
+                    <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium" style={{ color: statusColors[o.status] }}>{statusLabels[o.status] ?? o.status}</span>
                   </td>
                   <td className="px-4 py-3 text-end font-medium">{formatMoney(o.total_amount)} د.ل</td>
                   <td className="px-4 py-3 text-muted">

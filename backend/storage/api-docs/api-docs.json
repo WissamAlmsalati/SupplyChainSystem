@@ -2819,6 +2819,13 @@
                                             "cash",
                                             "wallet"
                                         ]
+                                    },
+                                    "note": {
+                                        "description": "For the office and the driver; shown on the order, the driver's screen and the invoice",
+                                        "type": "string",
+                                        "maxLength": 500,
+                                        "example": "اتركه عند الباب الخلفي",
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -3952,7 +3959,8 @@
                 "tags": [
                     "Delegate Mobile"
                 ],
-                "summary": "Move an assigned order to out_for_delivery or delivered",
+                "summary": "Move an assigned order: out for delivery, delivered, or delivery failed",
+                "description": "`delivery_failed` needs a `reason` (customer_absent, unreachable, wrong_address, refused, other) and, for `other`, a `note`. From there the order can go `out_for_delivery` again for another attempt. The order view returns `next_statuses`, `amount_to_collect` and `failure_reasons` with their Arabic labels.",
                 "operationId": "45ff765c6dc091e5c2f6db889aac118b",
                 "parameters": [
                     {
@@ -3969,13 +3977,33 @@
                     "content": {
                         "application/json": {
                             "schema": {
+                                "required": [
+                                    "status"
+                                ],
                                 "properties": {
                                     "status": {
                                         "type": "string",
                                         "enum": [
                                             "out_for_delivery",
-                                            "delivered"
+                                            "delivered",
+                                            "delivery_failed"
                                         ]
+                                    },
+                                    "reason": {
+                                        "type": "string",
+                                        "enum": [
+                                            "customer_absent",
+                                            "unreachable",
+                                            "wrong_address",
+                                            "refused",
+                                            "other"
+                                        ],
+                                        "example": "customer_absent"
+                                    },
+                                    "note": {
+                                        "type": "string",
+                                        "example": "المحل مقفل",
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -4410,6 +4438,137 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/devices": {
+            "post": {
+                "tags": [
+                    "Customer Notifications"
+                ],
+                "summary": "Register this phone for push notifications",
+                "description": "Send the FCM registration token after sign-in, and again whenever Firebase rotates it (`onTokenRefresh`). Calling it again with the same token only refreshes `last_seen_at`. A token belongs to one install, so if it was registered under another account on the same phone it moves to the signed-in one. The same route exists at `/delegate/devices` and `/devices`.",
+                "operationId": "423d5e8ad732a88acd3316631c637c28",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "token",
+                                    "platform"
+                                ],
+                                "properties": {
+                                    "token": {
+                                        "type": "string",
+                                        "example": "fMEP0vJqS0:APA91bHun4MxP5egoKMwt2KZFBaFUH-1RYqx..."
+                                    },
+                                    "platform": {
+                                        "type": "string",
+                                        "enum": [
+                                            "android",
+                                            "ios",
+                                            "web"
+                                        ],
+                                        "example": "android"
+                                    },
+                                    "device_name": {
+                                        "type": "string",
+                                        "example": "Samsung A54",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Registered",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "تم تسجيل الجهاز",
+                                    "device": {
+                                        "id": 7,
+                                        "platform": "android",
+                                        "app": "customer",
+                                        "device_name": "Samsung A54",
+                                        "last_seen_at": "2026-09-19T09:12:41.000000Z"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Customer Notifications"
+                ],
+                "summary": "Stop pushing to this phone",
+                "description": "Call it on sign-out, before the token is dropped, so the next person to use the phone does not receive this account's notifications. Sending `device_token` to the logout route does the same in one call.",
+                "operationId": "a79612ff121ae5a17e41a66bab55083a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "token"
+                                ],
+                                "properties": {
+                                    "token": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Removed (or was not registered)",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "تم إلغاء تسجيل الجهاز"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     }
                 },
                 "security": [
@@ -13927,6 +14086,21 @@
                 "properties": {
                     "address_id": {
                         "type": "integer"
+                    },
+                    "payment_method": {
+                        "type": "string",
+                        "default": "cash",
+                        "enum": [
+                            "cash",
+                            "wallet"
+                        ]
+                    },
+                    "note": {
+                        "description": "For the office and the driver; shown on the order, the driver's screen and the invoice",
+                        "type": "string",
+                        "maxLength": 500,
+                        "example": "اتركه عند الباب الخلفي",
+                        "nullable": true
                     },
                     "items": {
                         "type": "array",

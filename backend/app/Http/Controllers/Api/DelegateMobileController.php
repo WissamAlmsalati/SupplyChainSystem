@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\DeliveryFailureReason;
 use App\Enums\OrderStatus;
 use App\Enums\UserRole;
 use App\Events\DelegateLocationUpdated;
@@ -126,18 +127,26 @@ class DelegateMobileController extends BaseApiController
         // Moves the delegate app may offer next (subset of the order lifecycle).
         $order->setAttribute('next_statuses', array_values(array_intersect(
             $order->status->nextValues(),
-            [OrderStatus::OutForDelivery->value, OrderStatus::Delivered->value],
+            [OrderStatus::OutForDelivery->value, OrderStatus::Delivered->value, OrderStatus::DeliveryFailed->value],
         )));
+        // What the driver will be handed at the door, and the reasons to pick from if nobody is there.
+        $order->setAttribute('amount_to_collect', max(0, $order->balanceCents()['outstanding']) / 100);
+        $order->setAttribute('failure_reasons', DeliveryFailureReason::labels());
 
         return $this->jsonResponse($order);
     }
 
     /**
-     * @OA\Post(path="/delegate/orders/{id}/status", tags={"Delegate Mobile"}, summary="Move an assigned order to out_for_delivery or delivered",
+     * @OA\Post(path="/delegate/orders/{id}/status", tags={"Delegate Mobile"}, summary="Move an assigned order: out for delivery, delivered, or delivery failed",
+     *     description="`delivery_failed` needs a `reason` (customer_absent, unreachable, wrong_address, refused, other) and, for `other`, a `note`. From there the order can go `out_for_delivery` again for another attempt. The order view returns `next_statuses`, `amount_to_collect` and `failure_reasons` with their Arabic labels.",
      *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *
-     *     @OA\RequestBody(required=true, @OA\JsonContent(@OA\Property(property="status", type="string", enum={"out_for_delivery", "delivered"}))),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(required={"status"},
+     *
+     *         @OA\Property(property="status", type="string", enum={"out_for_delivery", "delivered", "delivery_failed"}),
+     *         @OA\Property(property="reason", type="string", enum={"customer_absent", "unreachable", "wrong_address", "refused", "other"}, example="customer_absent"),
+     *         @OA\Property(property="note", type="string", nullable=true, example="المحل مقفل"))),
      *
      *     @OA\Response(response=200, description="Order updated"),
      *     @OA\Response(response=422, description="Move not allowed from the current status"))
@@ -148,14 +157,24 @@ class DelegateMobileController extends BaseApiController
             return $this->jsonResponse(['message' => 'غير مصرح'], 403);
         }
 
-        $request->validate([
-            'status' => ['required', 'string', Rule::in([OrderStatus::OutForDelivery->value, OrderStatus::Delivered->value])],
+        $data = $request->validate([
+            'status' => ['required', 'string', Rule::in([OrderStatus::OutForDelivery->value, OrderStatus::Delivered->value, OrderStatus::DeliveryFailed->value])],
+            // Why it could not be delivered; "other" has to say what.
+            'reason' => ['required_if:status,'.OrderStatus::DeliveryFailed->value, 'nullable', Rule::in(DeliveryFailureReason::values())],
+            'note' => ['required_if:reason,'.DeliveryFailureReason::Other->value, 'nullable', 'string', 'max:255'],
         ]);
 
         $order = Order::where('delegate_id', auth()->id())->findOrFail($id);
-        $target = OrderStatus::from($request->input('status'));
+        $target = OrderStatus::from($data['status']);
         $wasDelivered = $order->status === OrderStatus::Delivered;
-        $order->update(['status' => $target]);
+
+        $changes = ['status' => $target];
+        if ($target === OrderStatus::DeliveryFailed) {
+            $reason = DeliveryFailureReason::from($data['reason']);
+            $changes += ['delivery_failure_reason' => $reason->value, 'delivery_failure_note' => $data['note'] ?? null];
+            $order->statusNote = $reason->label().(! empty($data['note']) ? ': '.$data['note'] : '');
+        }
+        $order->update($changes);
 
         $collected = ($wasDelivered || $target !== OrderStatus::Delivered) ? 0 : (float) $order->payments()->where('collected_by', auth()->id())->sum('amount');
 

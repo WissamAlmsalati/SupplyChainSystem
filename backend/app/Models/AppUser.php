@@ -43,6 +43,10 @@ class AppUser extends Authenticatable
     {
         static::created(fn (AppUser $user) => $user->ensureProfile());
         static::updated(function (AppUser $user) {
+            // A cafe waits for the office to approve it; tell it when that happens.
+            if ($user->wasChanged('is_active') && $user->is_active && $user->hasRole(UserRole::Customer)) {
+                Notification::sendTo([$user->id], 'تم تفعيل حسابك', 'أهلاً بك، يمكنك الآن تسجيل الدخول والطلب', '/', 'account');
+            }
             if ($user->wasChanged('user_type_id')) {
                 $user->ensureProfile();
             }
@@ -51,6 +55,7 @@ class AppUser extends Authenticatable
             // signed in otherwise. The session making the change survives.
             if ($user->wasChanged('is_active') && ! $user->is_active) {
                 $user->tokens()->delete();
+                DeviceToken::where('user_id', $user->id)->delete();
             } elseif ($user->wasChanged('password')) {
                 // The session that is changing its own password stays signed in.
                 $current = auth()->id() === $user->id ? auth()->user()?->currentAccessToken()?->id : null;

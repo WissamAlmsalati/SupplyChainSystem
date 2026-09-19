@@ -10,15 +10,15 @@ const statusLabels = {
   confirmed: 'مؤكد',
   preparing: 'قيد التجهيز',
   out_for_delivery: 'في الطريق',
+  delivery_failed: 'تعذّر التوصيل',
   delivered: 'تم التوصيل',
   received: 'تم الاستلام',
   cancellation_requested: 'طلب إلغاء',
   cancelled: 'ملغي',
 }
 
-// The delegate only moves an order out for delivery and then delivered; the
-// API says which of those is legal right now via next_statuses.
-const DELEGATE_ACTIONS = ['out_for_delivery', 'delivered']
+// What the driver may do next comes from the API (next_statuses), along with
+// the cash to collect and the reasons to choose from when nobody is there.
 
 function formatMoney(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -39,6 +39,12 @@ export default function DelegateOrderDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [updating, setUpdating] = useState(false)
+  // null | 'deliver' | 'fail': handing over and giving up are both confirmed
+  // first, because a mis-tap on "delivered" books cash the driver never took.
+  const [panel, setPanel] = useState(null)
+  const [reason, setReason] = useState('')
+  const [failNote, setFailNote] = useState('')
+  const [done, setDone] = useState('')
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
 
@@ -82,16 +88,22 @@ export default function DelegateOrderDetail() {
     mapInstanceRef.current = map
   }, [order])
 
-  const updateStatus = async (status) => {
+  const updateStatus = async (status, extra = {}) => {
     setUpdating(true)
+    setError('')
+    setDone('')
     try {
-      const res = await client.post(`/delegate/orders/${id}/status`, { status })
+      const res = await client.postOnce(`/delegate/orders/${id}/status`, { status, ...extra })
       if (Number(res.data?.cash_collected) > 0) {
-        window.alert(`تم تسجيل تحصيل ${Number(res.data.cash_collected).toFixed(2)} د.ل في عهدتك`)
+        setDone(`تم تسجيل تحصيل ${Number(res.data.cash_collected).toFixed(2)} د.ل في عهدتك`)
       }
+      setPanel(null)
+      setReason('')
+      setFailNote('')
       load()
     } catch (err) {
-      setError(err.response?.data?.message || 'فشل تحديث الحالة')
+      const errors = err.response?.data?.errors
+      setError(Object.values(errors ?? {})[0]?.[0] || err.response?.data?.message || 'فشل تحديث الحالة')
     } finally {
       setUpdating(false)
     }
@@ -130,6 +142,10 @@ export default function DelegateOrderDetail() {
     0
   )
   const deliveryFee = Number(order.delivery_fee) || 0
+  const next = order.next_statuses ?? []
+  const toCollect = Number(order.amount_to_collect) || 0
+  const phones = order.delivery_phones?.length ? order.delivery_phones : order.user?.mobile_number ? [order.user.mobile_number] : []
+  const hasPin = order.delivery_latitude != null && order.delivery_longitude != null
 
   return (
     <>
@@ -147,6 +163,15 @@ export default function DelegateOrderDetail() {
       </header>
 
       {error && <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
+      {done && <div className="mb-4 rounded-lg border border-success/20 bg-success-soft px-4 py-3 text-sm text-success">{done}</div>}
+      {order.status === 'delivery_failed' && (
+        <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">
+          تعذّر التوصيل: {order.delivery_failure_label ?? ''}. المحاولة رقم {order.delivery_attempts}. البضاعة معك حتى يقرر المكتب.
+        </div>
+      )}
+      {order.customer_note && (
+        <div className="mb-4 rounded-lg border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-foreground"><span className="font-bold">ملاحظة الزبون: </span>{order.customer_note}</div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-4">
@@ -157,6 +182,7 @@ export default function DelegateOrderDetail() {
               <div className="flex justify-between"><span className="text-muted">التاريخ</span><span>{order.placed_at ? new Date(order.placed_at).toLocaleString('ar-LY') : '-'}</span></div>
               <div className="flex justify-between"><span className="text-muted">رسوم التوصيل</span><span>{formatMoney(deliveryFee)} د.ل</span></div>
               <div className="flex justify-between"><span className="text-muted">الإجمالي</span><span className="font-bold text-foreground">{formatMoney(order.total_amount)} د.ل</span></div>
+              <div className="flex justify-between"><span className="text-muted">المطلوب تحصيله نقداً</span><span className={`font-extrabold ${toCollect > 0 ? 'text-warning' : 'text-success'}`}>{formatMoney(toCollect)} د.ل</span></div>
             </div>
           </div>
 
@@ -164,29 +190,56 @@ export default function DelegateOrderDetail() {
             <h2 className="mb-3 font-bold text-foreground">العميل</h2>
             <div className="space-y-2 text-sm">
               <div><span className="text-muted">الاسم:</span> <span className="text-foreground">{order.user?.name ?? '-'}</span></div>
-              <div><span className="text-muted">البريد:</span> <span className="text-foreground">{order.user?.email ?? '-'}</span></div>
-              <div><span className="text-muted">الجوال:</span> <span className="text-foreground">{order.user?.mobile_number ?? '-'}</span></div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {phones.map((ph) => <a key={ph} href={`tel:${ph}`} className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-primary"><bdi>{ph}</bdi> اتصال</a>)}
+                {hasPin && <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.delivery_latitude},${order.delivery_longitude}`} target="_blank" rel="noreferrer" className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-primary">فتح الملاحة</a>}
+              </div>
             </div>
           </div>
 
           <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-            <h2 className="mb-3 font-bold text-foreground">تحديث الحالة</h2>
-            <div className="flex flex-wrap gap-2">
-              {DELEGATE_ACTIONS.map((s) => (
-                <button
-                  key={s}
-                  disabled={updating || !(order.next_statuses ?? []).includes(s)}
-                  onClick={() => updateStatus(s)}
-                  className={`rounded-lg px-3 py-2 text-xs font-medium transition ${
-                    order.status === s
-                      ? 'bg-primary text-primary-foreground'
-                      : 'border border-border bg-background text-foreground hover:bg-surface'
-                  } disabled:opacity-60`}
-                >
-                  {statusLabels[s]}
-                </button>
-              ))}
-            </div>
+            <h2 className="mb-3 font-bold text-foreground">ماذا حدث؟</h2>
+            {next.length === 0 ? (
+              <p className="text-sm text-muted">لا يوجد إجراء مطلوب منك على هذا الطلب الآن.</p>
+            ) : panel === 'deliver' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-foreground">
+                  {toCollect > 0
+                    ? <>تأكيد التسليم يعني أنك استلمت من الزبون <span className="font-extrabold">{formatMoney(toCollect)} د.ل</span> نقداً، وتُسجَّل في عهدتك.</>
+                    : 'الطلب مدفوع بالكامل، لا يوجد مبلغ للتحصيل.'}
+                </p>
+                <div className="flex gap-2">
+                  <button disabled={updating} onClick={() => updateStatus('delivered')} className="flex-1 rounded-lg bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">{updating ? 'جارٍ الحفظ...' : 'نعم، سلّمت الطلب'}</button>
+                  <button disabled={updating} onClick={() => setPanel(null)} className="rounded-lg border border-border px-3 py-2.5 text-sm">رجوع</button>
+                </div>
+              </div>
+            ) : panel === 'fail' ? (
+              <div className="space-y-3">
+                <div className="grid gap-2">
+                  {Object.entries(order.failure_reasons ?? {}).map(([key, label]) => (
+                    <label key={key} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm ${reason === key ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                      <input type="radio" name="reason" value={key} checked={reason === key} onChange={() => setReason(key)} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <textarea rows={2} maxLength={255} value={failNote} onChange={(e) => setFailNote(e.target.value)} placeholder={reason === 'other' ? 'اكتب السبب (مطلوب)' : 'تفاصيل إضافية (اختياري)'} className="w-full rounded-lg border border-border px-3 py-2 text-sm" />
+                <div className="flex gap-2">
+                  <button disabled={updating || !reason || (reason === 'other' && !failNote.trim())} onClick={() => updateStatus('delivery_failed', { reason, note: failNote.trim() || null })} className="flex-1 rounded-lg bg-danger px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50">{updating ? 'جارٍ الحفظ...' : 'تسجيل تعذّر التوصيل'}</button>
+                  <button disabled={updating} onClick={() => setPanel(null)} className="rounded-lg border border-border px-3 py-2.5 text-sm">رجوع</button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                {next.includes('out_for_delivery') && (
+                  <button disabled={updating} onClick={() => updateStatus('out_for_delivery')} className="rounded-lg bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">
+                    {order.status === 'delivery_failed' ? 'خرجت لمحاولة توصيل أخرى' : 'استلمت الطلب وخرجت للتوصيل'}
+                  </button>
+                )}
+                {next.includes('delivered') && <button disabled={updating} onClick={() => setPanel('deliver')} className="rounded-lg bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">تم التسليم</button>}
+                {next.includes('delivery_failed') && <button disabled={updating} onClick={() => setPanel('fail')} className="rounded-lg border border-danger/40 px-3 py-2.5 text-sm font-medium text-danger disabled:opacity-60">تعذّر التوصيل</button>}
+              </div>
+            )}
           </div>
         </div>
 
@@ -199,8 +252,6 @@ export default function DelegateOrderDetail() {
               <div><span className="text-muted">الاسم:</span> <span className="text-foreground">{order.delivery_address_name ?? '-'}</span></div>
               <div><span className="text-muted">المدينة:</span> <span className="text-foreground">{order.delivery_city ?? '-'}</span></div>
               <div><span className="text-muted">الشارع:</span> <span className="text-foreground">{order.delivery_street ?? '-'}</span></div>
-              <div><span className="text-muted">خط العرض:</span> <span className="text-foreground">{order.delivery_latitude ?? '-'}</span></div>
-              <div><span className="text-muted">خط الطول:</span> <span className="text-foreground">{order.delivery_longitude ?? '-'}</span></div>
             </div>
           </div>
         </div>

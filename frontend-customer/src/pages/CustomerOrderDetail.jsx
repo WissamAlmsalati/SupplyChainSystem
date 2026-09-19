@@ -8,6 +8,7 @@ const statusLabels = {
   confirmed: 'مؤكد',
   preparing: 'قيد التجهيز',
   out_for_delivery: 'في الطريق',
+  delivery_failed: 'تعذّر التوصيل',
   delivered: 'تم التوصيل',
   received: 'تم الاستلام',
   cancellation_requested: 'طلب إلغاء',
@@ -125,6 +126,10 @@ export default function CustomerOrderDetail() {
               {statusLabels[order.status] || order.status}
             </span>
           </div>
+          {order.status === 'delivery_failed' && (
+            <p className="mt-3 text-sm text-danger">لم نتمكن من تسليم طلبك: {order.delivery_failure_label ?? 'سبب غير محدد'}. سنتواصل معك لإعادة المحاولة.</p>
+          )}
+          {order.customer_note && <p className="mt-3 text-sm text-muted"><span className="font-medium text-foreground">ملاحظتك: </span>{order.customer_note}</p>}
           {order.status === 'delivered' && (
             <button
               onClick={confirmReceipt}

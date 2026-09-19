@@ -34,6 +34,7 @@ class OrderPlacementService
         ?Cart $cart = null,
         ?int $delegateId = null,
         PaymentMethod $paymentMethod = PaymentMethod::Cash,
+        ?string $note = null,
     ): Order {
         if (! in_array($paymentMethod, [PaymentMethod::Cash, PaymentMethod::Wallet], true)) {
             throw ValidationException::withMessages(['payment_method' => 'طريقة الدفع غير مدعومة']);
@@ -74,7 +75,7 @@ class OrderPlacementService
             throw ValidationException::withMessages(['address_id' => 'هذا العنوان خارج نطاق التوصيل حالياً']);
         }
 
-        $order = DB::transaction(function () use ($customer, $address, $quantities, $variants, $source, $cart, $delegateId, $paymentMethod) {
+        $order = DB::transaction(function () use ($customer, $address, $quantities, $variants, $source, $cart, $delegateId, $paymentMethod, $note) {
             $lines = collect($quantities)->map(fn (int $qty, int $variantId) => [
                 'product_variant_id' => $variantId,
                 'product_name' => $variants[$variantId]->product?->name ?? '',
@@ -93,6 +94,7 @@ class OrderPlacementService
                 'delegate_id' => $delegateId,
                 'cart_id' => $cart?->id,
                 'source' => $source,
+                'customer_note' => $note !== null && trim($note) !== '' ? trim($note) : null,
                 'subtotal' => $subtotal,
                 'delivery_fee' => $deliveryFee,
                 'total_amount' => $subtotal + $deliveryFee,

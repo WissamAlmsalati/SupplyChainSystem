@@ -14,12 +14,13 @@ export const statusLabels = {
   received: 'مستلم',
   preparing: 'قيد التجهيز',
   out_for_delivery: 'في الطريق',
+  delivery_failed: 'تعذّر التوصيل',
   cancellation_requested: 'طلب إلغاء',
   draft: 'مسودة',
 }
 
 // Statuses an order can be set to (matches App\Enums\OrderStatus).
-export const orderStatuses = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'received', 'cancellation_requested', 'cancelled']
+export const orderStatuses = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivery_failed', 'delivered', 'received', 'cancellation_requested', 'cancelled']
 
 export const statusColors = {
   pending: '#d97706',
@@ -32,6 +33,7 @@ export const statusColors = {
   shipped: '#9333ea',
   preparing: '#0f766e',
   out_for_delivery: '#9333ea',
+  delivery_failed: '#dc2626',
   received: '#16a34a',
   cancellation_requested: '#dc2626',
   draft: '#64748b',
@@ -41,7 +43,7 @@ export function statusVariant(status) {
   if (!status) return 'default'
   const s = String(status).toLowerCase()
   if (['completed', 'delivered', 'received', 'paid'].includes(s)) return 'success'
-  if (['cancelled', 'failed', 'cancellation_requested'].includes(s)) return 'danger'
+  if (['cancelled', 'failed', 'cancellation_requested', 'delivery_failed'].includes(s)) return 'danger'
   if (['pending', 'processing', 'confirmed', 'shipped', 'ordered', 'preparing', 'out_for_delivery', 'draft'].includes(s)) return 'warning'
   return 'default'
 }

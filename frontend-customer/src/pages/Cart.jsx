@@ -15,6 +15,7 @@ export default function Cart() {
   const [addresses, setAddresses] = useState([])
   const [addressId, setAddressId] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [note, setNote] = useState('')
   const [walletBalance, setWalletBalance] = useState(null)
   const [updating, setUpdating] = useState(null)
   const [checkingOut, setCheckingOut] = useState(false)
@@ -78,7 +79,8 @@ export default function Cart() {
     setError('')
     setSuccess('')
     try {
-      const res = await checkout(Number(addressId), paymentMethod)
+      const res = await checkout(Number(addressId), paymentMethod, note)
+      setNote('')
       const orderNumber = res.data?.order_number ?? res.data?.id
       setSuccess(`${res.message || 'تم إنشاء الطلب بنجاح'} — رقم الطلب: ${orderNumber}`)
       setTimeout(() => navigate('/orders'), 2000)
@@ -236,6 +238,10 @@ export default function Cart() {
                   <span>الإجمالي</span>
                   <span>{formatMoney(total)} د.ل</span>
                 </div>
+              </div>
+              <div className="mt-4">
+                <label className="mb-1.5 block text-sm font-medium text-muted">ملاحظة للمندوب (اختياري)</label>
+                <textarea rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="مثال: التسليم من الباب الخلفي، أو اتصل قبل الوصول" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div className="mt-4 space-y-2">
                 <div className="text-sm font-medium text-muted">طريقة الدفع</div>

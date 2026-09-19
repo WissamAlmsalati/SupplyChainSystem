@@ -18,6 +18,8 @@ class Notification extends Model
         'title',
         'message',
         'link',
+        'entity_type',
+        'entity_id',
         'read_at',
     ];
 
@@ -54,7 +56,11 @@ class Notification extends Model
      *
      * @param  iterable<int>  $userIds
      */
-    public static function sendTo(iterable $userIds, string $title, ?string $message = null, ?string $link = null, string $type = 'info'): int
+    /**
+     * $entity names what the notification is about, e.g. ['order', 52]. `link`
+     * is a web path; a Flutter app routes on entity_type + entity_id instead.
+     */
+    public static function sendTo(iterable $userIds, string $title, ?string $message = null, ?string $link = null, string $type = 'info', ?array $entity = null): int
     {
         $now = now();
         $records = collect($userIds)->unique()->values()->map(fn ($userId) => [
@@ -63,6 +69,8 @@ class Notification extends Model
             'title' => $title,
             'message' => $message,
             'link' => $link,
+            'entity_type' => $entity[0] ?? null,
+            'entity_id' => $entity[1] ?? null,
             'created_at' => $now,
             'updated_at' => $now,
         ])->all();

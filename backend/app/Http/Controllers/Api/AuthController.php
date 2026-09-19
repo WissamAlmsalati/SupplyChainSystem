@@ -7,6 +7,7 @@ use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Http\Requests\Api\Auth\RegisterRequest;
 use App\Models\Address;
 use App\Models\AppUser;
+use App\Models\DeviceToken;
 use App\Models\Notification;
 use App\Models\PasswordResetOtp;
 use App\Models\PremiumFeature;
@@ -365,6 +366,11 @@ class AuthController extends BaseApiController
 
     public function logout(Request $request): JsonResponse
     {
+        // Stop pushing to this phone too, or its next user gets this account's notifications.
+        if ($request->filled('device_token')) {
+            DeviceToken::where('user_id', $request->user()->id)->where('token', (string) $request->input('device_token'))->delete();
+        }
+
         $request->user()->currentAccessToken()->delete();
 
         return $this->jsonResponse(['message' => 'تم تسجيل الخروج بنجاح']);

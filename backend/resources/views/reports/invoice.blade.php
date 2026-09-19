@@ -45,6 +45,7 @@
     <tr class="total"><td colspan="3" class="right">المتبقي</td><td class="num">{{ $money($due) }}</td></tr>
   </tbody>
 </table>
+@if($order->customer_note)<p style="margin-top:4mm"><b>ملاحظة الزبون:</b> {{ $order->customer_note }}</p>@endif
 <p style="margin-top:6mm">
   @if($order->status->value === 'cancelled')<span class="stamp cancelled">ملغي</span>
   @elseif($due <= 0)<span class="stamp">مدفوعة بالكامل</span>

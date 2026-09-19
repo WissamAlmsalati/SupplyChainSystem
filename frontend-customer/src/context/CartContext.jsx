@@ -47,8 +47,8 @@ export function CartProvider({ children }) {
     setCart((prev) => (prev ? { ...prev, items: [], subtotal: 0 } : prev))
   }
 
-  const checkout = async (addressId, paymentMethod = 'cash') => {
-    const res = await client.postOnce('/customer/cart/checkout', { address_id: addressId, payment_method: paymentMethod })
+  const checkout = async (addressId, paymentMethod = 'cash', note = '') => {
+    const res = await client.postOnce('/customer/cart/checkout', { address_id: addressId, payment_method: paymentMethod, note: note.trim() || null })
     await refresh()
     return res.data
   }

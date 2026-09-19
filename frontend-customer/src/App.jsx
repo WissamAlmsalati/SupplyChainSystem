@@ -12,6 +12,7 @@ import DelegateOrderDetail from './pages/DelegateOrderDetail'
 import CustomerOrderDetail from './pages/CustomerOrderDetail'
 import Addresses from './pages/Addresses'
 import Profile from './pages/Profile'
+import Notifications from './pages/Notifications'
 import Products from './pages/Products'
 import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
@@ -56,6 +57,7 @@ function App() {
         <Route path="/favorites" element={isDelegate ? <Navigate to="/" replace /> : <Favorites />} />
         <Route path="/sections/:id" element={isDelegate ? <Navigate to="/" replace /> : <FeaturedSectionProducts />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/notifications" element={<Notifications />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

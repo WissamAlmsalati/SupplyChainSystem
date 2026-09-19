@@ -60,7 +60,7 @@ class CheckPermission
     public const EXEMPT_PREFIXES = ['customer.', 'delegate.', 'wallet.gateway.'];
 
     /** Resources every user owns rows of; the controller filters by user_id. */
-    public const OWN_RESOURCES = ['notifications'];
+    public const OWN_RESOURCES = ['notifications', 'devices'];
 
     // ponytail: addresses keeps the historic CUSTOMER_BRANCHES_* permission
     // codes so existing roles keep working; only the label changed.

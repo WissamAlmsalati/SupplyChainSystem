@@ -43,6 +43,8 @@ const NEXT_ACTION = {
   confirmed: { to: 'preparing', label: 'بدء التجهيز' },
   preparing: { to: 'out_for_delivery', label: 'خرج للتوصيل' },
   out_for_delivery: { to: 'delivered', label: 'تم التوصيل' },
+  // The goods are still on the van: send it out again.
+  delivery_failed: { to: 'out_for_delivery', label: 'إعادة محاولة التوصيل' },
 }
 
 const PAYMENT_METHODS = { cash: 'نقداً', card: 'بطاقة', bank_transfer: 'تحويل بنكي', wallet: 'المحفظة' }
@@ -64,8 +66,9 @@ function InfoRow({ label, children }) {
 function StatusStepper({ status }) {
   const cancelled = status === 'cancelled'
   const currentIndex = STEPS.findIndex((s) => s.status === status)
-  // A cancellation request is still a pending order until an admin decides.
-  const activeIndex = status === 'cancellation_requested' ? 0 : currentIndex
+  // A cancellation request is still a pending order until an admin decides,
+  // and a failed delivery is still an order that has left the warehouse.
+  const activeIndex = status === 'cancellation_requested' ? 0 : status === 'delivery_failed' ? 3 : currentIndex
 
   return (
     <ol className="flex items-start overflow-x-auto pb-1">
@@ -378,6 +381,22 @@ export default function OrderDetail() {
               </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {order.status === 'delivery_failed' && (
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-sm print:hidden">
+          <X className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+          <div>
+            <div className="font-bold text-danger">تعذّر التوصيل: {order.delivery_failure_label ?? 'بدون سبب مسجّل'}</div>
+            <div className="text-muted">المحاولة رقم {order.delivery_attempts}. البضاعة ما زالت مع المندوب: أعد المحاولة بعد التواصل مع الزبون، أو ألغِ الطلب.</div>
+          </div>
+        </div>
+      )}
+
+      {order.customer_note && (
+        <div className="mb-4 rounded-lg border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-foreground">
+          <span className="font-bold">ملاحظة الزبون: </span>{order.customer_note}
         </div>
       )}
 

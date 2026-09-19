@@ -8,6 +8,8 @@ enum OrderStatus: string
     case Confirmed = 'confirmed';
     case Preparing = 'preparing';
     case OutForDelivery = 'out_for_delivery';
+    // The driver went and could not hand it over; it waits for another attempt or a decision.
+    case DeliveryFailed = 'delivery_failed';
     case Delivered = 'delivered';
     case Received = 'received';
     case CancellationRequested = 'cancellation_requested';
@@ -20,6 +22,7 @@ enum OrderStatus: string
             self::Confirmed => 'مؤكد',
             self::Preparing => 'قيد التجهيز',
             self::OutForDelivery => 'في الطريق',
+            self::DeliveryFailed => 'تعذّر التوصيل',
             self::Delivered => 'تم التوصيل',
             self::Received => 'مستلم',
             self::CancellationRequested => 'طلب إلغاء',
@@ -31,7 +34,7 @@ enum OrderStatus: string
     public static function groups(): array
     {
         return [
-            'active' => [self::Pending->value, self::Confirmed->value, self::Preparing->value, self::OutForDelivery->value, self::CancellationRequested->value],
+            'active' => [self::Pending->value, self::Confirmed->value, self::Preparing->value, self::OutForDelivery->value, self::DeliveryFailed->value, self::CancellationRequested->value],
             'completed' => [self::Delivered->value, self::Received->value],
             'cancelled' => [self::Cancelled->value],
         ];
@@ -55,7 +58,9 @@ enum OrderStatus: string
             self::Pending => [self::Confirmed, self::CancellationRequested, self::Cancelled],
             self::Confirmed => [self::Preparing, self::OutForDelivery, self::Cancelled],
             self::Preparing => [self::OutForDelivery, self::Cancelled],
-            self::OutForDelivery => [self::Delivered, self::Cancelled],
+            self::OutForDelivery => [self::Delivered, self::DeliveryFailed, self::Cancelled],
+            // Nobody home, wrong address: the goods are still on the van. Try again, or give up.
+            self::DeliveryFailed => [self::OutForDelivery, self::Cancelled],
             // Cancelling a delivered order is a return: stock and wallet are refunded.
             self::Delivered => [self::Received, self::Cancelled],
             self::CancellationRequested => [self::Cancelled, self::Pending],

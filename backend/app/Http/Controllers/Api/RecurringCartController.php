@@ -139,6 +139,8 @@ class RecurringCartController extends BaseApiController
         $data = $request->validate([
             'address_id' => ['required', 'integer'],
             'payment_method' => ['nullable', Rule::in([PaymentMethod::Cash->value, PaymentMethod::Wallet->value])],
+            // What the cafe wants the office and the driver to know ("اتركه عند الباب الخلفي").
+            'note' => ['nullable', 'string', 'max:500'],
         ]);
 
         $cart = $this->scope()->with('items')->findOrFail($id);
@@ -148,7 +150,7 @@ class RecurringCartController extends BaseApiController
 
         $address = Address::where('user_id', auth()->id())->findOrFail($data['address_id']);
 
-        $order = $placement->place(auth()->user(), $address, $cart->items->toArray(), OrderSource::App, $cart, null, PaymentMethod::from($data['payment_method'] ?? 'cash'));
+        $order = $placement->place(auth()->user(), $address, $cart->items->toArray(), OrderSource::App, $cart, null, PaymentMethod::from($data['payment_method'] ?? 'cash'), $data['note'] ?? null);
 
         return $this->jsonResponse([
             'id' => $order->id,

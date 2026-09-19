@@ -70,6 +70,7 @@ export default function Orders() {
               { value: 'confirmed', label: 'مؤكد' },
               { value: 'preparing', label: 'قيد التجهيز' },
               { value: 'out_for_delivery', label: 'في الطريق' },
+              { value: 'delivery_failed', label: 'تعذّر التوصيل' },
               { value: 'delivered', label: 'تم التوصيل' },
               { value: 'received', label: 'مستلم' },
               { value: 'cancellation_requested', label: 'طلب إلغاء' },

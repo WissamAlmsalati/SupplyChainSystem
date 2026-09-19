@@ -189,6 +189,8 @@ class CustomerMobileController extends BaseApiController
                 'paid_at' => $payment->paid_at,
             ] : null,
             'delegate' => $order->delegate?->only(['id', 'name', 'mobile_number']),
+            'customer_note' => $order->customer_note,
+            'delivery_failure_label' => $order->delivery_failure_label,
             'can_cancel' => $order->status === OrderStatus::Pending,
             'can_confirm_receipt' => $order->status === OrderStatus::Delivered,
             'placed_at' => $order->placed_at,
@@ -298,6 +300,8 @@ class CustomerMobileController extends BaseApiController
             'items.*.product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'payment_method' => ['nullable', Rule::in([PaymentMethod::Cash->value, PaymentMethod::Wallet->value])],
+            // What the cafe wants the office and the driver to know ("اتركه عند الباب الخلفي").
+            'note' => ['nullable', 'string', 'max:500'],
         ]);
 
         $address = $this->addressScope()->find($data['address_id']);
@@ -306,7 +310,7 @@ class CustomerMobileController extends BaseApiController
         }
 
         // ponytail: prices always come from the variant; client-sent prices are ignored
-        $order = $placement->place(auth()->user(), $address, $data['items'], OrderSource::App, null, null, PaymentMethod::from($data['payment_method'] ?? 'cash'));
+        $order = $placement->place(auth()->user(), $address, $data['items'], OrderSource::App, null, null, PaymentMethod::from($data['payment_method'] ?? 'cash'), $data['note'] ?? null);
 
         return $this->orderCreatedResponse($order);
     }
@@ -963,7 +967,8 @@ class CustomerMobileController extends BaseApiController
      *     @OA\RequestBody(required=true, @OA\JsonContent(required={"address_id"},
      *
      *         @OA\Property(property="address_id", type="integer"),
-     *         @OA\Property(property="payment_method", type="string", enum={"cash","wallet"}, default="cash", description="wallet = pay the full total from the wallet now"))),
+     *         @OA\Property(property="payment_method", type="string", enum={"cash","wallet"}, default="cash", description="wallet = pay the full total from the wallet now"),
+     *         @OA\Property(property="note", type="string", nullable=true, maxLength=500, example="اتركه عند الباب الخلفي", description="For the office and the driver; shown on the order, the driver's screen and the invoice"))),
      *
      *     @OA\Response(response=201, description="The cart became an order and was emptied. Stock is already deducted.",
      *
@@ -986,6 +991,8 @@ class CustomerMobileController extends BaseApiController
         $data = $request->validate([
             'address_id' => ['required', 'integer'],
             'payment_method' => ['nullable', Rule::in([PaymentMethod::Cash->value, PaymentMethod::Wallet->value])],
+            // What the cafe wants the office and the driver to know ("اتركه عند الباب الخلفي").
+            'note' => ['nullable', 'string', 'max:500'],
         ]);
 
         $cart = $this->shoppingCart();
@@ -996,7 +1003,7 @@ class CustomerMobileController extends BaseApiController
         $address = $this->addressScope()->findOrFail($data['address_id']);
 
         $order = DB::transaction(function () use ($placement, $cart, $address, $data) {
-            $order = $placement->place(auth()->user(), $address, $cart->items->toArray(), OrderSource::App, $cart, null, PaymentMethod::from($data['payment_method'] ?? 'cash'));
+            $order = $placement->place(auth()->user(), $address, $cart->items->toArray(), OrderSource::App, $cart, null, PaymentMethod::from($data['payment_method'] ?? 'cash'), $data['note'] ?? null);
             $cart->items()->delete();
 
             return $order;

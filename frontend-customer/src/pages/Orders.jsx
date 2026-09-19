@@ -7,6 +7,7 @@ const statusLabels = {
   confirmed: 'مؤكد',
   preparing: 'قيد التجهيز',
   out_for_delivery: 'في الطريق',
+  delivery_failed: 'تعذّر التوصيل',
   delivered: 'تم التوصيل',
   received: 'تم الاستلام',
   cancellation_requested: 'طلب إلغاء',

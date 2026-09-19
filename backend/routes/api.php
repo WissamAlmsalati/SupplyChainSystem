@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\DelegateCustodyController;
 use App\Http\Controllers\Api\DelegateMobileController;
 use App\Http\Controllers\Api\DelegateWalletController;
 use App\Http\Controllers\Api\DeliveryZoneController;
+use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\FeaturedSectionController;
 use App\Http\Controllers\Api\InventoryController;
@@ -66,6 +67,9 @@ use Illuminate\Support\Facades\Route;
 $account = function () {
     Route::get('me', [AuthController::class, 'me'])->name('me');
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+    // The FCM token of this install, so there is somewhere to push to.
+    Route::post('devices', [DeviceController::class, 'store'])->name('devices.store');
+    Route::delete('devices', [DeviceController::class, 'destroy'])->name('devices.destroy');
     Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
     Route::match(['patch', 'put'], 'notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
     Route::apiResource('notifications', NotificationController::class)->only(['index', 'show', 'destroy']);
@@ -191,6 +195,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () use ($account
         });
 
         // Announcements from the dashboard to customers/delegates/admins (NOTIFICATIONS_SEND).
+        Route::post('devices', [DeviceController::class, 'store'])->name('devices.store');
+        Route::delete('devices', [DeviceController::class, 'destroy'])->name('devices.destroy');
         Route::post('notifications/send', [NotificationController::class, 'send'])->name('notifications.send');
         Route::get('notifications/sent', [NotificationController::class, 'sent'])->name('notifications.sent');
         Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
