@@ -195,11 +195,6 @@ export default function ProductDetail() {
           {selectedVariant && (
             <div className="space-y-1 text-lg font-semibold text-foreground">
               <div>السعر: {formatMoney(selectedVariant.price)} د.ل</div>
-              {selectedVariant.cost_price && (
-                <div className="text-sm font-normal text-muted">
-                  تكلفة: {formatMoney(selectedVariant.cost_price)} د.ل
-                </div>
-              )}
               {selectedVariant.sku && (
                 <div className="text-sm font-normal text-muted">SKU: {selectedVariant.sku}</div>
               )}

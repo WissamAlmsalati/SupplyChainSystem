@@ -119,7 +119,7 @@ export default function Map() {
 
     mapInstanceRef.current = map
 
-    echo.channel('delegates.locations')
+    echo.private('delegates.locations')
       .listen('.delegate.location.updated', (e) => {
         setLiveDelegates((prev) => {
           const filtered = prev.filter((d) => d.id !== e.id)
@@ -135,7 +135,7 @@ export default function Map() {
       })
 
     return () => {
-      echo.leaveChannel('delegates.locations')
+      echo.leave('delegates.locations')
     }
   }, [])
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -71,6 +72,14 @@ class CheckPermission
             return response()->json(['message' => 'يجب تسجيل الدخول'], 401);
         }
 
+        // A switched-off account is locked out now, not when its token happens
+        // to expire: a suspended delegate must not keep recording collections.
+        if (! $user->is_active) {
+            $user->currentAccessToken()?->delete();
+
+            return response()->json(['success' => false, 'message' => 'الحساب غير نشط'], 403, [], JSON_UNESCAPED_UNICODE);
+        }
+
         if ($user->userType?->name === 'super_admin') {
             return $next($request);
         }
@@ -81,6 +90,16 @@ class CheckPermission
 
         if ($code === null) {
             return $next($request);
+        }
+
+        // ponytail: the app roles hold codes like ORDERS_VIEW for historic
+        // reasons, and the dashboard's routes do not scope by owner the way
+        // customer.* and delegate.* do. With only the code check, a cafe could
+        // download any cafe's invoice and a delegate could read and reassign
+        // every order. Their apps live entirely under their own prefixes, so a
+        // dashboard route is never theirs to call, whatever codes they hold.
+        if ($user->hasRole(UserRole::Customer, UserRole::Delegate)) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403, [], JSON_UNESCAPED_UNICODE);
         }
 
         $user->loadMissing('userType.permissions');

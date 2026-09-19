@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\CheckPermission;
+use App\Http\Middleware\Idempotency;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -16,15 +18,17 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
-        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
         apiPrefix: 'api',
     )
+    // The socket handshake is authorised with the same bearer token as the API
+    // (the dashboard has no session cookie), at /api/v1/broadcasting/auth.
+    ->withBroadcasting(__DIR__.'/../routes/channels.php', ['prefix' => 'api/v1', 'middleware' => ['auth:sanctum']])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn ($request) => $request->is('api/*') ? null : '/login');
         $middleware->alias([
-            'permission' => \App\Http\Middleware\CheckPermission::class,
-            'idempotent' => \App\Http\Middleware\Idempotency::class,
+            'permission' => CheckPermission::class,
+            'idempotent' => Idempotency::class,
         ]);
 
         $proxies = env('TRUSTED_PROXIES');

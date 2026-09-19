@@ -173,7 +173,9 @@ class AuthController extends BaseApiController
             'name' => $validated['name'],
             'email' => $validated['email'] ?? null,
             'phone_number' => $validated['phone_number'],
-            'password' => $validated['password'],
+            // Hashed before it is stored: this row waits for the OTP, and a
+            // password must not sit in the database in the clear meanwhile.
+            'password' => Hash::make($validated['password']),
             'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
         ];
@@ -234,7 +236,8 @@ class AuthController extends BaseApiController
             'name' => $record->payload['name'],
             'email' => $record->payload['email'] ?? null,
             'mobile_number' => $record->payload['phone_number'],
-            'password' => Hash::make($record->payload['password']),
+            // Records issued before passwords were hashed at registration still hold the plain one.
+            'password' => Hash::isHashed($record->payload['password']) ? $record->payload['password'] : Hash::make($record->payload['password']),
             'user_type_id' => $customerType->id,
             'is_active' => false,
         ]);

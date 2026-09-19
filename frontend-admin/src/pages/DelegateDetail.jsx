@@ -75,7 +75,7 @@ export default function DelegateDetail() {
 
     mapInstanceRef.current = map
 
-    echo.channel('delegates.locations')
+    echo.private('delegates.locations')
       .listen('.delegate.location.updated', (e) => {
         if (String(e.id) === String(id)) {
           setDelegate((prev) =>
@@ -93,7 +93,7 @@ export default function DelegateDetail() {
       })
 
     return () => {
-      echo.leaveChannel('delegates.locations')
+      echo.leave('delegates.locations')
     }
   }, [loading, delegate, id])
 

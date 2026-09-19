@@ -46,6 +46,16 @@ class AppUser extends Authenticatable
             if ($user->wasChanged('user_type_id')) {
                 $user->ensureProfile();
             }
+            // Switching an account off, or changing its password, must end the
+            // sessions that were opened before: a stolen or lent phone stays
+            // signed in otherwise. The session making the change survives.
+            if ($user->wasChanged('is_active') && ! $user->is_active) {
+                $user->tokens()->delete();
+            } elseif ($user->wasChanged('password')) {
+                // The session that is changing its own password stays signed in.
+                $current = auth()->id() === $user->id ? auth()->user()?->currentAccessToken()?->id : null;
+                $user->tokens()->when($current, fn ($q) => $q->where('id', '!=', $current))->delete();
+            }
         });
     }
 

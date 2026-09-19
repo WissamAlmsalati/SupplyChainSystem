@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Api\ProductRequest;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\ProductVariant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,10 +58,20 @@ class ProductController extends BaseApiController
 
     public function show(Product $product): JsonResponse
     {
-        return $this->jsonResponse($product->load([
-            'category', 'allImages', 'images',
-            'variants.images', 'variants.inventories.warehouse',
-        ]));
+        // This route is open. The dashboard gets stock per warehouse; anyone
+        // else gets only how many can be ordered, not where the company keeps them.
+        if (ProductVariant::viewerSeesCost()) {
+            return $this->jsonResponse($product->load([
+                'category', 'allImages', 'images',
+                'variants.images', 'variants.inventories.warehouse',
+            ]));
+        }
+
+        $product->load(['category', 'images', 'variants' => fn ($q) => $q->where('is_active', true), 'variants.images']);
+        $product->variants->loadSum('inventories as in_stock', 'quantity');
+        $product->variants->each(fn ($v) => $v->setAttribute('in_stock', (int) $v->in_stock));
+
+        return $this->jsonResponse($product);
     }
 
     public function update(ProductRequest $request, Product $product): JsonResponse

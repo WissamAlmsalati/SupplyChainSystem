@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Auth;
 
 trait LogsActivity
 {
+    /** Never written to the log, whatever model they are on. */
+    private static array $neverLogged = ['password', 'remember_token', 'otp', 'token'];
+
     public static function bootLogsActivity(): void
     {
         static::created(function ($model) {
@@ -33,11 +36,18 @@ trait LogsActivity
             ?? null;
 
         $description = match ($action) {
-            'created' => "{$actionLabel}: {$entityType}" . ($modelName ? " ({$modelName})" : ''),
-            'updated' => "{$actionLabel}: {$entityType}" . ($modelName ? " ({$modelName})" : ''),
-            'deleted' => "{$actionLabel}: {$entityType}" . ($modelName ? " ({$modelName})" : ''),
+            'created' => "{$actionLabel}: {$entityType}".($modelName ? " ({$modelName})" : ''),
+            'updated' => "{$actionLabel}: {$entityType}".($modelName ? " ({$modelName})" : ''),
+            'deleted' => "{$actionLabel}: {$entityType}".($modelName ? " ({$modelName})" : ''),
             default => "{$actionLabel}: {$entityType}",
         };
+
+        // getChanges() ignores $hidden, so secrets are dropped by name: a log
+        // page is read by many people and is no place for a password hash.
+        $changes = array_diff_key($model->getChanges(), array_flip(self::$neverLogged));
+        if ($action === 'updated' && array_diff_key($changes, ['updated_at' => 0]) === []) {
+            $changes = $model->wasChanged('password') ? ['password' => '••••••'] : $changes;
+        }
 
         ActivityLog::create([
             'user_id' => $user?->id,
@@ -48,7 +58,9 @@ trait LogsActivity
             'description' => $description,
             'metadata' => [
                 'name' => $modelName,
-                'changes' => $model->getChanges(),
+                'changes' => $changes,
+                // What it was before, so the log answers "changed from what?".
+                'before' => array_intersect_key($model->getOriginal(), $changes),
             ],
         ]);
     }

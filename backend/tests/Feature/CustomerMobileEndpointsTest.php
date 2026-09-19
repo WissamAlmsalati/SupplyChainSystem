@@ -338,11 +338,12 @@ class CustomerMobileEndpointsTest extends TestCase
         $this->assertCount(1, $res->json('data'));
     }
 
-    public function test_customer_inventory_list(): void
+    // The dashboard's stock list shows every warehouse; a cafe reads stock
+    // through /customer/products and /customer/cart/check-stock instead.
+    public function test_the_dashboard_inventory_list_is_not_the_customers_to_read(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/v1/inventory', ['Authorization' => "Bearer $token"]);
-        $res->assertOk();
+        $this->getJson('/api/v1/inventory', ['Authorization' => "Bearer $token"])->assertForbidden();
     }
 
     public function test_customer_can_list_delivery_zones_for_map(): void

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HidesCostFromApps;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProductVariant extends Model
 {
-    use HasFactory, LogsActivity, SoftDeletes;
+    use HasFactory, HidesCostFromApps, LogsActivity, SoftDeletes;
+
+    /** @see HidesCostFromApps */
+    protected array $costFields = ['cost_price'];
 
     protected $fillable = [
         'product_id',
@@ -66,5 +70,4 @@ class ProductVariant extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
-
 }
