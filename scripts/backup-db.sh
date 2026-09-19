@@ -17,6 +17,8 @@ CONTAINER="${CONTAINER:-cafe_supply_chain_db}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/cafe-supply-chain}"
 KEEP_DAYS="${KEEP_DAYS:-14}"
 OFFSITE="${OFFSITE:-}"
+# Where the app keeps uploaded files, relative to this script's repository.
+UPLOADS_DIR="${UPLOADS_DIR:-$(cd "$(dirname "$0")/.." && pwd)/backend/storage/app/public}"
 
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
@@ -40,12 +42,31 @@ mv "$tmp" "$file"
 chmod 600 "$file"
 echo "$(date '+%F %T') ok $file ($(du -h "$file" | cut -f1))"
 
+# Uploaded files: bank-transfer receipts and product images. They are the
+# evidence behind wallet top-ups, and a database dump alone cannot bring them back.
+files=""
+if [ -d "$UPLOADS_DIR" ]; then
+  files="$BACKUP_DIR/files_$stamp.tar.gz"
+  if tar -czf "$files.partial" -C "$UPLOADS_DIR" . 2>/dev/null; then
+    mv "$files.partial" "$files"; chmod 600 "$files"
+    echo "$(date '+%F %T') ok $files ($(du -h "$files" | cut -f1))"
+  else
+    rm -f "$files.partial"; files=""
+    echo "$(date '+%F %T') UPLOADS BACKUP FAILED" >&2
+  fi
+fi
+
 if [ -n "$OFFSITE" ]; then
-  sh -c "$OFFSITE" backup "$file" && echo "$(date '+%F %T') shipped offsite" || echo "$(date '+%F %T') OFFSITE COPY FAILED" >&2
+  for f in "$file" $files; do
+    sh -c "$OFFSITE" backup "$f" && echo "$(date '+%F %T') shipped offsite: $f" || echo "$(date '+%F %T') OFFSITE COPY FAILED: $f" >&2
+  done
 fi
 
 find "$BACKUP_DIR" -name 'db_*.sql.gz' -mtime +"$KEEP_DAYS" -delete
+find "$BACKUP_DIR" -name 'files_*.tar.gz' -mtime +"$KEEP_DAYS" -delete
 find "$BACKUP_DIR" -name '*.partial' -mmin +120 -delete
 
-# Restore:
+# Restore the files:
+#   tar -xzf files_2026-09-19_0315.tar.gz -C backend/storage/app/public
+# Restore the database:
 #   gunzip -c db_2026-09-19_0315.sql.gz | docker exec -i cafe_supply_chain_db sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"'

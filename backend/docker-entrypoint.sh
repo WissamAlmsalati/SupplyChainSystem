@@ -34,11 +34,17 @@ if [ "$APP_ENV" = "production" ]; then
   php artisan route:cache
 fi
 
-# Run migrations
-php artisan migrate --force
+# Run migrations, from the web container only. Worker, scheduler and reverb
+# start at the same moment from the same image; when all four migrated, they
+# raced over CREATE TABLE (which MySQL cannot roll back) and a deploy was left
+# half-migrated. --isolated also holds a lock, so two web containers queue.
+case "$CONTAINER_ROLE" in
+  worker|scheduler|reverb) echo "Role $CONTAINER_ROLE: leaving migrations to the web container." ;;
+  *) php artisan migrate --force --isolated ;;
+esac
 
 # Seed only if no admin user exists and we are in local/development
-if [ "$APP_ENV" = "local" ] || [ "$APP_ENV" = "development" ]; then
+if { [ "$APP_ENV" = "local" ] || [ "$APP_ENV" = "development" ]; } && [ -z "$CONTAINER_ROLE" -o "$CONTAINER_ROLE" = "web" ]; then
   if ! php artisan tinker --execute="echo App\\Models\\AppUser::where('email', 'admin@example.com')->exists() ? '1' : '0';" 2>/dev/null | grep -q "1"; then
     echo "Seeding database..."
     php artisan db:seed --force

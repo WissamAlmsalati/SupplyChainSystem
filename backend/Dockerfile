@@ -49,6 +49,7 @@ WORKDIR /var/www
 FROM base AS dev
 
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+COPY docker/php/uploads.ini "$PHP_INI_DIR/conf.d/uploads.ini"
 # ponytail: dev opcache disabled to pick up bind-mount changes immediately
 RUN echo "opcache.enable=0" > "$PHP_INI_DIR/conf.d/opcache-dev.ini"
 
@@ -81,6 +82,7 @@ FROM base AS prod
 
 # PHP production tuning
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+COPY docker/php/uploads.ini "$PHP_INI_DIR/conf.d/uploads.ini"
 COPY docker/php/opcache.ini "$PHP_INI_DIR/conf.d/opcache.ini"
 
 # Copy composer files first for better layer caching

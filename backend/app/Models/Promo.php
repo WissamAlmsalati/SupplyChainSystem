@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Placeholder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,11 +21,11 @@ class Promo extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? '/storage/' . ltrim($this->image, '/') : \App\Support\Placeholder::url('promo');
+        return $this->image ? '/storage/'.ltrim($this->image, '/') : Placeholder::url('promo');
     }
 
     public function getImageTypeAttribute(): string
     {
-        return \App\Support\Placeholder::typeFor($this->image_url);
+        return Placeholder::typeFor($this->image_url);
     }
 }

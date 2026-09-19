@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Placeholder;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -44,13 +45,13 @@ class Product extends Model
         $image = $own->firstWhere('is_primary', true) ?? $own->first()
             ?? $images->firstWhere('is_primary', true) ?? $images->first();
 
-        return $image?->image_url ?? \App\Support\Placeholder::url('product');
+        return $image?->image_url ?? Placeholder::url('product');
     }
 
     // Whether image_url points at an uploaded picture or the default artwork.
     public function getImageTypeAttribute(): string
     {
-        return \App\Support\Placeholder::typeFor($this->image_url);
+        return Placeholder::typeFor($this->image_url);
     }
 
     public function category(): BelongsTo

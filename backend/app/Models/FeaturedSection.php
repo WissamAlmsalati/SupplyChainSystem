@@ -6,9 +6,9 @@ use App\Enums\FeaturedSectionSource;
 use App\Services\ProductSearch;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Http\Request;
 
 class FeaturedSection extends Model
 {

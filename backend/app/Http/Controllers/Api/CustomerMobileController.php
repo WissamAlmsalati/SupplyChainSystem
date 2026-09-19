@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Support\BusinessTime;
 use App\Enums\CartType;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
@@ -19,14 +18,17 @@ use App\Models\Order;
 use App\Models\PremiumFeature;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\AddressZoneResolver;
 use App\Services\H3Service;
 use App\Services\OrderPlacementService;
 use App\Services\ProductSearch;
 use App\Services\StockService;
+use App\Support\BusinessTime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CustomerMobileController extends BaseApiController
 {
@@ -333,6 +335,13 @@ class CustomerMobileController extends BaseApiController
         ]]);
     }
 
+    // The zone is found from the coordinates, never taken from the request: it sets the fee.
+    private function zoneFor(float $latitude, float $longitude): DeliveryZone
+    {
+        return app(AddressZoneResolver::class)->resolve($latitude, $longitude)
+            ?? throw ValidationException::withMessages(['latitude' => 'موقعك خارج نطاق التوصيل حالياً']);
+    }
+
     // Delivery price for the customer's registered location — used when the
     // customer has no addresses yet.
     // ponytail: delivery zones are drawn on the res-4 map grid, so one cell
@@ -377,11 +386,16 @@ class CustomerMobileController extends BaseApiController
      */
     public function storeAddress(AddressRequest $request): JsonResponse
     {
-        if (! PremiumFeature::isActive('customer_branches')) {
-            return $this->jsonResponse(['message' => 'إضافة عناوين غير متاحة — الميزة معطلة'], 403);
+        // ponytail: the branches feature sells MORE addresses. The first one is
+        // not an extra, an order cannot be placed without it, so it is always allowed.
+        if ($this->addressScope()->exists() && ! PremiumFeature::isActive('customer_branches')) {
+            return $this->jsonResponse(['message' => 'إضافة فروع أخرى غير متاحة في باقتك'], 403);
         }
 
-        $address = Address::create($request->validated() + ['user_id' => auth()->id()]);
+        $data = $request->validated();
+        $data['delivery_zone_id'] = $this->zoneFor((float) $data['latitude'], (float) $data['longitude'])->id;
+
+        $address = Address::create($data + ['user_id' => auth()->id()]);
 
         return $this->jsonResponse([
             'id' => $address->id,
@@ -402,7 +416,13 @@ class CustomerMobileController extends BaseApiController
     public function updateAddress(AddressRequest $request, int $id): JsonResponse
     {
         $address = $this->addressScope()->findOrFail($id);
-        $address->update($request->validated());
+        $data = $request->validated();
+        unset($data['delivery_zone_id']);
+        // Moving the pin can move the address into another zone, or out of all of them.
+        if (array_key_exists('latitude', $data) || array_key_exists('longitude', $data)) {
+            $data['delivery_zone_id'] = $this->zoneFor((float) ($data['latitude'] ?? $address->latitude), (float) ($data['longitude'] ?? $address->longitude))->id;
+        }
+        $address->update($data);
 
         return $this->jsonResponse($address->load('deliveryZone'));
     }
@@ -443,6 +463,9 @@ class CustomerMobileController extends BaseApiController
         return $this->jsonResponse([
             'user' => $this->profilePayload(),
             'addresses' => $this->addressScope()->with('deliveryZone:id,name,delivery_price')->get(),
+            // The rule lives here so the apps do not re-derive it: the first address is
+            // always allowed, further ones need the branches feature.
+            'can_add_address' => ! $this->addressScope()->exists() || PremiumFeature::isActive('customer_branches'),
         ]);
     }
 
@@ -653,10 +676,14 @@ class CustomerMobileController extends BaseApiController
      *
      * **View all:** when `has_more` is `true`, show a «عرض الكل (products_total)» button that opens `GET /customer/featured-sections/{id}/products` (see the guide at the top of Customer Products).",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
      *     @OA\Parameter(name="per_page", in="query", description="Sections per page", @OA\Schema(type="integer", default=10, maximum=50)),
+     *
      *     @OA\Response(response=200, description="Sections",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="data", type="array", @OA\Items(
      *                 @OA\Property(property="id", type="integer"),
      *                 @OA\Property(property="title", type="string", example="الأكثر مبيعاً"),
@@ -720,9 +747,11 @@ class CustomerMobileController extends BaseApiController
      *
      * Page 1 starts from the beginning of the section (it repeats the products already shown on the home screen, in the same order) — render the response as-is. The order is fixed by the section type. Returns 404 when the section is hidden or deleted.",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer", default=1)),
      *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=20, maximum=100)),
+     *
      *     @OA\Response(response=200, description="section {id,title,source,sort}, data: product cards in the section's order, meta: pagination"),
      *     @OA\Response(response=404, description="Section not found or hidden"))
      */
@@ -852,7 +881,9 @@ class CustomerMobileController extends BaseApiController
     public function addCartItem(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'product_variant_id' => ['required', 'integer', Rule::exists('product_variants', 'id')->where('is_active', true)->whereNull('deleted_at')],
+            'product_variant_id' => ['required', 'integer', Rule::exists('product_variants', 'id')->where('is_active', true)->whereNull('deleted_at'),
+                // ...and its product must still be on sale.
+                fn ($attribute, $value, $fail) => ProductVariant::whereKey($value)->whereHas('product', fn ($q) => $q->where('is_active', true))->exists() ?: $fail('هذا المنتج لم يعد متاحاً')],
             'quantity' => ['required', 'integer', 'min:1'],
         ]);
 

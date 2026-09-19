@@ -7,6 +7,7 @@ use App\Models\AppUser;
 use App\Models\Category;
 use App\Models\DeliveryZone;
 use App\Models\Inventory;
+use App\Models\Order;
 use App\Models\Permission;
 use App\Models\PremiumFeature;
 use App\Models\Product;
@@ -21,8 +22,11 @@ class CustomerMobileEndpointsTest extends TestCase
     use RefreshDatabase;
 
     protected AppUser $customerUser;
+
     protected Address $address;
+
     protected ProductVariant $variant;
+
     protected Warehouse $warehouse;
 
     protected function setUp(): void
@@ -112,7 +116,7 @@ class CustomerMobileEndpointsTest extends TestCase
         $res->assertOk();
         $this->assertArrayHasKey('token', $res->json());
 
-        return $res->json('token');;
+        return $res->json('token');
     }
 
     public function test_customer_login_returns_token_without_permissions(): void
@@ -162,7 +166,7 @@ class CustomerMobileEndpointsTest extends TestCase
     public function test_customer_profile_without_addresses(): void
     {
         $token = $this->token();
-        \App\Models\Address::query()->delete();
+        Address::query()->delete();
 
         $this->getJson('/api/v1/customer/profile', ['Authorization' => "Bearer $token"])
             ->assertOk()
@@ -186,12 +190,14 @@ class CustomerMobileEndpointsTest extends TestCase
     public function test_customer_address_create(): void
     {
         $token = $this->token();
+        // The point has to fall inside a delivery zone: this is its res-4 cell.
+        DeliveryZone::create(['hex_id' => '84384b3ffffffff', 'name' => 'طرابلس', 'delivery_price' => 7, 'is_active' => true]);
         $res = $this->postJson('/api/v1/customer/addresses', [
             'name' => 'عنوان جديد',
-            'city' => 'بنغازي',
+            'city' => 'طرابلس',
             'street' => 'شارع جمال',
-            'latitude' => 27.1,
-            'longitude' => 17.1,
+            'latitude' => 32.88,
+            'longitude' => 13.19,
             'contact_phones' => ['0912345678'],
             'is_active' => true,
         ], ['Authorization' => "Bearer $token"]);
@@ -206,7 +212,7 @@ class CustomerMobileEndpointsTest extends TestCase
             'address_id' => $this->address->id,
             'items' => [['product_variant_id' => $this->variant->id, 'quantity' => $quantity, 'unit_price' => 10]],
         ], ['Authorization' => "Bearer $token"])->assertCreated()->json('data.id')
-            ?? \App\Models\Order::latest('id')->value('id');
+            ?? Order::latest('id')->value('id');
     }
 
     public function test_customer_addresses_list_includes_details_without_orders(): void
@@ -225,7 +231,7 @@ class CustomerMobileEndpointsTest extends TestCase
         $this->assertArrayNotHasKey('stats', $address);
         $this->assertArrayNotHasKey('last_order', $address);
 
-        $this->getJson('/api/v1/customer/addresses/' . $this->address->id, ['Authorization' => "Bearer $token"])
+        $this->getJson('/api/v1/customer/addresses/'.$this->address->id, ['Authorization' => "Bearer $token"])
             ->assertOk()
             ->assertJsonPath('id', $this->address->id)
             ->assertJsonPath('full_address', 'الشارع الرئيسي، طرابلس')
@@ -237,9 +243,9 @@ class CustomerMobileEndpointsTest extends TestCase
         $token = $this->token();
         $pending = $this->placeOrder($token, 3);
         $cancelled = $this->placeOrder($token, 1);
-        \App\Models\Order::find($cancelled)->update(['status' => 'cancelled']);
+        Order::find($cancelled)->update(['status' => 'cancelled']);
 
-        $url = '/api/v1/customer/addresses/' . $this->address->id . '/orders';
+        $url = '/api/v1/customer/addresses/'.$this->address->id.'/orders';
         $res = $this->getJson($url, ['Authorization' => "Bearer $token"])->assertOk();
 
         $res->assertJsonMissingPath('address')
@@ -257,16 +263,16 @@ class CustomerMobileEndpointsTest extends TestCase
         $this->assertArrayNotHasKey('user', $card);
 
         // Tab filter narrows the list but keeps the tab counts.
-        $this->getJson($url . '?group=cancelled', ['Authorization' => "Bearer $token"])
+        $this->getJson($url.'?group=cancelled', ['Authorization' => "Bearer $token"])
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $cancelled)
             ->assertJsonPath('meta.counts.all', 2);
 
-        $this->getJson($url . '?status=pending,bogus', ['Authorization' => "Bearer $token"])
+        $this->getJson($url.'?status=pending,bogus', ['Authorization' => "Bearer $token"])
             ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.applied.status', ['pending']);
 
-        $this->getJson($url . '?group=wrong', ['Authorization' => "Bearer $token"])->assertStatus(422);
+        $this->getJson($url.'?group=wrong', ['Authorization' => "Bearer $token"])->assertStatus(422);
     }
 
     public function test_customer_cannot_read_another_users_address_orders(): void
@@ -280,8 +286,8 @@ class CustomerMobileEndpointsTest extends TestCase
             'name' => 'فرع غريب', 'city' => 'مصراتة', 'street' => 'ش', 'latitude' => 27, 'longitude' => 17,
         ]);
 
-        $this->getJson('/api/v1/customer/addresses/' . $other->id . '/orders', ['Authorization' => "Bearer $token"])->assertNotFound();
-        $this->getJson('/api/v1/customer/addresses/' . $other->id, ['Authorization' => "Bearer $token"])->assertNotFound();
+        $this->getJson('/api/v1/customer/addresses/'.$other->id.'/orders', ['Authorization' => "Bearer $token"])->assertNotFound();
+        $this->getJson('/api/v1/customer/addresses/'.$other->id, ['Authorization' => "Bearer $token"])->assertNotFound();
     }
 
     public function test_customer_orders_list(): void
@@ -333,7 +339,7 @@ class CustomerMobileEndpointsTest extends TestCase
     public function test_customer_product_variants(): void
     {
         $token = $this->token();
-        $res = $this->getJson('/api/v1/customer/products/' . $this->variant->product_id . '/variants', ['Authorization' => "Bearer $token"]);
+        $res = $this->getJson('/api/v1/customer/products/'.$this->variant->product_id.'/variants', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
         $this->assertCount(1, $res->json('data'));
     }

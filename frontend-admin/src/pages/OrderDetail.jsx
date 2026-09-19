@@ -747,6 +747,7 @@ export default function OrderDetail() {
             <div className="rounded-lg bg-stone-50 p-4">
               <div className="mb-2 text-[11px] font-bold text-primary">تفاصيل الطلب</div>
               <div className="flex justify-between gap-2"><span className="text-stone-500">الحالة</span><span className="font-semibold">{statusLabels[order.status] || order.status}</span></div>
+              {order.warehouse?.name && <div className="flex justify-between gap-2"><span className="text-stone-500">يُجهَّز من</span><span className="font-semibold">{order.warehouse.name}</span></div>}
               <div className="flex justify-between gap-2"><span className="text-stone-500">المصدر</span><span className="font-semibold">{order.source === 'dashboard' ? 'لوحة التحكم' : 'التطبيق'}</span></div>
               <div className="flex justify-between gap-2"><span className="text-stone-500">المندوب</span><span className="font-semibold">{order.delegate?.name ?? '-'}</span></div>
               <div className="flex justify-between gap-2"><span className="text-stone-500">الدفع</span><span className="font-semibold">{paymentMethodsLabel}</span></div>

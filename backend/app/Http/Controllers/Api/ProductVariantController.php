@@ -77,6 +77,12 @@ class ProductVariantController extends BaseApiController
     // Soft delete: the variant stays referenced by past orders and stock movements.
     public function destroy(ProductVariant $productVariant): JsonResponse
     {
+        // Same rule as a warehouse: goods on a shelf must keep a name. Write the
+        // stock off or sell it first, or just switch the size off.
+        if ($productVariant->inventories()->where('quantity', '>', 0)->exists()) {
+            return $this->jsonResponse(['message' => 'لا يمكن حذف حجم ما زال له مخزون. صفّر مخزونه أولاً أو عطّله بدل حذفه.'], 422);
+        }
+
         $productVariant->delete();
 
         return $this->jsonResponse(null, 204);

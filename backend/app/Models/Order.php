@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
-use App\Support\BusinessTime;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Services\CustodyService;
 use App\Services\StockService;
 use App\Services\WalletService;
+use App\Support\BusinessTime;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -148,6 +149,11 @@ class Order extends Model
         return $this->belongsTo(Address::class)->withTrashed();
     }
 
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class)->withTrashed();
+    }
+
     public function deliveryZone(): BelongsTo
     {
         return $this->belongsTo(DeliveryZone::class);
@@ -190,7 +196,7 @@ class Order extends Model
         $returned = $cents($this->returns()->sum('total_value'));
         $refunded = $cents($this->returns()->sum('refund_amount'));
         $paid = $cents($this->payments()
-            ->where('status', \App\Enums\PaymentStatus::Paid->value)
+            ->where('status', PaymentStatus::Paid->value)
             ->when($exceptPaymentId, fn ($q) => $q->where('id', '!=', $exceptPaymentId))
             ->sum('amount'));
 
@@ -214,7 +220,7 @@ class Order extends Model
     public static function generateOrderNumber(?Carbon $at = null): string
     {
         // Shown to people in Libya, so the hour is theirs, not the server's UTC.
-        $prefix = 'ORD-'.\App\Support\BusinessTime::format($at ?? now(), 'Y-m-d-H').'-';
+        $prefix = 'ORD-'.BusinessTime::format($at ?? now(), 'Y-m-d-H').'-';
         $maxAttempts = 10;
 
         for ($i = 0; $i < $maxAttempts; $i++) {

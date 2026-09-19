@@ -37,7 +37,6 @@ class Warehouse extends Model
         return $this->hasMany(StockMovement::class);
     }
 
-
     public function deliveryZones(): HasMany
     {
         return $this->hasMany(DeliveryZone::class);

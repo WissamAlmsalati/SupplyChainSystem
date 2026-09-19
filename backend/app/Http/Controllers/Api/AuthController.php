@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Api\Auth\CustomerRegisterRequest;
 use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Http\Requests\Api\Auth\RegisterRequest;
+use App\Models\Address;
 use App\Models\AppUser;
 use App\Models\Notification;
 use App\Models\PasswordResetOtp;
 use App\Models\PremiumFeature;
 use App\Models\UserType;
+use App\Services\AddressZoneResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -247,6 +249,24 @@ class AuthController extends BaseApiController
             'latitude' => $record->payload['latitude'] ?? null,
             'longitude' => $record->payload['longitude'] ?? null,
         ]);
+
+        // The place they pinned while registering is where they want deliveries:
+        // make it their first address, so a new cafe can order without first
+        // discovering that it has to add one. Outside every zone, it is left for
+        // them to add once coverage reaches them.
+        if (($record->payload['latitude'] ?? null) !== null && ($record->payload['longitude'] ?? null) !== null) {
+            $zone = rescue(fn () => app(AddressZoneResolver::class)->resolve((float) $record->payload['latitude'], (float) $record->payload['longitude']), null, false);
+            if ($zone) {
+                Address::create([
+                    'user_id' => $user->id,
+                    'name' => $record->payload['name'],
+                    'latitude' => $record->payload['latitude'],
+                    'longitude' => $record->payload['longitude'],
+                    'delivery_zone_id' => $zone->id,
+                    'contact_phones' => [$record->payload['phone_number']],
+                ]);
+            }
+        }
 
         $record->delete();
 

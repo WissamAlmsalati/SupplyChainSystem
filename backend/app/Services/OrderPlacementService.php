@@ -49,9 +49,12 @@ class OrderPlacementService
             throw ValidationException::withMessages(['items' => 'السلة فارغة']);
         }
 
+        // A size is sellable only while its product is: hiding or deleting a
+        // product must stop its sizes being ordered from an old cart or the API.
         $variants = ProductVariant::with('product')
             ->whereIn('id', array_keys($quantities))
             ->where('is_active', true)
+            ->whereHas('product', fn ($q) => $q->where('is_active', true))
             ->get()
             ->keyBy('id');
 
@@ -63,6 +66,13 @@ class OrderPlacementService
         }
 
         $address->loadMissing('deliveryZone');
+
+        // An order from the app to an address with no zone, or a zone that was
+        // switched off, used to go through with a delivery fee of zero. The
+        // office may still send one there on purpose from the dashboard.
+        if ($source === OrderSource::App && ! $address->deliveryZone?->is_active) {
+            throw ValidationException::withMessages(['address_id' => 'هذا العنوان خارج نطاق التوصيل حالياً']);
+        }
 
         $order = DB::transaction(function () use ($customer, $address, $quantities, $variants, $source, $cart, $delegateId, $paymentMethod) {
             $lines = collect($quantities)->map(fn (int $qty, int $variantId) => [
@@ -90,7 +100,8 @@ class OrderPlacementService
             $order->fillDeliveryAddress($address)->save();
             $order->items()->createMany($lines->all());
 
-            $this->stock->drainForOrder($order, $quantities);
+            $warehouseId = $this->stock->drainForOrder($order, $quantities, $address->deliveryZone?->warehouse_id);
+            $order->forceFill(['warehouse_id' => $warehouseId])->saveQuietly();
 
             // Wallet orders are paid in full now; a short balance rolls everything back.
             if ($paymentMethod === PaymentMethod::Wallet) {

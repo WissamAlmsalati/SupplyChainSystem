@@ -55,7 +55,7 @@ class WalletTopup extends Model
 
     public function getReceiptUrlAttribute(): ?string
     {
-        return $this->receipt_path ? '/storage/' . ltrim($this->receipt_path, '/') : null;
+        return $this->receipt_path ? '/storage/'.ltrim($this->receipt_path, '/') : null;
     }
 
     public function wallet(): BelongsTo

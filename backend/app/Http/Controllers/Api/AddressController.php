@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Http\Requests\Api\AddressRequest;
 use App\Models\Address;
 use App\Models\PremiumFeature;
+use App\Services\AddressZoneResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -69,14 +70,22 @@ class AddressController extends BaseApiController
     {
         // ponytail: customer_branches premium feature gates address creation for everyone;
         // frontend hides the add button, this guard blocks direct API calls.
-        if (! PremiumFeature::isActive('customer_branches')) {
-            return $this->jsonResponse(['message' => 'إضافة عناوين غير متاحة — الميزة معطلة'], 403);
-        }
-
         $data = $request->validated();
 
         if ($this->isCustomer()) {
             $data['user_id'] = auth()->id();
+        }
+
+        // The feature limits extra branches; a customer's first address is always allowed.
+        if (Address::where('user_id', $data['user_id'])->exists() && ! PremiumFeature::isActive('customer_branches')) {
+            return $this->jsonResponse(['message' => 'إضافة فروع أخرى غير متاحة — الميزة معطلة'], 403);
+        }
+
+        // The point decides the zone. The office may still set one by hand for
+        // a place no zone covers yet; without either, the address has no fee.
+        $zone = app(AddressZoneResolver::class)->resolve((float) $data['latitude'], (float) $data['longitude']);
+        if ($zone) {
+            $data['delivery_zone_id'] = $zone->id;
         }
 
         $address = Address::create($data);
@@ -124,6 +133,13 @@ class AddressController extends BaseApiController
         $data = $request->validated();
         if ($this->isCustomer()) {
             $data['user_id'] = auth()->id();
+        }
+
+        if (array_key_exists('latitude', $data) || array_key_exists('longitude', $data)) {
+            $zone = app(AddressZoneResolver::class)->resolve((float) ($data['latitude'] ?? $address->latitude), (float) ($data['longitude'] ?? $address->longitude));
+            if ($zone) {
+                $data['delivery_zone_id'] = $zone->id;
+            }
         }
 
         $address->update($data);

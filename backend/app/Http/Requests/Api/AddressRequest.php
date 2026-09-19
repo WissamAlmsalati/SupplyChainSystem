@@ -24,7 +24,8 @@ class AddressRequest extends FormRequest
             'street' => ['nullable', 'string', 'max:200'],
             'latitude' => [$isStore ? 'required' : 'sometimes', 'numeric', 'between:-90,90'],
             'longitude' => [$isStore ? 'required' : 'sometimes', 'numeric', 'between:-180,180'],
-            'delivery_zone_id' => ['nullable', 'integer', 'exists:delivery_zones,id'],
+            // Customers never choose the zone: the server finds it from the coordinates.
+            'delivery_zone_id' => $isCustomer ? ['sometimes'] : ['nullable', 'integer', 'exists:delivery_zones,id'],
             'contact_phones' => ['nullable', 'array'],
             'contact_phones.*' => ['string', 'max:20'],
         ];

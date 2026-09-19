@@ -22,7 +22,12 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-cafe_pass}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_pass}
     ports:
-      - "3307:3306"
+      # Reachable from this machine only. The database and phpMyAdmin used to
+      # listen on every interface, with the default passwords below, which on
+      # a server with a public IP means anyone. From elsewhere, tunnel in:
+      #   ssh -L 3307:127.0.0.1:3307 -L 8080:127.0.0.1:8080 user@server
+      # Set DB_BIND / PMA_BIND=0.0.0.0 only on a machine behind a firewall.
+      - "${DB_BIND:-127.0.0.1}:3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
@@ -64,6 +69,8 @@ services:
     volumes:
       - .:/var/www
       - vendor:/var/www/vendor
+      # Upload limits; mounted so an existing image picks them up without a rebuild.
+      - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     networks:
       - cafe_network
     depends_on:
@@ -159,7 +166,7 @@ services:
       PMA_HOST: db
       PMA_PORT: 3306
     ports:
-      - "8080:80"
+      - "${PMA_BIND:-127.0.0.1}:8080:80"
     networks:
       - cafe_network
     depends_on:

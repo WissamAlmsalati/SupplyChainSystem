@@ -123,19 +123,26 @@ export default function Inventory() {
         const existing = findVariantByName(form.product_id, name)
         if (existing) {
           variantId = String(existing.id)
+          // Goods-in may bring a new cost or price. An empty field means "leave
+          // it as it is", never "erase it".
           await client.put(`/product-variants/${existing.id}`, {
             product_id: existing.product_id,
             sku: existing.sku,
             name: existing.name,
             price: form.price !== '' ? Number(form.price) : existing.price,
-            cost_price: form.cost_price ? Number(form.cost_price) : null,
-            barcode: form.barcode || null,
+            cost_price: form.cost_price !== '' ? Number(form.cost_price) : existing.cost_price,
+            barcode: form.barcode || existing.barcode || null,
           })
         } else {
+          // A new size with no price would go on sale for free.
+          if (!(Number(form.price) > 0)) {
+            setModalError('هذا حجم جديد لهذا المنتج، أدخل سعر بيعه قبل الحفظ.')
+            return
+          }
           const res = await client.post('/product-variants', {
             product_id: Number(form.product_id),
             name,
-            price: form.price ? Number(form.price) : 0,
+            price: Number(form.price),
             cost_price: form.cost_price ? Number(form.cost_price) : null,
             barcode: form.barcode || null,
             is_active: true,
@@ -143,19 +150,10 @@ export default function Inventory() {
           variantId = String(res.data?.data?.id ?? res.data?.id)
           setCreatedVariants((prev) => [...prev, res.data?.data ?? res.data])
         }
-      } else {
-        const v = variantById(variantId)
-        if (v) {
-          await client.put(`/product-variants/${v.id}`, {
-            product_id: v.product_id,
-            sku: v.sku,
-            name: v.name,
-            price: form.price !== '' ? Number(form.price) : v.price,
-            cost_price: form.cost_price ? Number(form.cost_price) : null,
-            barcode: form.barcode || null,
-          })
-        }
       }
+      // ponytail: a stock count only counts. It used to rewrite the size's
+      // price, cost and barcode on the way, which changed prices as a side
+      // effect and refused storekeepers who may count but not edit the catalogue.
       // POST receives goods (purchase movement with cost/expiry); PUT sets the counted quantity (adjustment).
       if (editing) {
         await update(editing.id, { quantity: Number(form.quantity), note: form.note || null })
@@ -179,7 +177,8 @@ export default function Inventory() {
       }
       close()
     } catch (err) {
-      setModalError(err.response?.data?.message || 'فشل الحفظ')
+      const errors = err.response?.data?.errors
+      setModalError(Object.values(errors ?? {})[0]?.[0] || err.response?.data?.message || 'فشل الحفظ')
     } finally {
       submitting.current = false
       setSaving(false)
@@ -372,7 +371,8 @@ export default function Inventory() {
             value={form.note}
             onChange={(e) => setForm({ ...form, note: e.target.value })}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/* Price, cost and barcode belong to goods-in and to the size's own page, not to a count. */}
+          {!editing && <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="سعر التكلفة"
               type="number"
@@ -389,12 +389,12 @@ export default function Inventory() {
               value={form.price}
               onChange={(e) => setForm({ ...form, price: e.target.value })}
             />
-          </div>
-          <Input
+          </div>}
+          {!editing && <Input
             label="Barcode"
             value={form.barcode}
             onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-          />
+          />}
           {modalError && <div className="text-sm text-danger">{modalError}</div>}
           <div className="flex items-center justify-end gap-2 mt-6">
             <Button type="button" variant="secondary" onClick={close}>إلغاء</Button>

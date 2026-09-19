@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import client from '../api/client'
 import { useCart } from '../context/CartContext'
 
@@ -209,7 +209,9 @@ export default function Cart() {
               <h2 className="mb-4 font-semibold text-foreground">ملخص الطلب</h2>
               <label className="mb-1.5 block text-sm font-medium text-muted">عنوان التوصيل</label>
               {addresses.length === 0 ? (
-                <div className="mb-4 text-sm text-danger">لا يوجد عنوان، أضف عنوانًا أولاً.</div>
+                <div className="mb-4 text-sm text-danger">
+                  لا يوجد عنوان توصيل بعد. <Link to="/addresses" className="font-bold underline">أضف عنوانك الآن</Link>
+                </div>
               ) : (
                 <select
                   value={addressId}

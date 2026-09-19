@@ -102,7 +102,6 @@ export default function Addresses() {
         ...form,
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
-        delivery_zone_id: deliveryZoneId,
         contact_phones: form.contact_phones.split('\n').map((p) => p.trim()).filter(Boolean),
       }
       if (!data.street) data.street = null
@@ -133,7 +132,8 @@ export default function Addresses() {
             <p className="mt-1 text-sm text-primary">سعر التوصيل لموقعك: {Number(deliveryPrice).toFixed(2)} د.ل</p>
           )}
         </div>
-        {branchesFeature && (
+        {/* The first address is always allowed; more of them need the branches feature. */}
+        {(branchesFeature || (!loading && addresses.length === 0)) && (
           <button
             onClick={openCreate}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"

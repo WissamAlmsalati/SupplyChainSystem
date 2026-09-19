@@ -12,7 +12,9 @@ use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\StockService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -24,9 +26,13 @@ class DatabaseDesignTest extends TestCase
     use RefreshDatabase;
 
     protected AppUser $customer;
+
     protected AppUser $admin;
+
     protected Address $address;
+
     protected ProductVariant $variant;
+
     protected Warehouse $warehouse;
 
     protected function setUp(): void
@@ -57,7 +63,7 @@ class DatabaseDesignTest extends TestCase
     {
         $this->app['auth']->forgetGuards();
 
-        return ['Authorization' => 'Bearer ' . $user->createToken('t')->plainTextToken];
+        return ['Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken];
     }
 
     private function asCustomer(): array
@@ -101,14 +107,14 @@ class DatabaseDesignTest extends TestCase
         $this->postJson('/api/v1/inventory', $payload, $this->asAdmin())->assertUnprocessable();
 
         $this->assertSame(150, $this->stockOnHand());
-        $this->assertSame(1, \App\Models\StockMovement::where('product_variant_id', $this->variant->id)->count());
+        $this->assertSame(1, StockMovement::where('product_variant_id', $this->variant->id)->count());
 
         // A different quantity is a real second delivery, not a duplicate.
         $this->postJson('/api/v1/inventory', ['quantity' => 40] + $payload, $this->asAdmin())->assertCreated();
         $this->assertSame(190, $this->stockOnHand());
 
         // And the same one is fine again once the window has passed.
-        \App\Models\StockMovement::query()->update(['created_at' => now()->subMinute()]);
+        StockMovement::query()->update(['created_at' => now()->subMinute()]);
         $this->postJson('/api/v1/inventory', $payload, $this->asAdmin())->assertCreated();
         $this->assertSame(340, $this->stockOnHand());
     }
@@ -148,7 +154,7 @@ class DatabaseDesignTest extends TestCase
             ->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('data.0.expiry_date', '2027-01-01');
 
         // Counting stock is an adjustment and cannot carry goods-in details.
-        $inventory = \App\Models\Inventory::first();
+        $inventory = Inventory::first();
         $this->putJson("/api/v1/inventory/{$inventory->id}", ['quantity' => 45, 'expiry_date' => '2028-01-01'], $this->asAdmin())->assertUnprocessable();
     }
 
@@ -251,7 +257,7 @@ class DatabaseDesignTest extends TestCase
             ->assertOk()->assertJsonPath('quantity', 7);
 
         $this->assertDatabaseHas('stock_movements', ['type' => 'adjustment', 'quantity_change' => -3, 'note' => 'جرد']);
-        $this->getJson('/api/v1/stock-movements?product_variant_id=' . $this->variant->id, $this->asAdmin())
+        $this->getJson('/api/v1/stock-movements?product_variant_id='.$this->variant->id, $this->asAdmin())
             ->assertOk()->assertJsonCount(2, 'data');
     }
 
@@ -276,6 +282,11 @@ class DatabaseDesignTest extends TestCase
             'address_id' => $this->address->id,
             'items' => [['product_variant_id' => $this->variant->id, 'quantity' => 1]],
         ], $this->asCustomer())->assertCreated()->json('data.id');
+
+        // Four units are still on the shelf: they must keep a name, so the delete waits.
+        $this->deleteJson("/api/v1/product-variants/{$this->variant->id}", [], $this->asAdmin())->assertUnprocessable();
+        $this->deleteJson("/api/v1/products/{$this->variant->product_id}", [], $this->asAdmin())->assertUnprocessable();
+        Inventory::query()->each(fn ($i) => app(StockService::class)->setQuantity($i, 0, 'تصفير قبل الحذف'));
 
         $this->deleteJson("/api/v1/product-variants/{$this->variant->id}", [], $this->asAdmin())->assertNoContent();
         $this->deleteJson("/api/v1/products/{$this->variant->product_id}", [], $this->asAdmin())->assertNoContent();

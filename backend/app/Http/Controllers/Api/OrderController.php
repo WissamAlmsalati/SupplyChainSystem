@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Support\BusinessTime;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
@@ -12,6 +11,7 @@ use App\Models\Address;
 use App\Models\AppUser;
 use App\Models\Order;
 use App\Services\OrderPlacementService;
+use App\Support\BusinessTime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -47,7 +47,7 @@ class OrderController extends BaseApiController
         $next = $order->status->nextValues();
         // The model refuses to cancel an order that has a return, so do not offer it.
         if ($order->returns()->exists()) {
-            $next = array_values(array_diff($next, [\App\Enums\OrderStatus::Cancelled->value]));
+            $next = array_values(array_diff($next, [OrderStatus::Cancelled->value]));
         }
         $order->setAttribute('next_statuses', $next);
 
@@ -155,7 +155,7 @@ class OrderController extends BaseApiController
         $order->load([
             'user.customerProfile', 'user.wallet', 'address', 'deliveryZone', 'delegate', 'cart',
             'items.productVariant.product', 'payments.collector:id,name', 'statusLogs.changedBy',
-            'returns.items', 'returns.createdBy:id,name',
+            'returns.items', 'returns.createdBy:id,name', 'warehouse:id,name',
         ]);
         $order->items->loadSum('returnItems as returned_quantity', 'quantity');
 

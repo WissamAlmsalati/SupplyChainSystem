@@ -41,7 +41,7 @@ class ProductImage extends Model
             return null;
         }
 
-        return $this->isStored() ? '/storage/' . $this->path : $this->path;
+        return $this->isStored() ? '/storage/'.$this->path : $this->path;
     }
 
     public function product(): BelongsTo

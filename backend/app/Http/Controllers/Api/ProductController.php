@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\Api\ProductRequest;
+use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
@@ -92,6 +93,10 @@ class ProductController extends BaseApiController
     // Soft delete: the product stays referenced by past orders.
     public function destroy(Product $product): JsonResponse
     {
+        if (Inventory::whereIn('product_variant_id', $product->variants()->select('id'))->where('quantity', '>', 0)->exists()) {
+            return $this->jsonResponse(['message' => 'لا يمكن حذف منتج ما زال له مخزون. صفّر مخزونه أولاً أو عطّله بدل حذفه.'], 422);
+        }
+
         $product->delete();
 
         return $this->jsonResponse(null, 204);

@@ -90,12 +90,17 @@ class StockService
      *
      * @param  array<int, int>  $quantitiesByVariant
      */
-    public function drainForOrder(Order $order, array $quantitiesByVariant): void
+    public function drainForOrder(Order $order, array $quantitiesByVariant, ?int $preferredWarehouseId = null): ?int
     {
+        // The warehouse that serves the delivery zone is emptied first, so the
+        // books fall where the goods really leave from; the others only cover
+        // what it lacks, rather than refusing an order the company can fill.
         $rows = Inventory::whereIn('product_variant_id', array_keys($quantitiesByVariant))
             ->lockForUpdate()
             ->orderBy('warehouse_id')
             ->get()
+            ->sortBy(fn (Inventory $i) => [$i->warehouse_id === $preferredWarehouseId ? 0 : 1, $i->warehouse_id])
+            ->values()
             ->groupBy('product_variant_id');
 
         $shortages = [];
@@ -114,6 +119,7 @@ class StockService
             throw new InsufficientStockException($shortages);
         }
 
+        $taken = [];
         foreach ($quantitiesByVariant as $variantId => $qty) {
             foreach ($rows->get($variantId) ?? [] as $inventory) {
                 if ($qty <= 0) {
@@ -125,9 +131,18 @@ class StockService
                 }
                 $inventory->update(['quantity' => $inventory->quantity - $take]);
                 $this->record($inventory->warehouse_id, $variantId, -$take, StockMovementType::Sale, $order);
+                $taken[$inventory->warehouse_id] = ($taken[$inventory->warehouse_id] ?? 0) + $take;
                 $qty -= $take;
             }
         }
+
+        // Where to load from: the zone's warehouse when it gave anything, else whoever gave most.
+        if ($preferredWarehouseId !== null && isset($taken[$preferredWarehouseId])) {
+            return $preferredWarehouseId;
+        }
+        arsort($taken);
+
+        return array_key_first($taken);
     }
 
     // Puts back what drainForOrder took, to the same warehouses (e.g. on cancellation).

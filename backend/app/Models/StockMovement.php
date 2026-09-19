@@ -40,7 +40,8 @@ class StockMovement extends Model
 
     public function productVariant(): BelongsTo
     {
-        return $this->belongsTo(ProductVariant::class);
+        // History keeps its labels after a size leaves the catalogue.
+        return $this->belongsTo(ProductVariant::class)->withTrashed();
     }
 
     public function reference(): MorphTo

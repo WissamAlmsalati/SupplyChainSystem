@@ -1,0 +1,113 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\StockMovementType;
+use App\Models\Address;
+use App\Models\AppUser;
+use App\Models\Category;
+use App\Models\DeliveryZone;
+use App\Models\Inventory;
+use App\Models\PremiumFeature;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\Warehouse;
+use App\Services\StockService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+// A cafe that has just registered must be able to reach its first order with
+// every feature flag at its default, and the fee must come from the server.
+class FirstOrderJourneyTest extends TestCase
+{
+    use RefreshDatabase;
+
+    // 32.88, 13.19 (Tripoli) falls in this res-4 cell.
+    private const TRIPOLI = '84384b3ffffffff';
+
+    private DeliveryZone $zone;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->zone = DeliveryZone::create(['hex_id' => self::TRIPOLI, 'name' => 'طرابلس', 'delivery_price' => 7, 'is_active' => true]);
+        PremiumFeature::updateOrCreate(['code' => 'customer_branches'], ['name' => 'branches', 'is_active' => false]);
+        PremiumFeature::updateOrCreate(['code' => 'customer_auto_approve'], ['name' => 'auto', 'is_active' => true]);
+    }
+
+    private function headers(AppUser $user): array
+    {
+        $this->app['auth']->forgetGuards();
+
+        return ['Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken];
+    }
+
+    public function test_register_verify_and_order_with_default_flags(): void
+    {
+        $register = $this->postJson('/api/v1/customer/register', [
+            'name' => 'مقهى الفجر', 'phone_number' => '0913334444', 'password' => 'secret-123', 'password_confirmation' => 'secret-123',
+            'latitude' => 32.88, 'longitude' => 13.19,
+        ])->assertCreated();
+        $this->postJson('/api/v1/customer/verify-otp', ['token' => $register->json('data.token'), 'otp' => (string) $register->json('data.otp')])->assertSuccessful();
+
+        $user = AppUser::where('mobile_number', '0913334444')->firstOrFail();
+        $address = Address::where('user_id', $user->id)->firstOrFail();
+        $this->assertSame($this->zone->id, $address->delivery_zone_id);
+
+        $product = Product::create(['category_id' => Category::create(['name' => 'قهوة'])->id, 'name' => 'بن']);
+        $variant = ProductVariant::create(['product_id' => $product->id, 'name' => '1 كجم', 'price' => 45]);
+        app(StockService::class)->adjust(Warehouse::create(['name' => 'م'])->id, $variant->id, 10, StockMovementType::Adjustment);
+
+        $this->postJson('/api/v1/customer/orders', [
+            'address_id' => $address->id, 'items' => [['product_variant_id' => $variant->id, 'quantity' => 1]], 'payment_method' => 'cash',
+        ], $this->headers($user))->assertCreated();
+        $this->assertDatabaseHas('orders', ['user_id' => $user->id, 'delivery_fee' => 7, 'total_amount' => 52]);
+    }
+
+    public function test_the_first_address_is_always_allowed_and_more_need_the_feature(): void
+    {
+        $user = AppUser::factory()->customer()->create();
+        $body = ['name' => 'الفرع الأول', 'latitude' => 32.88, 'longitude' => 13.19];
+
+        $this->getJson('/api/v1/customer/profile', $this->headers($user))->assertOk()->assertJsonPath('can_add_address', true);
+        $this->postJson('/api/v1/customer/addresses', $body, $this->headers($user))->assertCreated();
+        $this->getJson('/api/v1/customer/profile', $this->headers($user))->assertJsonPath('can_add_address', false);
+        $this->postJson('/api/v1/customer/addresses', ['name' => 'فرع ثان'] + $body, $this->headers($user))->assertForbidden();
+
+        PremiumFeature::where('code', 'customer_branches')->update(['is_active' => true]);
+        $this->postJson('/api/v1/customer/addresses', ['name' => 'فرع ثان'] + $body, $this->headers($user))->assertCreated();
+    }
+
+    public function test_the_server_picks_the_zone_whatever_the_client_sends(): void
+    {
+        $user = AppUser::factory()->customer()->create();
+        $cheap = DeliveryZone::create(['hex_id' => '842da29ffffffff', 'name' => 'رخيصة', 'delivery_price' => 0, 'is_active' => true]);
+
+        $this->postJson('/api/v1/customer/addresses', [
+            'name' => 'فرع', 'latitude' => 32.88, 'longitude' => 13.19, 'delivery_zone_id' => $cheap->id,
+        ], $this->headers($user))->assertCreated();
+        $id = Address::where('user_id', $user->id)->value('id');
+        $this->assertSame($this->zone->id, Address::find($id)->delivery_zone_id);
+
+        // Outside every zone: refused, on create and when the pin is moved there.
+        PremiumFeature::where('code', 'customer_branches')->update(['is_active' => true]);
+        $this->postJson('/api/v1/customer/addresses', ['name' => 'بعيد', 'latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))
+            ->assertUnprocessable()->assertJsonPath('errors.latitude.0', 'موقعك خارج نطاق التوصيل حالياً');
+        $this->patchJson("/api/v1/customer/addresses/{$id}", ['latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))->assertUnprocessable();
+    }
+
+    public function test_an_app_order_to_an_uncovered_address_is_refused_rather_than_shipped_free(): void
+    {
+        $user = AppUser::factory()->customer()->create();
+        $this->zone->update(['is_active' => false]);
+        $address = Address::create(['user_id' => $user->id, 'name' => 'فرع', 'latitude' => 32.88, 'longitude' => 13.19, 'delivery_zone_id' => $this->zone->id]);
+        $product = Product::create(['category_id' => Category::create(['name' => 'قهوة'])->id, 'name' => 'بن']);
+        $variant = ProductVariant::create(['product_id' => $product->id, 'name' => '1 كجم', 'price' => 45]);
+        app(StockService::class)->adjust(Warehouse::create(['name' => 'م'])->id, $variant->id, 10, StockMovementType::Adjustment);
+
+        $this->postJson('/api/v1/customer/orders', [
+            'address_id' => $address->id, 'items' => [['product_variant_id' => $variant->id, 'quantity' => 1]], 'payment_method' => 'cash',
+        ], $this->headers($user))->assertUnprocessable()->assertJsonPath('errors.address_id.0', 'هذا العنوان خارج نطاق التوصيل حالياً');
+        $this->assertSame(10, (int) Inventory::sum('quantity'));
+    }
+}

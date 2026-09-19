@@ -29,9 +29,9 @@ class DelegateSettlement extends Model
     protected static function booted(): void
     {
         static::creating(function (DelegateSettlement $settlement) {
-            $prefix = 'STL-' . date('Y') . '-';
-            $last = self::where('reference_number', 'like', $prefix . '%')->orderByDesc('reference_number')->value('reference_number');
-            $settlement->reference_number ??= $prefix . str_pad(($last ? (int) substr($last, strlen($prefix)) : 0) + 1, 5, '0', STR_PAD_LEFT);
+            $prefix = 'STL-'.date('Y').'-';
+            $last = self::where('reference_number', 'like', $prefix.'%')->orderByDesc('reference_number')->value('reference_number');
+            $settlement->reference_number ??= $prefix.str_pad(($last ? (int) substr($last, strlen($prefix)) : 0) + 1, 5, '0', STR_PAD_LEFT);
         });
     }
 

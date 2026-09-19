@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Placeholder;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,12 +27,12 @@ class Category extends Model
     // Categories fall back to the shared default artwork when no picture was uploaded.
     public function getImageUrlAttribute(): string
     {
-        return $this->image ? '/storage/' . ltrim($this->image, '/') : \App\Support\Placeholder::url('category');
+        return $this->image ? '/storage/'.ltrim($this->image, '/') : Placeholder::url('category');
     }
 
     public function getImageTypeAttribute(): string
     {
-        return \App\Support\Placeholder::typeFor($this->image_url);
+        return Placeholder::typeFor($this->image_url);
     }
 
     public function parentCategory(): BelongsTo
