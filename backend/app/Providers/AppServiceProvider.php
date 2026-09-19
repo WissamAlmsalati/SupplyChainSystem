@@ -41,8 +41,12 @@ class AppServiceProvider extends ServiceProvider
      */
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)
-            ->by($request->user() ? 'user:'.$request->user()->id : 'ip:'.$request->ip()));
+        // A signed-in account gets more room than an anonymous address: one
+        // dashboard page is a dozen requests (the page, the sidebar badges, the
+        // search box), and an admin moving quickly between pages reached 120.
+        RateLimiter::for('api', fn (Request $request) => $request->user()
+            ? Limit::perMinute(300)->by('user:'.$request->user()->id)
+            : Limit::perMinute(120)->by('ip:'.$request->ip()));
 
         RateLimiter::for('auth', fn (Request $request) => [
             Limit::perMinute(10)->by('ip:'.$request->ip()),

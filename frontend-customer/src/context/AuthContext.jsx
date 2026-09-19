@@ -8,6 +8,22 @@ const AuthContext = createContext(null)
 // /{door}/me and /{door}/logout on the next start.
 const door = () => (localStorage.getItem('door') === 'delegate' ? 'delegate' : 'customer')
 
+// Asks who is signed in, and only gives the token up when the server says it
+// is no good (401/403). A rate limit, a restart or a dropped connection is not
+// a reason to sign somebody out: it is tried again, a little later each time.
+const whoAmI = async (path, attempt = 0) => {
+  try {
+    return await client.get(path)
+  } catch (err) {
+    const status = err.response?.status
+    if (status === 401 || status === 403 || attempt >= 4) throw err
+    const wait = Number(err.response?.headers?.['retry-after']) * 1000 || 1500 * (attempt + 1)
+    await new Promise((resolve) => setTimeout(resolve, Math.min(wait, 15000)))
+    return whoAmI(path, attempt + 1)
+  }
+}
+const tokenIsDead = (err) => [401, 403].includes(err.response?.status)
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [ready, setReady] = useState(false)
@@ -15,9 +31,9 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
-      client.get(`/${door()}/me`)
+      whoAmI(`/${door()}/me`)
         .then((res) => setUser(res.data))
-        .catch(() => localStorage.removeItem('token'))
+        .catch((err) => { if (tokenIsDead(err)) localStorage.removeItem('token') })
         .finally(() => setReady(true))
     } else {
       setReady(true)
