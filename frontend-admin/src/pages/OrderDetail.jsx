@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowRight, Printer, Check, X, Clock, CheckCircle2, Package, Truck, Home, PackageCheck,
@@ -17,10 +17,6 @@ import { useApiList } from '../hooks/useApiResource'
 
 function formatMoney(value) {
   return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function formatDate(value) {
-  return value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'
 }
 
 function formatDateTime(value) {
@@ -108,7 +104,8 @@ export default function OrderDetail() {
   const [movements, setMovements] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const invoiceRef = useRef(null)
+  const [invoiceUrl, setInvoiceUrl] = useState(null)
+  const [invoiceBusy, setInvoiceBusy] = useState(false)
   const { canEdit, canDelete } = useModulePermission('ORDERS')
   const { canCreate: canCreatePayment } = useModulePermission('PAYMENTS')
   const { canCreate: canCreateReturn } = useModulePermission('RETURNS')
@@ -126,6 +123,8 @@ export default function OrderDetail() {
 
   const load = async () => {
     setError('')
+    // A payment or a return changes the invoice; the copy in memory is thrown away.
+    setInvoiceUrl((url) => { if (url) URL.revokeObjectURL(url); return null })
     try {
       const res = await client.get(`/orders/${id}`)
       setOrder(res.data?.data ?? res.data)
@@ -250,13 +249,39 @@ export default function OrderDetail() {
     }
   }
 
-  const handlePrint = () => {
-    const originalTitle = document.title
-    document.title = `فاتورة-${order.order_number ?? order.id}`
-    window.print()
-    setTimeout(() => {
-      document.title = originalTitle
-    }, 100)
+  // The invoice is fetched with the bearer token and shown from memory: a plain
+  // link could not carry the token. The tab is opened before the request so the
+  // browser still counts it as the user's click and does not block it.
+  const fetchInvoice = async () => {
+    const res = await client.get(`/orders/${id}/invoice`, { responseType: 'blob' })
+    return URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+  }
+
+  const openInvoice = async () => {
+    const tab = window.open('', '_blank')
+    setInvoiceBusy(true)
+    try {
+      const url = invoiceUrl ?? await fetchInvoice()
+      setInvoiceUrl(url)
+      if (tab) tab.location = url
+      else window.location.assign(url)
+    } catch (e) {
+      tab?.close()
+      setError(await downloadError(e))
+    } finally {
+      setInvoiceBusy(false)
+    }
+  }
+
+  const previewInvoice = async () => {
+    setInvoiceBusy(true)
+    try {
+      setInvoiceUrl(await fetchInvoice())
+    } catch (e) {
+      setError(await downloadError(e))
+    } finally {
+      setInvoiceBusy(false)
+    }
   }
 
   if (loading) return <PageSkeleton />
@@ -288,16 +313,6 @@ export default function OrderDetail() {
   const phones = order.delivery_phones?.length ? order.delivery_phones : order.user?.mobile_number ? [order.user.mobile_number] : []
   const activeDelegates = delegates.filter((d) => d.is_active)
   const logs = [...(order.status_logs ?? [])].reverse()
-  const invoiceNumber = order.order_number ? order.order_number.replace(/^ORD-/, 'INV-') : `INV-${String(order.id).padStart(6, '0')}`
-  const paymentMethodsLabel = [...new Set((order.payments ?? []).filter((p) => p.status === 'paid').map((p) => PAYMENT_METHODS[p.method] ?? p.method))].join('، ') || '-'
-  const invoiceStamp = isCancelled
-    ? { label: 'ملغاة', className: 'border-red-600 text-red-600' }
-    : balance <= 0.004
-      ? { label: 'مدفوعة', className: 'border-green-700 text-green-700' }
-      : paidNet > 0
-        ? { label: 'مدفوعة جزئياً', className: 'border-amber-600 text-amber-600' }
-        : { label: 'غير مدفوعة', className: 'border-stone-400 text-stone-400' }
-
   return (
     <>
       <header className="mb-6 flex flex-col gap-4 print:hidden lg:flex-row lg:items-center lg:justify-between">
@@ -346,7 +361,7 @@ export default function OrderDetail() {
               <X className="h-4 w-4" /> إلغاء الطلب
             </Button>
           )}
-          <Button variant="secondary" onClick={handlePrint}>
+          <Button variant="secondary" onClick={openInvoice} disabled={invoiceBusy}>
             <Printer className="h-4 w-4" /> طباعة
           </Button>
           <Button variant="secondary" onClick={() => downloadFile(`/orders/${id}/invoice`).catch(async (e) => setError(await downloadError(e)))}>
@@ -709,144 +724,26 @@ export default function OrderDetail() {
         </div>
       </div>
 
-      {/* Invoice */}
-      <div className="mt-8 flex items-center justify-between print:hidden">
-        <h2 className="text-xl font-bold text-foreground">معاينة الفاتورة</h2>
-        <Button variant="secondary" size="sm" onClick={handlePrint}><Printer className="h-4 w-4" /> طباعة الفاتورة</Button>
-      </div>
-
-      <div ref={invoiceRef} className="invoice-page relative mx-auto mt-4 max-w-4xl overflow-hidden rounded-xl border border-border bg-white text-[13px] text-stone-800 shadow-sm">
-        <div className="h-2 bg-primary" />
-
-        <div className="p-8 sm:p-10">
-          {/* Header */}
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-4">
-              <img src="/favicon.svg" alt="الساحل" className="h-16 w-16 rounded-lg object-contain" />
-              <div>
-                <div className="text-xl font-extrabold text-stone-900">الساحل لمستلزمات المقاهي</div>
-                <div className="mt-0.5 text-stone-500">توريد مستلزمات المقاهي بالجملة</div>
-                <div className="mt-3 space-y-0.5 text-xs text-stone-500">
-                  <div>ليبيا — طرابلس</div>
-                  <div><bdi>info@cafe-supply.ly</bdi> · <bdi>091-0000000</bdi></div>
-                </div>
-              </div>
-            </div>
-            <div className="sm:text-end">
-              <div className="text-3xl font-black text-primary">فاتورة</div>
-              <table className="mt-3 text-xs sm:ms-auto">
-                <tbody>
-                  <tr><td className="pe-4 py-0.5 text-stone-500">رقم الفاتورة</td><td className="py-0.5 font-bold"><bdi>{invoiceNumber}</bdi></td></tr>
-                  <tr><td className="pe-4 py-0.5 text-stone-500">رقم الطلب</td><td className="py-0.5 font-semibold"><bdi>{order.order_number ?? `#${order.id}`}</bdi></td></tr>
-                  <tr><td className="pe-4 py-0.5 text-stone-500">تاريخ الطلب</td><td className="py-0.5 font-semibold">{formatDate(order.placed_at)}</td></tr>
-                  <tr><td className="pe-4 py-0.5 text-stone-500">تاريخ الإصدار</td><td className="py-0.5 font-semibold">{formatDate(new Date())}</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Parties */}
-          <div className="no-break mt-8 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-lg bg-stone-50 p-4">
-              <div className="mb-2 text-[11px] font-bold text-primary">فاتورة إلى</div>
-              <div className="font-bold text-stone-900">{order.user?.customer_profile?.business_name || order.user?.name || '-'}</div>
-              {order.user?.customer_profile?.business_name && order.user?.name !== order.user.customer_profile.business_name && (
-                <div className="text-stone-600">{order.user.name}</div>
-              )}
-              {order.user?.mobile_number && <div className="mt-1 text-stone-600"><bdi>{order.user.mobile_number}</bdi></div>}
-              {order.user?.email && <div className="text-stone-600"><bdi>{order.user.email}</bdi></div>}
-            </div>
-            <div className="rounded-lg bg-stone-50 p-4">
-              <div className="mb-2 text-[11px] font-bold text-primary">التوصيل إلى</div>
-              <div className="font-bold text-stone-900">{order.delivery_address_name ?? '-'}</div>
-              <div className="text-stone-600">{[order.delivery_street, order.delivery_city].filter(Boolean).join('، ') || '-'}</div>
-              {order.delivery_zone?.name && <div className="text-stone-600">{order.delivery_zone.name}</div>}
-              {phones.length > 0 && <div className="mt-1 text-stone-600">{phones.map((ph, i) => <span key={ph}>{i > 0 && ' · '}<bdi>{ph}</bdi></span>)}</div>}
-            </div>
-            <div className="rounded-lg bg-stone-50 p-4">
-              <div className="mb-2 text-[11px] font-bold text-primary">تفاصيل الطلب</div>
-              <div className="flex justify-between gap-2"><span className="text-stone-500">الحالة</span><span className="font-semibold">{statusLabels[order.status] || order.status}</span></div>
-              {order.warehouse?.name && <div className="flex justify-between gap-2"><span className="text-stone-500">يُجهَّز من</span><span className="font-semibold">{order.warehouse.name}</span></div>}
-              <div className="flex justify-between gap-2"><span className="text-stone-500">المصدر</span><span className="font-semibold">{order.source === 'dashboard' ? 'لوحة التحكم' : 'التطبيق'}</span></div>
-              <div className="flex justify-between gap-2"><span className="text-stone-500">المندوب</span><span className="font-semibold">{order.delegate?.name ?? '-'}</span></div>
-              <div className="flex justify-between gap-2"><span className="text-stone-500">الدفع</span><span className="font-semibold">{paymentMethodsLabel}</span></div>
-            </div>
-          </div>
-
-          {/* Items */}
-          <table className="mt-8 w-full border-collapse">
-            <thead>
-              <tr className="bg-primary text-primary-foreground">
-                <th className="rounded-s-md px-3 py-2.5 text-start font-semibold">#</th>
-                <th className="px-3 py-2.5 text-start font-semibold">الصنف</th>
-                <th className="px-3 py-2.5 text-center font-semibold">الكمية</th>
-                <th className="px-3 py-2.5 text-end font-semibold">سعر الوحدة</th>
-                <th className="rounded-e-md px-3 py-2.5 text-end font-semibold">الإجمالي</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => {
-                const lineTotal = (Number(item.quantity) || 0) * (Number(item.unit_price) || 0)
-                return (
-                  <tr key={item.id} className="border-b border-stone-200 even:bg-stone-50/70">
-                    <td className="px-3 py-3 text-stone-500">{idx + 1}</td>
-                    <td className="px-3 py-3">
-                      <div className="font-semibold text-stone-900">{item.product_name}</div>
-                      <div className="text-xs text-stone-500">
-                        {item.variant_name && <span>الحجم: <bdi>{item.variant_name}</bdi></span>}
-                        {item.variant_name && item.product_variant?.sku && <span className="mx-1.5 text-stone-300">|</span>}
-                        {item.product_variant?.sku && <bdi className="font-mono">{item.product_variant.sku}</bdi>}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-center font-semibold">{item.quantity}</td>
-                    <td className="px-3 py-3 text-end">{formatMoney(item.unit_price)}</td>
-                    <td className="px-3 py-3 text-end font-semibold text-stone-900">{formatMoney(lineTotal)}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-
-          {/* Totals */}
-          <div className="no-break mt-6 flex flex-col-reverse gap-6 sm:flex-row sm:items-start sm:justify-between">
-            <div className="max-w-sm text-xs leading-relaxed text-stone-500">
-              <div className="mb-1 font-bold text-stone-700">ملاحظات</div>
-              <p>جميع المبالغ بالدينار الليبي (د.ل). يرجى التحقق من الأصناف والكميات عند الاستلام.</p>
-              <p className="mt-2 font-semibold text-primary">شكراً لتعاملكم مع الساحل.</p>
-              {/* Payment status stamp */}
-              <div className={`mt-8 inline-block rotate-[-8deg] rounded-md border-[3px] px-5 py-1.5 text-2xl font-black tracking-wide opacity-80 ${invoiceStamp.className}`}>
-                {invoiceStamp.label}
-              </div>
-            </div>
-            <div className="w-full overflow-hidden rounded-lg border border-stone-200 sm:w-72">
-              <div className="flex justify-between px-4 py-2"><span className="text-stone-500">المجموع الفرعي</span><span className="font-semibold">{formatMoney(order.subtotal ?? itemsTotal)}</span></div>
-              <div className="flex justify-between px-4 py-2"><span className="text-stone-500">رسوم التوصيل</span><span className="font-semibold">{formatMoney(deliveryFee)}</span></div>
-              <div className="flex justify-between bg-primary px-4 py-3 text-base font-extrabold text-primary-foreground"><span>الإجمالي</span><span>{formatMoney(total)} د.ل</span></div>
-              {!isCancelled && (
-                <>
-                  <div className="flex justify-between px-4 py-2"><span className="text-stone-500">المدفوع</span><span className="font-semibold text-green-700">{formatMoney(paidNet)}</span></div>
-                  <div className="flex justify-between border-t border-stone-200 px-4 py-2"><span className="font-bold text-stone-700">المتبقي</span><span className="font-extrabold text-stone-900">{formatMoney(Math.max(0, balance))} د.ل</span></div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Signatures */}
-          <div className="no-break mt-12 grid grid-cols-2 gap-10">
-            <div>
-              <div className="h-12 border-b border-dashed border-stone-400" />
-              <div className="mt-2 text-xs text-stone-500">توقيع المندوب{order.delegate?.name ? ` — ${order.delegate.name}` : ''}</div>
-            </div>
-            <div>
-              <div className="h-12 border-b border-dashed border-stone-400" />
-              <div className="mt-2 text-xs text-stone-500">توقيع وختم المستلم</div>
-            </div>
+      {/* ponytail: there is one invoice, the PDF the API renders. The page used to
+          draw a second one of its own in HTML, which looked different from the
+          document the customer receives and had to be kept in step by hand. */}
+      <div className="mt-8 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-bold text-foreground">الفاتورة</h2>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={openInvoice} disabled={invoiceBusy}><Printer className="h-4 w-4" /> فتح للطباعة</Button>
+            <Button variant="secondary" size="sm" onClick={() => downloadFile(`/orders/${id}/invoice`).catch(async (e) => setError(await downloadError(e)))}><FileDown className="h-4 w-4" /> تنزيل PDF</Button>
           </div>
         </div>
-
-        <div className="flex items-center justify-between border-t border-stone-200 bg-stone-50 px-8 py-3 text-[11px] text-stone-400 sm:px-10">
-          <span>الساحل لمستلزمات المقاهي</span>
-          <bdi>{invoiceNumber}</bdi>
+        {/* A phone browser cannot show a PDF inside the page, so the preview is for wider screens. */}
+        <div className="mt-4 hidden md:block">
+          {invoiceUrl ? (
+            <iframe title="معاينة الفاتورة" src={`${invoiceUrl}#toolbar=0&view=FitH`} className="h-[70rem] w-full rounded-xl border border-border bg-white" />
+          ) : (
+            <button type="button" onClick={previewInvoice} disabled={invoiceBusy} className="flex h-40 w-full items-center justify-center rounded-xl border border-dashed border-border-strong bg-surface text-sm text-muted hover:border-primary hover:text-primary">
+              {invoiceBusy ? 'جارٍ تجهيز الفاتورة...' : 'عرض معاينة الفاتورة'}
+            </button>
+          )}
         </div>
       </div>
 

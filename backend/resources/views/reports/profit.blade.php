@@ -1,38 +1,35 @@
-@extends('reports.layout', ['subtitle' => 'الفترة '.$report['period']['from'].' → '.$report['period']['to']])
+@use('App\Support\ReportFormat', 'F')
+@extends('reports.layout')
 @section('content')
-@php
-  $money = fn ($v) => number_format((float) $v, 2);
-  $pct = fn ($v) => $v === null ? '—' : $v.'%';
-  $s = $report['summary'];
-@endphp
-<table class="cards"><tr>
-  <td><div class="l">إيراد البضاعة</div><div class="v">{{ $money($s['revenue']) }}</div></td>
-  <td><div class="l">تكلفة البضاعة</div><div class="v">{{ $money($s['cost']) }}</div></td>
-  <td><div class="l">مجمل الربح</div><div class="v {{ $s['gross_profit'] < 0 ? 'neg' : 'pos' }}">{{ $money($s['gross_profit']) }}</div></td>
-  <td><div class="l">هامش الربح</div><div class="v">{{ $pct($s['margin_pct']) }}</div></td>
-</tr><tr>
-  <td><div class="l">الطلبات / الوحدات</div><div class="v">{{ $s['orders'] }} / {{ $s['units'] }}</div></td>
-  <td><div class="l">قيمة المرتجعات</div><div class="v">{{ $money($s['returned_value']) }}</div></td>
-  <td><div class="l">خسارة التالف (بالتكلفة)</div><div class="v neg">{{ $money($s['damaged_loss']) }}</div></td>
-  <td><div class="l">رسوم التوصيل (خارج الربح)</div><div class="v">{{ $money($s['delivery_fees']) }}</div></td>
-</tr></table>
+@php $s = $report['summary']; @endphp
+@include('reports._period', ['period' => $report['period']])
+@include('reports._figures', ['figures' => [
+  ['إيراد البضاعة', F::money($s['revenue']), F::count($s['orders']).' طلب، '.F::count($s['units']).' وحدة'],
+  ['تكلفة البضاعة', F::money($s['cost'])],
+  ['مجمل الربح', F::signed($s['gross_profit'])],
+  ['هامش الربح', F::percent($s['margin_pct'])],
+  ['قيمة المرتجعات', F::money($s['returned_value'])],
+  ['خسارة التالف بالتكلفة', F::money($s['damaged_loss'])],
+  ['رسوم التوصيل', F::money($s['delivery_fees']), 'دخل خارج ربح البضاعة'],
+]])
 @if($s['uncosted_lines'] > 0)
-<p class="muted">{{ $s['uncosted_lines'] }} سطر بيع بلا تكلفة مسجّلة، إيرادها {{ $money($s['uncosted_revenue']) }} د.ل. هذه السطور خارج حساب التكلفة والربح والهامش.</p>
+<table style="width:100%; border-collapse:collapse; margin-top:4mm;"><tr><td style="border-right:0.8mm solid #0b3b38; padding:1mm 3mm;">
+  <span class="fv">{{ $s['uncosted_lines'] }} سطر بيع بلا تكلفة مسجلة، إيرادها {{ F::money($s['uncosted_revenue']) }} {{ config('company.currency') }}. هذه السطور محسوبة في الإيراد وخارج التكلفة والربح والهامش.</span>
+</td></tr></table>
 @endif
 
-@foreach([['by_product', 'المنتجات'], ['by_category', 'التصنيفات'], ['by_customer', 'الزبائن'], ['by_city', 'المدن']] as [$key, $heading])
+@foreach([['by_product', 'الربح حسب المنتج', 'المنتج'], ['by_category', 'الربح حسب التصنيف', 'التصنيف'], ['by_customer', 'الربح حسب الزبون', 'الزبون'], ['by_city', 'الربح حسب المدينة', 'المدينة']] as [$key, $heading, $column])
 <h2>{{ $heading }}</h2>
-<table class="grid"><thead><tr>
-  <th>{{ $key === 'by_product' ? 'المنتج' : 'الاسم' }}</th>@if($key === 'by_product')<th>الحجم</th>@endif
-  <th class="num">الوحدات</th><th class="num">الإيراد</th><th class="num">التكلفة</th><th class="num">الربح</th><th class="num">الهامش</th>
+<table class="data"><thead><tr>
+  <th>{{ $column }}</th><th class="num w12">الوحدات</th><th class="num w12">الإيراد</th><th class="num w12">التكلفة</th><th class="num w12">الربح</th><th class="num w12">الهامش</th>
 </tr></thead><tbody>
 @forelse($report[$key] as $r)
 <tr>
-  <td>{{ $r['product'] ?? $r['name'] }}@if(! $r['cost_known']) <span class="muted">(تكلفة ناقصة)</span>@endif</td>@if($key === 'by_product')<td>{{ $r['variant'] }}</td>@endif
-  <td class="num">{{ $r['units'] }}</td><td class="num">{{ $money($r['revenue']) }}</td><td class="num">{{ $money($r['cost']) }}</td>
-  <td class="num {{ $r['profit'] < 0 ? 'neg' : 'pos' }}">{{ $money($r['profit']) }}</td><td class="num">{{ $pct($r['margin_pct']) }}</td>
+  <td>{{ $r['product'] ?? $r['name'] }}@if(! empty($r['variant'])) <span class="quiet">{{ $r['variant'] }}</span>@endif @if(! $r['cost_known'])<span class="quiet small">(تكلفة ناقصة)</span>@endif</td>
+  <td class="num">{{ $r['units'] }}</td><td class="num">{{ F::money($r['revenue']) }}</td><td class="num">{{ F::money($r['cost']) }}</td>
+  <td class="num">{{ F::signed($r['profit']) }}</td><td class="num">{{ F::percent($r['margin_pct']) }}</td>
 </tr>
-@empty<tr><td colspan="7" class="muted">لا توجد مبيعات في الفترة</td></tr>
+@empty<tr><td colspan="6" class="empty">لا توجد مبيعات في هذه الفترة</td></tr>
 @endforelse
 </tbody></table>
 @endforeach

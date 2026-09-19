@@ -3,10 +3,15 @@
 namespace App\Services\Reports;
 
 use Illuminate\Http\Response;
+use Mpdf\Config\ConfigVariables;
+use Mpdf\Config\FontVariables;
 use Mpdf\Mpdf;
 
-// Renders a Blade view to an A4 RTL PDF. mPDF is pure PHP (no Chrome) and
-// shapes Arabic correctly with the bundled DejaVu Sans font.
+// Renders a Blade view to an A4 RTL PDF. mPDF is pure PHP (no Chrome). The
+// documents are set in Thmanyah Sans, the typeface of the apps themselves, so
+// what the office prints looks like what it sees on screen; the files under
+// resources/fonts are the app's woff2 fonts converted to TrueType outlines,
+// which is the only kind mPDF reads.
 class PdfRenderer
 {
     public function render(string $view, array $data, string $filename): Response
@@ -16,23 +21,27 @@ class PdfRenderer
             mkdir($tempDir, 0775, true);
         }
 
+        $fontDirs = (new ConfigVariables)->getDefaults()['fontDir'];
+        $fontData = (new FontVariables)->getDefaults()['fontdata'];
+
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',
-            'default_font' => 'dejavusans',
+            'fontDir' => array_merge($fontDirs, [resource_path('fonts')]),
+            'fontdata' => $fontData + ['thmanyah' => ['R' => 'ThmanyahSans-Regular.ttf', 'B' => 'ThmanyahSans-Bold.ttf', 'useOTL' => 0xFF, 'useKashida' => 75]],
+            'default_font' => 'thmanyah',
             'default_font_size' => 9,
             'margin_top' => 14,
-            'margin_bottom' => 14,
-            'margin_left' => 12,
-            'margin_right' => 12,
+            'margin_bottom' => 20,
+            'margin_left' => 14,
+            'margin_right' => 14,
+            'margin_footer' => 8,
             'tempDir' => $tempDir,
-            'autoScriptToLang' => true,
-            'autoLangToFont' => true,
         ]);
         $mpdf->SetDirectionality('rtl');
         $mpdf->SetTitle($data['title'] ?? $filename);
-        $mpdf->SetAuthor(config('app.name'));
-        $mpdf->SetHTMLFooter('<div style="text-align:center;font-size:8pt;color:#777">'.e(config('app.name')).' · صفحة {PAGENO} من {nbpg}</div>');
+        $mpdf->SetAuthor(config('company.name'));
+        $mpdf->SetHTMLFooter(view('reports._footer')->render());
         $mpdf->WriteHTML(view($view, $data)->render());
 
         return response($mpdf->Output('', 'S'), 200, [

@@ -340,7 +340,7 @@ class ReportController extends BaseApiController
     // Shared by the dashboard route and the customer app's own-order route.
     public function invoiceFor(Order $order)
     {
-        $order->load(['user:id,name,mobile_number,email', 'user.customerProfile:user_id,business_name', 'items', 'payments' => fn ($q) => $q->where('status', 'paid'), 'delegate:id,name,mobile_number']);
+        $order->load(['user:id,name,mobile_number,email', 'user.customerProfile:user_id,business_name', 'items', 'payments' => fn ($q) => $q->where('status', 'paid')->with('collector:id,name'), 'delegate:id,name,mobile_number', 'warehouse:id,name']);
         $paid = round((float) $order->payments->sum('amount'), 2);
 
         return $this->pdf->render('reports.invoice', [

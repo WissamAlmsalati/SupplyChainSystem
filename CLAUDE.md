@@ -210,7 +210,9 @@ touch them (custody and wallet top-ups already use it).
 `app/Services/Reports/` builds report data as arrays (`SalesReport`, `LedgerStatement` for
 custody and wallet statements, `InventoryReport`) and `ReportController` serves each one as JSON,
 `?format=pdf` or `?format=xlsx`. PDFs are Blade views under `resources/views/reports/` rendered by
-`PdfRenderer` (mPDF, RTL, DejaVu Sans — no Chrome needed); Excel goes through `XlsxRenderer`
+`PdfRenderer` (mPDF, RTL, no Chrome needed), set in Thmanyah Sans, the apps' own typeface
+(`resources/fonts/*.ttf` are the admin's woff2 files converted to TrueType outlines, the only kind
+mPDF reads); Excel goes through `XlsxRenderer`
 (OpenSpout). `ProfitReport` measures gross profit against `order_items.unit_cost`, the cost snapshotted at
 placement the same way the price is: a restocked return undoes the sale and its cost, a damaged
 return undoes the sale but keeps the cost, and lines with no cost are reported as uncosted rather
@@ -236,6 +238,27 @@ The route has no module code of its own: each group is gated by the VIEW code it
 so search never shows what the pages hide. The controller turns the customer and delegate roles
 away outright, because the customer role holds `ORDERS_VIEW` for its own scoped endpoints and
 would otherwise search every order in the system.
+
+### Printed documents are one family
+
+The invoice, the two statements and the four reports share `reports/layout.blade.php` (letterhead
+from `config/company.php`, so the office edits a phone number in `.env`, not in seven templates),
+`_period`, `_figures` and `_footer`. The look is a business document, deliberately: near-black ink,
+one dark teal, hairline rules; key figures in one ruled strip rather than tinted boxes; tables ruled
+under the header and between rows only; a negative in brackets rather than in red
+(`ReportFormat::signed`); no arrows, long dashes or class names in the text (`PrintedDocumentsTest`
+checks). The invoice closes with the amount in words (`MoneyInWords`, masculine counting, dirhams
+for the decimals), signature lines and the terms line. Statements read like a bank's: additions and
+deductions in their own columns with a running balance.
+
+mPDF drops the styling of **block elements inside table cells**, and honours only simple selectors:
+inside a cell use inline spans with their own single class, broken by `<br>`, or a nested table.
+Numbers sit in `.num` cells (LTR); a value with Arabic words in it ("3 س 20 د") goes in `.txt`, or
+the bidi order garbles. Give number columns a width class per table (`w12`/`w14`/`w18`): a global
+width on many columns squeezes the name column into vertical text.
+
+There is one invoice. The admin order page shows the API's PDF (fetched as a blob with the bearer
+token, in an iframe from `md:` up) and opens it for printing; it no longer draws its own in HTML.
 
 ### Arabic-tolerant search
 

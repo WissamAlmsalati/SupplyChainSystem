@@ -1,25 +1,37 @@
-@php $money = fn ($v) => number_format((float) $v, 2); @endphp
-<table class="cards"><tr>
-  <td><div class="l">رصيد أول الفترة</div><div class="v">{{ $money($report['opening_balance']) }}</div></td>
-  <td><div class="l">إضافات</div><div class="v pos">{{ $money($report['credits']) }}</div></td>
-  <td><div class="l">خصومات</div><div class="v neg">{{ $money($report['debits']) }}</div></td>
-  <td><div class="l">رصيد آخر الفترة</div><div class="v">{{ $money($report['closing_balance']) }}</div></td>
-</tr></table>
-<p class="muted">الرصيد الحالي (الآن): <b>{{ $money($report['current_balance']) }} د.ل</b></p>
+@use('App\Support\ReportFormat', 'F')
+{{-- A ledger statement, laid out the way a bank writes one: what came in and what
+     went out in their own columns, and the balance after every line. --}}
+@include('reports._figures', ['figures' => [
+  ['رصيد أول الفترة', F::signed($report['opening_balance'])],
+  ['إجمالي الإضافات', F::money($report['credits'])],
+  ['إجمالي الخصومات', F::money(abs($report['debits']))],
+  ['رصيد آخر الفترة', F::signed($report['closing_balance']), 'الرصيد الآن '.F::signed($report['current_balance'])],
+]])
 
-<h2>ملخص حسب النوع</h2>
-<table class="grid"><thead><tr><th>النوع</th><th class="num">العدد</th><th class="num">المبلغ</th></tr></thead><tbody>
-@forelse($report['totals'] as $t)<tr><td>{{ $t['label'] }}</td><td class="num">{{ $t['count'] }}</td><td class="num {{ $t['amount'] < 0 ? 'neg' : 'pos' }}">{{ $money($t['amount']) }}</td></tr>@empty<tr><td colspan="3" class="muted">لا توجد حركات في الفترة</td></tr>@endforelse
+<h2>ملخص الحركات</h2>
+<table class="data"><thead><tr><th>نوع الحركة</th><th class="num w18">العدد</th><th class="num w18">المبلغ</th></tr></thead><tbody>
+@forelse($report['totals'] as $t)<tr><td>{{ $t['label'] }}</td><td class="num">{{ $t['count'] }}</td><td class="num">{{ F::signed($t['amount']) }}</td></tr>
+@empty<tr><td colspan="3" class="empty">لا توجد حركات في هذه الفترة</td></tr>@endforelse
 </tbody></table>
 
-<h2>الحركات</h2>
-<table class="grid">
-  <thead><tr><th style="width:20%">التاريخ</th><th>النوع</th><th>المرجع / ملاحظة</th><th>بواسطة</th><th class="num" style="width:13%">المبلغ</th><th class="num" style="width:14%">الرصيد بعدها</th></tr></thead>
+<h2>كشف الحركات</h2>
+<table class="data">
+  <thead><tr><th style="width:19%;">التاريخ</th><th>البيان</th><th style="width:13%;">بواسطة</th><th class="num" style="width:12%;">إضافة</th><th class="num" style="width:12%;">خصم</th><th class="num" style="width:13%;">الرصيد</th></tr></thead>
   <tbody>
+  @if(count($report['entries']) > 0)<tr><td colspan="5" class="quiet">رصيد أول الفترة</td><td class="num">{{ F::signed($report['opening_balance']) }}</td></tr>@endif
   @forelse($report['entries'] as $e)
-    <tr><td dir="ltr" class="left">{{ $e['date'] }}</td><td>{{ $e['label'] }}</td><td>{{ $e['reference'] }} {{ $e['note'] ? '— '.$e['note'] : '' }}</td><td>{{ $e['by'] ?? '—' }}</td><td class="num {{ $e['amount'] < 0 ? 'neg' : 'pos' }}">{{ $money($e['amount']) }}</td><td class="num">{{ $money($e['balance_after']) }}</td></tr>
+    <tr>
+      <td dir="ltr" style="text-align:right;">{{ str_replace('-', '/', substr((string) $e['date'], 0, 16)) }}</td>
+      {{-- The note usually names the order already; the bare reference is the fallback. --}}
+      <td>{{ $e['label'] }}@if($e['note'] || $e['reference'])<br><span class="quiet small">{{ $e['note'] ?: $e['reference'] }}</span>@endif</td>
+      <td class="small">{{ F::dash($e['by'] ?? null) }}</td>
+      <td class="num">{{ $e['amount'] > 0 ? F::money($e['amount']) : '' }}</td>
+      <td class="num">{{ $e['amount'] < 0 ? F::money(abs($e['amount'])) : '' }}</td>
+      <td class="num">{{ F::signed($e['balance_after']) }}</td>
+    </tr>
   @empty
-    <tr><td colspan="6" class="muted">لا توجد حركات في الفترة</td></tr>
+    <tr><td colspan="6" class="empty">لا توجد حركات في هذه الفترة</td></tr>
   @endforelse
+  @if(count($report['entries']) > 0)<tr class="sum"><td colspan="3">المجموع ورصيد آخر الفترة</td><td class="num">{{ F::money($report['credits']) }}</td><td class="num">{{ F::money(abs($report['debits'])) }}</td><td class="num">{{ F::signed($report['closing_balance']) }}</td></tr>@endif
   </tbody>
 </table>

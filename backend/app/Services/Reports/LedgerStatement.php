@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Builder;
 // opening balance, the period's rows, totals per type, closing balance.
 class LedgerStatement
 {
+    private const REFERENCE_LABELS = [
+        'Order' => 'طلب', 'WalletTopup' => 'شحن محفظة', 'DelegateSettlement' => 'تسكير عهدة', 'OrderReturn' => 'مرتجع',
+    ];
+
     /**
      * @param  Builder  $ledger  query scoped to one account, ordered later by id
      * @param  array<string, string>  $labels  type value => Arabic label
@@ -47,7 +51,8 @@ class LedgerStatement
                 'balance_after' => round((float) $r->balance_after, 2),
                 'note' => $r->note,
                 'by' => $r->createdBy?->name,
-                'reference' => $r->reference_type ? class_basename($r->reference_type).' #'.$r->reference_id : null,
+                // In the reader's words: a printed statement is no place for a class name.
+                'reference' => $r->reference_type ? (self::REFERENCE_LABELS[class_basename($r->reference_type)] ?? 'مرجع').' رقم '.$r->reference_id : null,
             ])->values(),
         ];
     }
