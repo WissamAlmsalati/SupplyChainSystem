@@ -19,12 +19,31 @@ class OrderReturn extends Model
         'none' => 'بدون استرداد',
     ];
 
-    protected $fillable = ['order_id', 'reason', 'total_value', 'refund_amount', 'refund_method', 'created_by'];
+    protected $fillable = ['order_id', 'reason', 'total_value', 'refund_amount', 'refund_method', 'refund_paid_at', 'refund_paid_by', 'refund_paid_from_delegate_id', 'created_by'];
 
     protected $casts = [
         'total_value' => 'decimal:2',
         'refund_amount' => 'decimal:2',
+        'refund_paid_at' => 'datetime',
     ];
+
+    protected $appends = ['refund_pending'];
+
+    // Money is owed and nobody has handed it over yet.
+    public function getRefundPendingAttribute(): bool
+    {
+        return (float) $this->refund_amount > 0 && $this->refund_paid_at === null;
+    }
+
+    public function refundPaidBy(): BelongsTo
+    {
+        return $this->belongsTo(AppUser::class, 'refund_paid_by');
+    }
+
+    public function refundPaidFromDelegate(): BelongsTo
+    {
+        return $this->belongsTo(AppUser::class, 'refund_paid_from_delegate_id');
+    }
 
     public function order(): BelongsTo
     {

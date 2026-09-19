@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\BusinessTime;
 use App\Enums\OrderStatus;
 use App\Models\AppUser;
 use App\Models\CustodyEntry;
@@ -28,6 +29,7 @@ class ReportController extends BaseApiController
         'order_collection' => 'تحصيل طلب',
         'wallet_collection' => 'شحن محفظة',
         'settlement' => 'تسليم للمكتب',
+        'refund_payout' => 'استرداد نقدي لمرتجع',
         'adjustment' => 'تعديل إداري',
     ];
 
@@ -305,7 +307,7 @@ class ReportController extends BaseApiController
             ->lazy()
             ->map(fn (Order $o) => [
                 $o->order_number,
-                $o->placed_at?->toDateTimeString(),
+                BusinessTime::format($o->placed_at, 'Y-m-d H:i:s'),
                 $o->status->label(),
                 $o->user?->name,
                 $o->user?->mobile_number,

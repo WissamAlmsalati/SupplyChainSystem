@@ -21,7 +21,7 @@ class SandboxGateway implements PaymentGateway
             $topup->update(['gateway_token' => Str::random(40)]);
         }
 
-        return '/api/v1/wallet/gateway/sandbox/' . $topup->gateway_token;
+        return '/api/v1/wallet/gateway/sandbox/'.$topup->gateway_token;
     }
 
     public function parseCallback(Request $request): ?array

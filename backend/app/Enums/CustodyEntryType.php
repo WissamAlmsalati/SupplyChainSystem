@@ -10,6 +10,8 @@ enum CustodyEntryType: string
     case WalletCollection = 'wallet_collection';
     // Cash handed over to the office.
     case Settlement = 'settlement';
+    // Cash handed back to a customer for returned goods, out of what the delegate holds.
+    case RefundPayout = 'refund_payout';
     case Adjustment = 'adjustment';
 
     public static function values(): array

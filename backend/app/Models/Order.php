@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\BusinessTime;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Services\CustodyService;
@@ -213,7 +214,7 @@ class Order extends Model
     public static function generateOrderNumber(?Carbon $at = null): string
     {
         // Shown to people in Libya, so the hour is theirs, not the server's UTC.
-        $prefix = 'ORD-'.($at ?? now())->copy()->setTimezone(config('app.business_timezone'))->format('Y-m-d-H').'-';
+        $prefix = 'ORD-'.\App\Support\BusinessTime::format($at ?? now(), 'Y-m-d-H').'-';
         $maxAttempts = 10;
 
         for ($i = 0; $i < $maxAttempts; $i++) {

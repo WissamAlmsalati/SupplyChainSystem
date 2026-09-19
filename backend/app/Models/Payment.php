@@ -5,12 +5,15 @@ namespace App\Models;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Validation\ValidationException;
 
 class Payment extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'order_id',
         'amount',

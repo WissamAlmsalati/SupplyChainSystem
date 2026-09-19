@@ -5,8 +5,9 @@ namespace App\Services\Reports;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderReturn;
 use App\Models\Payment;
-use Illuminate\Support\Facades\DB;
+use App\Support\BusinessTime;
 
 // Sales figures for a period. Revenue counts every order that was not
 // cancelled (by placed_at); cancelled orders are listed separately so the
@@ -23,9 +24,7 @@ class SalesReport
         $deliveryFees = round((float) (clone $sold)->sum('delivery_fee'), 2);
 
         $format = $groupBy === 'month' ? '%Y-%m' : '%Y-%m-%d';
-        $bucket = DB::connection()->getDriverName() === 'sqlite'
-            ? "strftime('{$format}', placed_at)"
-            : "DATE_FORMAT(placed_at, '{$format}')";
+        $bucket = BusinessTime::sqlFormat('placed_at', $format);
 
         $series = (clone $sold)
             ->selectRaw("{$bucket} as bucket, COUNT(*) as orders, SUM(total_amount) as revenue")
@@ -72,7 +71,7 @@ class SalesReport
 
         // Returns lower what was really sold and what is still owed; without
         // them a fully refunded order would look like money nobody collected.
-        $returns = \App\Models\OrderReturn::query()->whereIn('order_id', $soldIds);
+        $returns = OrderReturn::query()->whereIn('order_id', $soldIds);
         $returned = round((float) (clone $returns)->sum('total_value'), 2);
         $refunded = round((float) (clone $returns)->sum('refund_amount'), 2);
 

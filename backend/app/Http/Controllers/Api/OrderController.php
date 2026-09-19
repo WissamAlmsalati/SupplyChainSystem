@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\BusinessTime;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
@@ -91,11 +92,11 @@ class OrderController extends BaseApiController
         }
 
         if ($request->filled('date_from')) {
-            $query->whereDate('placed_at', '>=', $request->input('date_from'));
+            $query->where('placed_at', '>=', BusinessTime::dayStart((string) $request->input('date_from')));
         }
 
         if ($request->filled('date_to')) {
-            $query->whereDate('placed_at', '<=', $request->input('date_to'));
+            $query->where('placed_at', '<=', BusinessTime::dayEnd((string) $request->input('date_to')));
         }
 
         return $this->paginated($query->paginate($request->integer('per_page', 15)));

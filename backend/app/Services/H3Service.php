@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Process\Exceptions\ProcessFailedException;
 use Illuminate\Support\Facades\Process;
 use RuntimeException;
 
@@ -11,16 +10,16 @@ class H3Service
     private static function call(array $input): mixed
     {
         $script = base_path('scripts/h3.cjs');
-        $result = Process::input(json_encode($input))->run('node ' . escapeshellarg($script));
+        $result = Process::input(json_encode($input))->run('node '.escapeshellarg($script));
 
         if (! $result->successful()) {
-            throw new RuntimeException('H3 service failed: ' . $result->errorOutput());
+            throw new RuntimeException('H3 service failed: '.$result->errorOutput());
         }
 
         $decoded = json_decode($result->output(), true);
 
         if (! ($decoded['ok'] ?? false)) {
-            throw new RuntimeException('H3 error: ' . ($decoded['error'] ?? 'unknown'));
+            throw new RuntimeException('H3 error: '.($decoded['error'] ?? 'unknown'));
         }
 
         return $decoded['result'];

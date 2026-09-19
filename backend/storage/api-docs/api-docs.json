@@ -6959,6 +6959,71 @@
                 ]
             }
         },
+        "/returns/{id}/pay-refund": {
+            "post": {
+                "tags": [
+                    "Returns"
+                ],
+                "summary": "Record that a cash refund was handed over",
+                "description": "A cash refund is owed from the moment the return is recorded and stays pending until this is called. Send `delegate_id` when a delegate paid it out of the cash they hold; their custody drops by the amount. Without it, the office paid.",
+                "operationId": "b40ba7ad2432d3ed214ee5db4855c897",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "delegate_id": {
+                                        "type": "integer",
+                                        "example": 10,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Marked as paid"
+                    },
+                    "422": {
+                        "description": "Not a cash refund, already paid, or the delegate holds less than the refund",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/search": {
             "get": {
                 "tags": [

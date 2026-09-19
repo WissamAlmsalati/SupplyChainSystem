@@ -10,7 +10,6 @@ use App\Models\ProductVariant;
 use App\Support\ArabicText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 
 // Customer catalog search: text query, facet filters, sorting and facet counts.
 class ProductSearch
@@ -55,8 +54,8 @@ class ProductSearch
         if (($term = $this->term()) !== '') {
             // Both sides are folded (أ/ا, ة/ه, harakat, Arabic-Indic digits), so
             // "قهوه" finds "قهوة" and "احمد" finds "أحمد".
-            $like = '%' . addcslashes(ArabicText::normalize($term), '%_\\') . '%';
-            $matches = fn (string $column) => ArabicText::sqlExpression($column) . ' LIKE ?';
+            $like = '%'.addcslashes(ArabicText::normalize($term), '%_\\').'%';
+            $matches = fn (string $column) => ArabicText::sqlExpression($column).' LIKE ?';
 
             $query->where(fn ($q) => $q
                 ->whereRaw($matches('products.name'), [$like])
@@ -126,13 +125,13 @@ class ProductSearch
         match ($this->sort()) {
             'relevance' => $query
                 ->orderByRaw(
-                    'CASE WHEN ' . ArabicText::sqlExpression('products.name') . ' = ? THEN 0'
-                    . ' WHEN ' . ArabicText::sqlExpression('products.name') . ' LIKE ? THEN 1'
-                    . ' WHEN ' . ArabicText::sqlExpression('products.name') . ' LIKE ? THEN 2 ELSE 3 END',
+                    'CASE WHEN '.ArabicText::sqlExpression('products.name').' = ? THEN 0'
+                    .' WHEN '.ArabicText::sqlExpression('products.name').' LIKE ? THEN 1'
+                    .' WHEN '.ArabicText::sqlExpression('products.name').' LIKE ? THEN 2 ELSE 3 END',
                     [
                         ArabicText::normalize($term),
-                        addcslashes(ArabicText::normalize($term), '%_\\') . '%',
-                        '%' . addcslashes(ArabicText::normalize($term), '%_\\') . '%',
+                        addcslashes(ArabicText::normalize($term), '%_\\').'%',
+                        '%'.addcslashes(ArabicText::normalize($term), '%_\\').'%',
                     ]
                 )
                 ->orderBy('products.name'),

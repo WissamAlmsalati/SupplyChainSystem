@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\OrderStatus;
 use App\Enums\StockMovementType;
 use App\Enums\WalletTransactionType;
+use App\Models\AppUser;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\OrderReturn;
@@ -83,6 +84,9 @@ class ReturnService
                 'total_value' => $valueCents / 100,
                 'refund_amount' => $refundCents / 100,
                 'refund_method' => $refundCents > 0 ? $refundMethod : 'none',
+                // A wallet refund is paid right here; cash waits for payRefund().
+                'refund_paid_at' => $refundCents > 0 && $refundMethod === 'wallet' ? now() : null,
+                'refund_paid_by' => $refundCents > 0 && $refundMethod === 'wallet' ? auth()->id() : null,
                 'created_by' => auth()->id(),
             ]);
 
@@ -126,6 +130,36 @@ class ReturnService
         Notification::sendTo([$order->user_id], 'مرتجع على طلبك', $message, "/orders/{$order->id}", 'order');
 
         return $return->load(['items.orderItem', 'items.warehouse:id,name', 'createdBy:id,name']);
+    }
+
+    /**
+     * Records that a cash refund was handed to the customer: by the office, or
+     * by a delegate out of the cash they hold (their custody drops by it).
+     */
+    public function payRefund(OrderReturn $return, ?AppUser $fromDelegate = null): OrderReturn
+    {
+        return DB::transaction(function () use ($return, $fromDelegate) {
+            $return = OrderReturn::whereKey($return->id)->lockForUpdate()->firstOrFail();
+
+            if ($return->refund_method !== 'cash' || (float) $return->refund_amount <= 0) {
+                throw ValidationException::withMessages(['return' => 'هذا المرتجع ليس له استرداد نقدي']);
+            }
+            if ($return->refund_paid_at !== null) {
+                throw ValidationException::withMessages(['return' => 'سُلّم هذا الاسترداد من قبل']);
+            }
+
+            if ($fromDelegate) {
+                app(CustodyService::class)->payRefund($fromDelegate, $return->load('order'));
+            }
+
+            $return->update([
+                'refund_paid_at' => now(),
+                'refund_paid_by' => auth()->id(),
+                'refund_paid_from_delegate_id' => $fromDelegate?->id,
+            ]);
+
+            return $return;
+        });
     }
 
     // Back to the shelf it came from; the first warehouse when the sale left no trace.

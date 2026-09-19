@@ -8,6 +8,7 @@ use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Support\BusinessTime;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -24,8 +25,10 @@ class DashboardController extends BaseApiController
             return $this->jsonResponse(['message' => 'شهر غير صالح'], 422);
         }
 
-        $start = Carbon::create($year, $month, 1)->startOfMonth();
-        $end = $start->copy()->endOfMonth();
+        // The month as the office lived it, as UTC bounds for the queries.
+        $local = Carbon::create($year, $month, 1, 0, 0, 0, BusinessTime::tz());
+        $start = $local->copy()->startOfMonth()->utc();
+        $end = $local->copy()->endOfMonth()->utc();
 
         $orders = Order::whereBetween('placed_at', [$start, $end])->get();
         $revenue = round($orders->sum(fn ($o) => (float) $o->total_amount), 2);
@@ -46,7 +49,7 @@ class DashboardController extends BaseApiController
             ->get();
 
         return $this->jsonResponse([
-            'month' => $start->format('Y-m'),
+            'month' => $local->format('Y-m'),
             'stats' => [
                 'orders' => $orders->count(),
                 'revenue' => $revenue,
@@ -79,7 +82,7 @@ class DashboardController extends BaseApiController
 
         $monthlyRevenue = [];
         for ($i = 5; $i >= 0; $i--) {
-            $month = Carbon::now()->subMonths($i);
+            $month = BusinessTime::now()->startOfMonth()->subMonths($i);
             $monthlyRevenue[$month->format('Y-m')] = [
                 'month' => $month->format('Y-m'),
                 'revenue' => 0.0,
@@ -87,7 +90,7 @@ class DashboardController extends BaseApiController
         }
 
         foreach ($orders as $order) {
-            $month = $order->placed_at->format('Y-m');
+            $month = BusinessTime::format($order->placed_at, 'Y-m');
             if (isset($monthlyRevenue[$month])) {
                 $monthlyRevenue[$month]['revenue'] = round($monthlyRevenue[$month]['revenue'] + (float) $order->total_amount, 2);
             }

@@ -38,6 +38,8 @@ class CheckPermission
         'location' => 'EDIT',
         'expand-hex' => 'EDIT',
         'invoice' => 'VIEW',
+        // Handing over a refund completes the return it belongs to.
+        'pay-refund' => 'CREATE',
     ];
 
     /** Routes whose code does not follow RESOURCE_VERB. */

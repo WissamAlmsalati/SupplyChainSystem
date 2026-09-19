@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\BusinessTime;
 use App\Enums\CartType;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
@@ -62,10 +63,10 @@ class CustomerMobileController extends BaseApiController
             $query->where('address_id', $request->integer('address_id'));
         }
         if ($request->filled('from')) {
-            $query->whereDate('placed_at', '>=', $request->input('from'));
+            $query->where('placed_at', '>=', BusinessTime::dayStart((string) $request->input('from')));
         }
         if ($request->filled('to')) {
-            $query->whereDate('placed_at', '<=', $request->input('to'));
+            $query->where('placed_at', '<=', BusinessTime::dayEnd((string) $request->input('to')));
         }
 
         return $this->paginated($query->paginate($request->integer('per_page', 15)));
@@ -120,8 +121,8 @@ class CustomerMobileController extends BaseApiController
 
         $base = Order::where('user_id', auth()->id())
             ->where('address_id', $address->id)
-            ->when($request->filled('from'), fn ($q) => $q->whereDate('placed_at', '>=', $request->input('from')))
-            ->when($request->filled('to'), fn ($q) => $q->whereDate('placed_at', '<=', $request->input('to')))
+            ->when($request->filled('from'), fn ($q) => $q->where('placed_at', '>=', BusinessTime::dayStart((string) $request->input('from'))))
+            ->when($request->filled('to'), fn ($q) => $q->where('placed_at', '<=', BusinessTime::dayEnd((string) $request->input('to'))))
             ->when($request->filled('q'), fn ($q) => $q->where('order_number', 'like', '%'.$request->input('q').'%'));
 
         $byStatus = (clone $base)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->map(fn ($n) => (int) $n);

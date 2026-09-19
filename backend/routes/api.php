@@ -259,6 +259,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () use ($account
         Route::get('returns', [ReturnController::class, 'index'])->name('returns.index');
         Route::post('returns', [ReturnController::class, 'store'])->name('returns.store');
         Route::get('returns/{orderReturn}', [ReturnController::class, 'show'])->name('returns.show');
+        Route::post('returns/{orderReturn}/pay-refund', [ReturnController::class, 'payRefund'])->name('returns.pay-refund');
 
         // Reports: JSON for the dashboard, ?format=pdf|xlsx for downloads. All need REPORTS_VIEW.
         Route::prefix('reports')->name('reports.')->group(function () {

@@ -192,14 +192,21 @@ class WalletTest extends TestCase
 
     public function test_delegate_cash_collection_credits_immediately(): void
     {
-        $order = Order::factory()->create(['user_id' => $this->customer->id, 'delegate_id' => $this->delegate->id]);
+        $order = Order::factory()->create(['user_id' => $this->customer->id, 'delegate_id' => $this->delegate->id, 'status' => 'out_for_delivery', 'subtotal' => 115, 'delivery_fee' => 5, 'total_amount' => 120]);
 
         $this->postJson('/api/v1/delegate/wallet/collect', ['order_id' => $order->id, 'amount' => 200], $this->as($this->delegate))
             ->assertCreated()->assertJsonPath('data.status', 'approved')->assertJsonPath('data.collected_by', $this->delegate->id);
         $this->postJson('/api/v1/delegate/wallet/collect', ['mobile_number' => '0911111111', 'amount' => 50], $this->as($this->delegate))->assertCreated();
 
-        $this->assertSame(250.0, $this->balance());
+        // 200 taken for a 120 order pays the order; the 80 over, and the 50, are the cafe's credit.
+        $this->assertSame(130.0, $this->balance());
+        $this->assertSame(0, $order->fresh()->balanceCents()['outstanding']);
         $this->getJson('/api/v1/delegate/wallet/collections', $this->as($this->delegate))->assertOk()->assertJsonPath('total', 250);
+
+        // Delivering it afterwards must not book the same cash a second time.
+        $order->fresh()->update(['status' => 'delivered']);
+        $this->assertSame('250.00', $this->delegate->delegateProfile()->first()->custody_balance);
+        $this->assertSame(1, $order->payments()->count());
 
         $other = Order::factory()->create(['user_id' => $this->customer->id]);
         $this->postJson('/api/v1/delegate/wallet/collect', ['order_id' => $other->id, 'amount' => 50], $this->as($this->delegate))->assertNotFound();

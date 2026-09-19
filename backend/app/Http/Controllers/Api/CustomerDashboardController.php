@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Models\Address;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Support\BusinessTime;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +23,9 @@ class CustomerDashboardController extends BaseApiController
         $purchases = $orders->sum(fn ($o) => (float) $o->total_amount);
 
         $periodStats = [
-            'today' => $this->periodStats($orderQuery, Carbon::now()->startOfDay(), Carbon::now()->endOfDay()),
-            'this_week' => $this->periodStats($orderQuery, Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()),
-            'this_month' => $this->periodStats($orderQuery, Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()),
+            'today' => $this->periodStats($orderQuery, BusinessTime::startOf('day'), BusinessTime::endOf('day')),
+            'this_week' => $this->periodStats($orderQuery, BusinessTime::startOf('week'), BusinessTime::endOf('week')),
+            'this_month' => $this->periodStats($orderQuery, BusinessTime::startOf('month'), BusinessTime::endOf('month')),
         ];
 
         $ordersByStatus = $orders->groupBy(fn (Order $o) => $o->status->value)
@@ -39,7 +40,7 @@ class CustomerDashboardController extends BaseApiController
 
         $monthlyPurchases = [];
         for ($i = 5; $i >= 0; $i--) {
-            $month = Carbon::now()->subMonths($i);
+            $month = BusinessTime::now()->startOfMonth()->subMonths($i);
             $monthlyPurchases[$month->format('Y-m')] = [
                 'month' => $month->format('Y-m'),
                 'purchases' => 0.0,
@@ -47,7 +48,7 @@ class CustomerDashboardController extends BaseApiController
         }
 
         foreach ($orders as $order) {
-            $month = $order->placed_at->format('Y-m');
+            $month = BusinessTime::format($order->placed_at, 'Y-m');
             if (isset($monthlyPurchases[$month])) {
                 $monthlyPurchases[$month]['purchases'] += (float) $order->total_amount;
             }

@@ -12,6 +12,7 @@ use App\Exceptions\InsufficientWalletBalanceException;
 use App\Models\AppUser;
 use App\Models\Notification;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Wallet;
 use App\Models\WalletTopup;
 use App\Models\WalletTransaction;
@@ -63,7 +64,7 @@ class WalletService
         if ($method !== TopupMethod::Gateway) {
             Notification::notifyAdmins(
                 'طلب شحن محفظة',
-                "{$user->name} طلب شحن " . number_format($amount, 2) . ' د.ل',
+                "{$user->name} طلب شحن ".number_format($amount, 2).' د.ل',
                 "/wallet-topups/{$topup->id}",
                 'wallet'
             );
@@ -91,7 +92,7 @@ class WalletService
             return $locked;
         });
 
-        $this->notifyCustomer($topup->user_id, 'تم شحن محفظتك', 'أُضيف ' . number_format((float) $topup->amount, 2) . ' د.ل إلى رصيدك');
+        $this->notifyCustomer($topup->user_id, 'تم شحن محفظتك', 'أُضيف '.number_format((float) $topup->amount, 2).' د.ل إلى رصيدك');
 
         return $topup;
     }
@@ -139,12 +140,24 @@ class WalletService
             $topup = $this->approveTopup($topup, $delegate);
             app(CustodyService::class)->recordWalletCollection($topup);
 
+            // Cash taken "for this order" pays the order, up to what it still
+            // owes. Without this the money only sat in the wallet, and marking
+            // the order delivered then booked the same cash a second time as a
+            // fresh collection, leaving the cafe a wallet credit it never paid for.
+            if ($order && $order->status !== OrderStatus::Cancelled) {
+                $owed = max(0, $order->balanceCents()['outstanding']);
+                $pay = min($owed, $this->cents($amount));
+                if ($pay > 0) {
+                    $this->payFromWallet($order, $pay / 100, $delegate->id);
+                }
+            }
+
             return $topup;
         });
 
         Notification::notifyAdmins(
             'تحصيل نقدي من مندوب',
-            "{$delegate->name} حصّل " . number_format($amount, 2) . " د.ل من {$customer->name}",
+            "{$delegate->name} حصّل ".number_format($amount, 2)." د.ل من {$customer->name}",
             "/wallet-topups/{$topup->id}",
             'wallet'
         );
@@ -168,6 +181,27 @@ class WalletService
         ]);
     }
 
+    /**
+     * Pays part (or all) of an order from its customer's wallet: the debit and
+     * the payment row together, or neither. This is the only way a "wallet"
+     * payment comes to exist; a payment row alone would claim money that never
+     * left the wallet.
+     */
+    public function payFromWallet(Order $order, float $amount, ?int $collectedBy = null): Payment
+    {
+        return DB::transaction(function () use ($order, $amount, $collectedBy) {
+            $this->debit($this->walletFor($order->user), $amount, WalletTransactionType::Payment, $order, "دفع الطلب {$order->order_number}");
+
+            return $order->payments()->create([
+                'amount' => $amount,
+                'method' => PaymentMethod::Wallet,
+                'status' => PaymentStatus::Paid,
+                'paid_at' => now(),
+                'collected_by' => $collectedBy,
+            ]);
+        });
+    }
+
     // Returns wallet payments of a cancelled order to the wallet (once per payment).
     public function refundOrder(Order $order): void
     {
@@ -177,8 +211,9 @@ class WalletService
 
         DB::transaction(function () use ($order) {
             $payments = $order->payments()
-                // Wallet payments, and cash already collected by the delegate (who keeps it in custody).
-                ->whereIn('method', [PaymentMethod::Wallet->value, PaymentMethod::Cash->value])
+                // Everything the customer paid comes back as wallet credit, however
+                // it was paid: a bank transfer on a cancelled order is still their
+                // money. Cash a delegate collected stays in that delegate's custody.
                 ->where('status', PaymentStatus::Paid->value)
                 ->lockForUpdate()
                 ->get();
@@ -189,7 +224,7 @@ class WalletService
             }
 
             if ($payments->isNotEmpty()) {
-                $this->notifyCustomer($order->user_id, 'تم استرجاع مبلغ الطلب', "أُعيد " . number_format((float) $payments->sum('amount'), 2) . " د.ل إلى محفظتك بعد إلغاء الطلب {$order->order_number}");
+                $this->notifyCustomer($order->user_id, 'تم استرجاع مبلغ الطلب', 'أُعيد '.number_format((float) $payments->sum('amount'), 2)." د.ل إلى محفظتك بعد إلغاء الطلب {$order->order_number}");
             }
         });
     }
@@ -261,9 +296,9 @@ class WalletService
     private function topupNote(WalletTopup $topup): string
     {
         return match ($topup->method) {
-            TopupMethod::BankTransfer => 'شحن بتحويل بنكي' . ($topup->reference_number ? " ({$topup->reference_number})" : ''),
+            TopupMethod::BankTransfer => 'شحن بتحويل بنكي'.($topup->reference_number ? " ({$topup->reference_number})" : ''),
             TopupMethod::DelegateCash => 'تحصيل نقدي عن طريق مندوب',
-            TopupMethod::Gateway => 'شحن إلكتروني' . ($topup->gateway_reference ? " ({$topup->gateway_reference})" : ''),
+            TopupMethod::Gateway => 'شحن إلكتروني'.($topup->gateway_reference ? " ({$topup->gateway_reference})" : ''),
         };
     }
 

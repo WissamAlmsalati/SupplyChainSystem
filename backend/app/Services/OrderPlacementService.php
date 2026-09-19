@@ -58,7 +58,7 @@ class OrderPlacementService
         $missing = array_diff(array_keys($quantities), $variants->keys()->all());
         if ($missing) {
             throw ValidationException::withMessages([
-                'items' => 'بعض المنتجات غير متاحة: ' . implode(', ', $missing),
+                'items' => 'بعض المنتجات غير متاحة: '.implode(', ', $missing),
             ]);
         }
 

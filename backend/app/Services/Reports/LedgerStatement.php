@@ -2,6 +2,7 @@
 
 namespace App\Services\Reports;
 
+use App\Support\BusinessTime;
 use Illuminate\Database\Eloquent\Builder;
 
 // Statement over a running-balance ledger (custody entries, wallet transactions):
@@ -39,7 +40,7 @@ class LedgerStatement
             'totals' => $totals,
             'entries' => $rows->map(fn ($r) => [
                 'id' => $r->id,
-                'date' => $r->created_at?->toDateTimeString(),
+                'date' => BusinessTime::format($r->created_at, 'Y-m-d H:i:s'),
                 'type' => $r->type instanceof \BackedEnum ? $r->type->value : $r->type,
                 'label' => $labels[$r->type instanceof \BackedEnum ? $r->type->value : $r->type] ?? $r->type,
                 'amount' => round((float) $r->amount, 2),

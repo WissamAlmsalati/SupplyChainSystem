@@ -10,6 +10,7 @@ use App\Models\CustodyEntry;
 use App\Models\DelegateProfile;
 use App\Models\DelegateSettlement;
 use App\Models\Order;
+use App\Models\OrderReturn;
 use App\Models\WalletTopup;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -56,7 +57,7 @@ class CustodyService
             $this->cents((float) $topup->amount),
             CustodyEntryType::WalletCollection,
             $topup,
-            'شحن محفظة ' . ($topup->user?->name ?? '')
+            'شحن محفظة '.($topup->user?->name ?? '')
         );
     }
 
@@ -73,7 +74,7 @@ class CustodyService
             $beforeCents = $this->cents((float) $profile->custody_balance);
 
             if ($cents > $beforeCents) {
-                throw ValidationException::withMessages(['amount' => 'المبلغ أكبر من العهدة الحالية (' . number_format($beforeCents / 100, 2) . ' د.ل)']);
+                throw ValidationException::withMessages(['amount' => 'المبلغ أكبر من العهدة الحالية ('.number_format($beforeCents / 100, 2).' د.ل)']);
             }
 
             $settlement = DelegateSettlement::create([
@@ -89,6 +90,18 @@ class CustodyService
 
             return $settlement;
         });
+    }
+
+    // A delegate hands a customer their cash refund out of the cash they hold.
+    public function payRefund(AppUser $delegate, OrderReturn $return): CustodyEntry
+    {
+        return $this->record(
+            $delegate->id,
+            -$this->cents((float) $return->refund_amount),
+            CustodyEntryType::RefundPayout,
+            $return,
+            'استرداد نقدي لمرتجع الطلب '.($return->order?->order_number ?? ''),
+        );
     }
 
     // Admin correction of a delegate's custody (e.g. shortage write-off), never below zero.

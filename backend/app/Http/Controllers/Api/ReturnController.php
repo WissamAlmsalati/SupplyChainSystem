@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\StoreReturnRequest;
+use App\Models\AppUser;
 use App\Models\Order;
 use App\Models\OrderReturn;
 use App\Services\ReturnService;
@@ -28,6 +29,7 @@ class ReturnController extends BaseApiController
     {
         $query = OrderReturn::query()
             ->when($request->filled('order_id'), fn ($q) => $q->where('order_id', $request->integer('order_id')))
+            ->when($request->boolean('refund_pending'), fn ($q) => $q->where('refund_amount', '>', 0)->whereNull('refund_paid_at'))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->input('search');
                 $q->whereHas('order', fn ($o) => $o->where(fn ($inner) => ArabicText::filter($inner, $search, ['order_number'])
@@ -37,10 +39,12 @@ class ReturnController extends BaseApiController
         $summary = [
             'total_value' => round((float) (clone $query)->sum('total_value'), 2),
             'refunded' => round((float) (clone $query)->sum('refund_amount'), 2),
+            // Cash refunds recorded but not yet handed over: money the company still owes.
+            'refund_pending' => round((float) (clone $query)->where('refund_amount', '>', 0)->whereNull('refund_paid_at')->sum('refund_amount'), 2),
         ];
 
         return $this->paginated(
-            $query->with(['order:id,order_number,user_id', 'order.user:id,name,mobile_number', 'createdBy:id,name'])
+            $query->with(['order:id,order_number,user_id,delegate_id', 'order.user:id,name,mobile_number', 'createdBy:id,name', 'refundPaidBy:id,name', 'refundPaidFromDelegate:id,name'])
                 ->withSum('items as items_quantity', 'quantity')
                 ->orderByDesc('id')
                 ->paginate($request->integer('per_page', 15)),
@@ -99,5 +103,31 @@ class ReturnController extends BaseApiController
         );
 
         return $this->jsonResponse(['data' => $return, 'message' => 'تم تسجيل المرتجع'], 201);
+    }
+
+    /**
+     * @OA\Post(path="/returns/{id}/pay-refund", tags={"Returns"}, summary="Record that a cash refund was handed over",
+     *     description="A cash refund is owed from the moment the return is recorded and stays pending until this is called. Send `delegate_id` when a delegate paid it out of the cash they hold; their custody drops by the amount. Without it, the office paid.",
+     *
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
+     *     @OA\RequestBody(@OA\JsonContent(@OA\Property(property="delegate_id", type="integer", nullable=true, example=10))),
+     *
+     *     @OA\Response(response=200, description="Marked as paid"),
+     *     @OA\Response(response=422, description="Not a cash refund, already paid, or the delegate holds less than the refund",
+     *
+     *         @OA\JsonContent(ref="#/components/schemas/ValidationError"))
+     * )
+     */
+    public function payRefund(Request $request, OrderReturn $orderReturn, ReturnService $returns): JsonResponse
+    {
+        $data = $request->validate(['delegate_id' => ['nullable', 'integer', 'exists:users,id']]);
+        $delegate = isset($data['delegate_id'])
+            ? AppUser::whereKey($data['delegate_id'])->whereHas('userType', fn ($q) => $q->where('name', 'delegate'))->firstOrFail()
+            : null;
+
+        $return = $returns->payRefund($orderReturn, $delegate);
+
+        return $this->jsonResponse(['data' => $return->load(['refundPaidBy:id,name', 'refundPaidFromDelegate:id,name']), 'message' => 'تم تسجيل تسليم الاسترداد']);
     }
 }

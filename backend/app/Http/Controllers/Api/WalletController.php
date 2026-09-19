@@ -15,7 +15,7 @@ use App\Models\Wallet;
 use App\Models\WalletTopup;
 use App\Models\WalletTransaction;
 use App\Services\WalletService;
-use Carbon\Carbon;
+use App\Support\BusinessTime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -57,9 +57,9 @@ class WalletController extends BaseApiController
     {
         $period = in_array($request->input('period'), ['today', 'week', 'month', 'all'], true) ? $request->input('period') : 'month';
         $from = match ($period) {
-            'today' => Carbon::now()->startOfDay(),
-            'week' => Carbon::now()->startOfWeek(),
-            'month' => Carbon::now()->startOfMonth(),
+            'today' => BusinessTime::startOf('day'),
+            'week' => BusinessTime::startOf('week'),
+            'month' => BusinessTime::startOf('month'),
             'all' => null,
         };
         $inPeriod = fn ($query, string $column = 'created_at') => $from ? $query->where($column, '>=', $from) : $query;

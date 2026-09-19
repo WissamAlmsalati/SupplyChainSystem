@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\CustodyService;
 use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -170,6 +171,33 @@ class OrderReturnTest extends TestCase
             ->assertJsonMissing(['next_statuses' => ['cancelled']])
             ->assertJsonPath('balance.returned', 8)
             ->assertJsonPath('items.0.returned_quantity', 1);
+    }
+
+    public function test_a_cash_refund_is_pending_until_someone_hands_it_over(): void
+    {
+        [$order, $item] = $this->deliveredOrder(paid: 85);
+        $wallet = $this->send($order, [['order_item_id' => $item->id, 'quantity' => 1, 'condition' => 'restock']])->assertCreated();
+        $wallet->assertJsonPath('data.refund_pending', false);
+
+        $cash = $this->send($order, [['order_item_id' => $item->id, 'quantity' => 2, 'condition' => 'restock']], 'cash')->assertCreated();
+        $cash->assertJsonPath('data.refund_pending', true);
+        $id = $cash->json('data.id');
+
+        $this->getJson('/api/v1/returns?refund_pending=1', $this->headers())->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.summary.refund_pending', 16);
+
+        // A delegate pays it out of the cash they hold; they cannot pay what they do not have.
+        $delegate = AppUser::factory()->delegate()->create();
+        $this->postJson("/api/v1/returns/{$id}/pay-refund", ['delegate_id' => $delegate->id], $this->headers())->assertUnprocessable();
+        app(CustodyService::class)->adjust($delegate, 50, 'رصيد افتتاحي');
+
+        $this->postJson("/api/v1/returns/{$id}/pay-refund", ['delegate_id' => $delegate->id], $this->headers())
+            ->assertOk()->assertJsonPath('data.refund_pending', false)->assertJsonPath('data.refund_paid_from_delegate.id', $delegate->id);
+        $this->assertSame('34.00', $delegate->delegateProfile()->first()->custody_balance);
+        $this->assertDatabaseHas('custody_entries', ['delegate_id' => $delegate->id, 'type' => 'refund_payout', 'amount' => -16]);
+
+        // Once, and only for cash.
+        $this->postJson("/api/v1/returns/{$id}/pay-refund", [], $this->headers())->assertUnprocessable();
+        $this->postJson("/api/v1/returns/{$wallet->json('data.id')}/pay-refund", [], $this->headers())->assertUnprocessable();
     }
 
     public function test_the_list_is_searchable_and_totals_what_it_shows(): void

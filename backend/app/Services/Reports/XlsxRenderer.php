@@ -17,10 +17,10 @@ class XlsxRenderer
     public function render(array $sheets, string $filename): BinaryFileResponse
     {
         $path = tempnam(sys_get_temp_dir(), 'xlsx');
-        $writer = new Writer();
+        $writer = new Writer;
         $writer->openToFile($path);
 
-        $bold = (new Style())->setFontBold();
+        $bold = (new Style)->setFontBold();
         $first = true;
         foreach ($sheets as $name => $sheet) {
             if ($first) {
@@ -30,7 +30,7 @@ class XlsxRenderer
                 $writer->addNewSheetAndMakeItCurrent()->setName($name);
             }
             // Excel renders right-to-left when the sheet view says so.
-            $writer->getCurrentSheet()->setSheetView((new SheetView())->setRightToLeft(true));
+            $writer->getCurrentSheet()->setSheetView((new SheetView)->setRightToLeft(true));
             $writer->addRow(Row::fromValues($sheet['headers'], $bold));
             foreach ($sheet['rows'] as $row) {
                 $writer->addRow(Row::fromValues(array_values($row)));

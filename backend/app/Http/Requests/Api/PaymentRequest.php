@@ -20,7 +20,9 @@ class PaymentRequest extends FormRequest
             'order_id' => ['required', 'integer', 'exists:orders,id'],
             'amount' => ['required', 'numeric', 'gt:0'],
             'method' => ['required', Rule::enum(PaymentMethod::class)],
-            'status' => ['required', Rule::enum(PaymentStatus::class)],
+            // A payment is recorded as received or expected. "Refunded" and
+            // "failed" are outcomes the system reaches, not things to type in.
+            'status' => ['required', Rule::in([PaymentStatus::Paid->value, PaymentStatus::Pending->value])],
             'paid_at' => ['nullable', 'date'],
         ];
     }

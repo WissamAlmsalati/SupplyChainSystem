@@ -3,7 +3,7 @@
 @php $money = fn ($v) => number_format((float) $v, 2); @endphp
 <table class="cards"><tr>
   <td><div class="l">رقم الطلب</div><div class="v" dir="ltr">{{ $order->order_number }}</div></td>
-  <td><div class="l">التاريخ</div><div class="v" dir="ltr">{{ $order->placed_at?->format('Y-m-d H:i') }}</div></td>
+  <td><div class="l">التاريخ</div><div class="v" dir="ltr">{{ \App\Support\BusinessTime::format($order->placed_at) }}</div></td>
   <td><div class="l">الحالة</div><div class="v">{{ $order->status->label() }}</div></td>
   <td><div class="l">طريقة الطلب</div><div class="v">{{ $order->source?->value === 'app' ? 'التطبيق' : 'لوحة التحكم' }}</div></td>
 </tr></table>
@@ -35,7 +35,7 @@
   <thead><tr><th>التاريخ</th><th>الطريقة</th><th>حصّله</th><th class="num" style="width:18%">المبلغ</th></tr></thead>
   <tbody>
   @forelse($order->payments as $p)
-    <tr><td dir="ltr" class="left">{{ $p->paid_at?->format('Y-m-d H:i') }}</td><td>{{ $payment_labels[$p->method instanceof \BackedEnum ? $p->method->value : $p->method] ?? $p->method }}</td><td>{{ $p->collector?->name ?? '—' }}</td><td class="num">{{ $money($p->amount) }}</td></tr>
+    <tr><td dir="ltr" class="left">{{ \App\Support\BusinessTime::format($p->paid_at) }}</td><td>{{ $payment_labels[$p->method instanceof \BackedEnum ? $p->method->value : $p->method] ?? $p->method }}</td><td>{{ $p->collector?->name ?? '—' }}</td><td class="num">{{ $money($p->amount) }}</td></tr>
   @empty
     <tr><td colspan="4" class="muted">لا توجد دفعات مسجلة</td></tr>
   @endforelse

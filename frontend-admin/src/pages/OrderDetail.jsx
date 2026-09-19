@@ -935,7 +935,7 @@ export default function OrderDetail() {
             <div>
               <label className="mb-1.5 block text-sm font-medium text-muted">الحالة</label>
               <select className={selectClass} value={payment.status} onChange={(e) => setPayment({ ...payment, status: e.target.value })}>
-                {Object.entries(PAYMENT_STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {Object.entries(PAYMENT_STATUSES).filter(([k]) => k === 'paid' || k === 'pending').map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
           </div>

@@ -2,6 +2,7 @@
 
 namespace App\Services\Reports;
 
+use App\Support\BusinessTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -20,26 +21,29 @@ final class Period
             'all' => ['nullable', Rule::in(['0', '1', 'true', 'false'])],
         ]);
 
-        $to = isset($data['to']) ? Carbon::createFromFormat('Y-m-d', $data['to']) : Carbon::today();
+        // The days are the office's days (see BusinessTime); the bounds are
+        // handed on as UTC instants because that is what the columns hold.
+        $tz = BusinessTime::tz();
+        $to = isset($data['to']) ? Carbon::createFromFormat('Y-m-d', $data['to'], $tz) : BusinessTime::now();
         $from = isset($data['from'])
-            ? Carbon::createFromFormat('Y-m-d', $data['from'])
-            : ($request->boolean('all') ? Carbon::create(2000, 1, 1) : $to->copy()->modify($default));
+            ? Carbon::createFromFormat('Y-m-d', $data['from'], $tz)
+            : ($request->boolean('all') ? Carbon::create(2000, 1, 1, 0, 0, 0, $tz) : $to->copy()->modify($default));
 
-        return new self($from->startOfDay(), $to->endOfDay());
+        return new self($from->startOfDay()->utc(), $to->endOfDay()->utc());
     }
 
     public function label(): string
     {
-        return $this->from->format('Y-m-d').' → '.$this->to->format('Y-m-d');
+        return BusinessTime::format($this->from, 'Y-m-d').' → '.BusinessTime::format($this->to, 'Y-m-d');
     }
 
     public function slug(): string
     {
-        return $this->from->format('Ymd').'-'.$this->to->format('Ymd');
+        return BusinessTime::format($this->from, 'Ymd').'-'.BusinessTime::format($this->to, 'Ymd');
     }
 
     public function toArray(): array
     {
-        return ['from' => $this->from->toDateString(), 'to' => $this->to->toDateString()];
+        return ['from' => BusinessTime::format($this->from, 'Y-m-d'), 'to' => BusinessTime::format($this->to, 'Y-m-d')];
     }
 }

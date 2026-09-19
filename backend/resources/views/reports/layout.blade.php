@@ -33,7 +33,7 @@
   </td>
   <td class="left">
     <h1>{{ $title }}</h1>
-    <div class="muted">أُصدر في {{ now()->format('Y-m-d H:i') }}</div>
+    <div class="muted">أُصدر في {{ \App\Support\BusinessTime::now()->format('Y-m-d H:i') }}</div>
   </td>
 </tr></table>
 @yield('content')

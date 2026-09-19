@@ -8,6 +8,7 @@ use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\StockMovement;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -151,7 +152,7 @@ class StockService
     /**
      * Available stock per variant: total + per-warehouse breakdown.
      *
-     * @return array<int, array{total:int, warehouses:\Illuminate\Support\Collection}>
+     * @return array<int, array{total:int, warehouses:Collection}>
      */
     public function levels(array $variantIds): array
     {
