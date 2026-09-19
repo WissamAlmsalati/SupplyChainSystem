@@ -57,7 +57,21 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('v1')->middleware('throttle:api')->group(function () {
+// What every app needs about the signed-in user, registered under each app's
+// own prefix so an app's whole surface reads /api/v1/{app}/...: the customer
+// app never has to call a path outside /customer/, nor the delegate app one
+// outside /delegate/. The flat /me, /logout and /notifications stay for the
+// dashboard and for clients already deployed.
+$account = function () {
+    Route::get('me', [AuthController::class, 'me'])->name('me');
+    Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+    Route::match(['patch', 'put'], 'notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+    Route::apiResource('notifications', NotificationController::class)->only(['index', 'show', 'destroy']);
+    Route::match(['patch', 'put'], 'notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+};
+
+Route::prefix('v1')->middleware('throttle:api')->group(function () use ($account) {
     // One action, a door per app. `roles` tells it which user types to search,
     // because a phone number is only unique within a type — the same number can
     // be a customer and a delegate, and a lookup without the type is a coin toss.
@@ -86,7 +100,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('categories/{category}', [CategoryController::class, 'show']);
 
     // 'idempotent' acts only on a POST that carries an Idempotency-Key header.
-    Route::middleware(['auth:sanctum', 'permission', 'idempotent'])->group(function () {
+    Route::middleware(['auth:sanctum', 'permission', 'idempotent'])->group(function () use ($account) {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::post('register', [AuthController::class, 'register']);
@@ -96,7 +110,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');
         Route::match(['patch', 'put'], 'premium-features/{premiumFeature}', [PremiumFeatureController::class, 'update'])->name('premium-features.update');
 
-        Route::prefix('customer')->name('customer.')->group(function () {
+        Route::prefix('customer')->name('customer.')->group(function () use ($account) {
+            $account();
+
             // Profile endpoints stay reachable for every authenticated customer user.
             Route::get('profile', [CustomerMobileController::class, 'profile'])->name('profile');
             Route::match(['patch', 'put'], 'profile', [CustomerMobileController::class, 'updateProfile'])->name('profile.update');
@@ -157,7 +173,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::get('promos', [PromoController::class, 'active'])->name('promos.index');
         });
 
-        Route::prefix('delegate')->name('delegate.')->group(function () {
+        Route::prefix('delegate')->name('delegate.')->group(function () use ($account) {
+            $account();
+
             Route::post('location', [DelegateMobileController::class, 'updateLocation'])->name('location');
             Route::post('availability', [DelegateMobileController::class, 'setAvailability'])->name('availability');
             Route::get('orders', [DelegateMobileController::class, 'myOrders'])->name('orders');

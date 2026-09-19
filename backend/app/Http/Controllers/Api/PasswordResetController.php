@@ -14,7 +14,7 @@ class PasswordResetController extends BaseApiController
     /**
      * @OA\Post(
      *     path="/customer/forgot-password",
-     *     tags={"Auth"},
+     *     tags={"Customer Auth"},
      *     summary="Request password reset OTP for customer user",
      *     security={},
      *
@@ -63,7 +63,7 @@ class PasswordResetController extends BaseApiController
     /**
      * @OA\Post(
      *     path="/customer/reset-password",
-     *     tags={"Auth"},
+     *     tags={"Customer Auth"},
      *     summary="Reset customer user password with OTP",
      *     security={},
      *

@@ -152,7 +152,7 @@ class AuthController extends BaseApiController
     /**
      * @OA\Post(
      *     path="/customer/register",
-     *     tags={"Auth"},
+     *     tags={"Customer Auth"},
      *     summary="Register a customer account (OTP verification required before login)",
      *     description="Creates an inactive customer user and sends a 6-digit OTP. Verify it via POST /customer/verify-otp: when customer_auto_approve is active a bearer token is returned immediately, otherwise the account waits for admin approval and only a message is returned.",
      *     security={},
@@ -195,7 +195,7 @@ class AuthController extends BaseApiController
     /**
      * @OA\Post(
      *     path="/customer/verify-otp",
-     *     tags={"Auth"},
+     *     tags={"Customer Auth"},
      *     summary="Verify registration OTP",
      *     description="When customer_auto_approve is active the user is activated and a bearer token is returned immediately. Otherwise the account stays inactive until an admin approves it, and only a message is returned.",
      *     security={},
@@ -274,7 +274,7 @@ class AuthController extends BaseApiController
     /**
      * @OA\Post(
      *     path="/customer/resend-otp",
-     *     tags={"Auth"},
+     *     tags={"Customer Auth"},
      *     summary="Resend the registration OTP",
      *     security={},
      *

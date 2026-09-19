@@ -8,7 +8,7 @@ namespace App\OpenApi;
  * reader needs to know which one their app uses — and that using the wrong one
  * is refused even with the right password.
  *
- * @OA\Post(path="/customer/login", tags={"Auth"}, summary="Customer sign-in", security={},
+ * @OA\Post(path="/customer/login", tags={"Customer Auth"}, summary="Customer sign-in", security={},
  *     description="Looks the number up among customers only. The same number may also exist as a delegate; that account cannot sign in here.",
  *     @OA\RequestBody(required=true, @OA\JsonContent(required={"phone_number","password"},
  *         @OA\Property(property="phone_number", type="string", example="0912345678"),

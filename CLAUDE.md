@@ -241,6 +241,14 @@ remembered. Both frontends send it through `client.postOnce()`, which keeps one 
 "this path with this body" until the server answers; use it for anything that moves money or
 stock. The header is optional, so older clients are unaffected.
 
+An app's whole surface lives under its own prefix: the customer app calls nothing outside
+`/api/v1/customer/`, the delegate app nothing outside `/api/v1/delegate/`. What every app needs
+about the signed-in user (`me`, `logout`, `notifications`) is therefore registered under each
+prefix by the `$account` closure at the top of `routes/api.php`, served by the same controller
+actions as the flat `/me`, `/logout` and `/notifications`, which stay for the dashboard and for
+clients already deployed. The prefixed copies are documented in `app/OpenApi/CustomerAccount.php`,
+because swagger-php sees one operation per controller action and that one belongs to the flat path.
+
 Updates are `PATCH` — every one of them changes some fields and leaves the rest alone, which is
 not what `PUT` means. `PUT` is still accepted beside it (`Route::match(['patch', 'put'], …)`, the
 same pair `apiResource` registers) so clients already deployed keep working, and
@@ -273,8 +281,9 @@ Scalar (`resources/views/scalar.blade.php`), configured through `data-configurat
 
 `app/OpenApi/` holds the annotations for admin endpoints in one place so CRUD controllers stay
 readable; cafe and delegate endpoints are annotated on their own controllers. Two Swagger
-documents are configured: `default` (everything) and `customer`, which filters to tags matching
-`/^Customer /`, `Auth`, and `Notifications`. The JSON under `backend/storage/api-docs/` is generated
+documents are configured: `default` (everything) and `customer`, which filters by path to
+`#^/customer/#` (not by tag: tags let `/login`, `/admin/login` and the gateway callback leak in).
+`OpenApiSpecTest` fails if the customer reference ever holds a path outside `/customer/`. The JSON under `backend/storage/api-docs/` is generated
 — edit annotations, then regenerate, never edit the JSON.
 
 ### Realtime and background work

@@ -93,8 +93,11 @@ return [
                 'processors' => [AddStandardResponses::class],
                 'default_processors_configuration' => [
                     'pathFilter' => [
-                        // Every customer-app tag: Customer Mobile, Customer Wallet, Customer Favorites, Customer Recurring Carts…
-                        'tags' => ['/^Customer /', '/^Auth$/', '/^Notifications$/'],
+                        // By path, not by tag: the customer app's whole surface is
+                        // /api/v1/customer/..., so that is exactly what its reference
+                        // shows. Filtering by tag let /login, /admin/login, the gateway
+                        // callback and the dashboard's notification sender leak in.
+                        'paths' => ['#^/customer/#'],
                     ],
                 ],
             ],

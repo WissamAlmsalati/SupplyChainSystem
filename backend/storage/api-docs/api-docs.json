@@ -541,7 +541,7 @@
         "/customer/register": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Customer Auth"
                 ],
                 "summary": "Register a customer account (OTP verification required before login)",
                 "description": "Creates an inactive customer user and sends a 6-digit OTP. Verify it via POST /customer/verify-otp: when customer_auto_approve is active a bearer token is returned immediately, otherwise the account waits for admin approval and only a message is returned.",
@@ -587,7 +587,7 @@
         "/customer/verify-otp": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Customer Auth"
                 ],
                 "summary": "Verify registration OTP",
                 "description": "When customer_auto_approve is active the user is activated and a bearer token is returned immediately. Otherwise the account stays inactive until an admin approves it, and only a message is returned.",
@@ -627,7 +627,7 @@
         "/customer/resend-otp": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Customer Auth"
                 ],
                 "summary": "Resend the registration OTP",
                 "operationId": "41a92368bead96bd7ef21e906c134b82",
@@ -5509,7 +5509,7 @@
         "/customer/forgot-password": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Customer Auth"
                 ],
                 "summary": "Request password reset OTP for customer user",
                 "operationId": "be36d04f2f97a4d40ea443a08c86ce77",
@@ -5548,7 +5548,7 @@
         "/customer/reset-password": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Customer Auth"
                 ],
                 "summary": "Reset customer user password with OTP",
                 "operationId": "c6b9a98d29abc64a44614827ff126f4d",
@@ -12307,10 +12307,453 @@
                 ]
             }
         },
+        "/customer/me": {
+            "get": {
+                "tags": [
+                    "Customer Auth"
+                ],
+                "summary": "The signed-in customer",
+                "description": "Call it once after sign-in and on app start to check the token is still good. `has_addresses` tells the app whether to send a new customer to add a delivery address first.",
+                "operationId": "1c2363cffff61bc1da14ca273fc371ef",
+                "responses": {
+                    "200": {
+                        "description": "The account with its profile, role and addresses.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "example": {
+                                        "id": 6,
+                                        "name": "مقهى الزاوية",
+                                        "email": "cafe4@example.com",
+                                        "mobile_number": "0910000004",
+                                        "user_type_id": 3,
+                                        "is_active": true,
+                                        "created_at": "2026-09-13T21:17:40.000000Z",
+                                        "updated_at": "2026-09-13T21:17:40.000000Z",
+                                        "deleted_at": null,
+                                        "has_addresses": true,
+                                        "addresses_count": 2,
+                                        "user_type": {
+                                            "id": 3,
+                                            "name": "customer",
+                                            "created_at": "2026-09-13T21:17:36.000000Z",
+                                            "updated_at": "2026-09-13T21:17:36.000000Z",
+                                            "permissions": [
+                                                {
+                                                    "id": 6,
+                                                    "code": "CUSTOMER_BRANCHES_VIEW",
+                                                    "created_at": "2026-09-13T21:17:36.000000Z",
+                                                    "updated_at": "2026-09-13T21:17:36.000000Z",
+                                                    "pivot": {
+                                                        "user_type_id": 3,
+                                                        "permission_id": 6
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "addresses": [
+                                            {
+                                                "id": 7,
+                                                "user_id": 6,
+                                                "name": "فرع الزاوية الرئيسي",
+                                                "city": "الزاوية",
+                                                "street": "شارع الجمهورية",
+                                                "contact_phones": [
+                                                    "0910000004"
+                                                ],
+                                                "latitude": "32.75220000",
+                                                "longitude": "12.72780000",
+                                                "delivery_zone_id": 4,
+                                                "created_at": "2026-09-13T21:17:40.000000Z",
+                                                "updated_at": "2026-09-13T21:17:40.000000Z",
+                                                "deleted_at": null
+                                            }
+                                        ],
+                                        "admin_profile": null,
+                                        "customer_profile": {
+                                            "id": 4,
+                                            "user_id": 6,
+                                            "business_name": "مقهى الزاوية",
+                                            "latitude": "32.75220000",
+                                            "longitude": "12.72780000",
+                                            "created_at": "2026-09-13T21:17:40.000000Z",
+                                            "updated_at": "2026-09-13T21:17:40.000000Z"
+                                        },
+                                        "delegate_profile": null
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/logout": {
+            "post": {
+                "tags": [
+                    "Customer Auth"
+                ],
+                "summary": "Sign out",
+                "description": "Revokes the token this request was sent with. Other devices stay signed in.",
+                "operationId": "ea9a1987aacdf7301dcea4c47c932e8b",
+                "responses": {
+                    "200": {
+                        "description": "Signed out.",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "تم تسجيل الخروج بنجاح"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/notifications": {
+            "get": {
+                "tags": [
+                    "Customer Notifications"
+                ],
+                "summary": "My notifications, newest first",
+                "operationId": "249f11ff088b5db7d53b243e808bbed0",
+                "parameters": [
+                    {
+                        "name": "unread_only",
+                        "in": "query",
+                        "description": "1 = only the ones not read yet",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`link` is an in-app path to open when the notification is tapped, or null.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "example": {
+                                        "data": [
+                                            {
+                                                "id": 214,
+                                                "user_id": 6,
+                                                "type": "order",
+                                                "title": "مرتجع على طلبك",
+                                                "message": "سُجّل مرتجع بقيمة 40.00 د.ل على الطلب ORD-2026-09-18-12-002، وأُعيد 40.00 د.ل إلى محفظتك",
+                                                "link": "/orders/60",
+                                                "read_at": null,
+                                                "created_at": "2026-09-19T09:12:41.000000Z",
+                                                "updated_at": "2026-09-19T09:12:41.000000Z"
+                                            }
+                                        ],
+                                        "meta": {
+                                            "current_page": 1,
+                                            "per_page": 15,
+                                            "total": 1,
+                                            "last_page": 1,
+                                            "has_more": false
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/notifications/unread-count": {
+            "get": {
+                "tags": [
+                    "Customer Notifications"
+                ],
+                "summary": "How many are unread",
+                "description": "Cheap enough to poll for the bell badge.",
+                "operationId": "517ac8ce96c067299f7e514b6877e87a",
+                "responses": {
+                    "200": {
+                        "description": "Count.",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "count": 3
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/notifications/{id}": {
+            "get": {
+                "tags": [
+                    "Customer Notifications"
+                ],
+                "summary": "One notification",
+                "operationId": "e7ef9c6dd7944f20b7f23e6f0538b6a6",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The notification.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "example": {
+                                        "id": 214,
+                                        "user_id": 6,
+                                        "type": "order",
+                                        "title": "مرتجع على طلبك",
+                                        "message": "سُجّل مرتجع بقيمة 40.00 د.ل على الطلب ORD-2026-09-18-12-002، وأُعيد 40.00 د.ل إلى محفظتك",
+                                        "link": "/orders/60",
+                                        "read_at": null,
+                                        "created_at": "2026-09-19T09:12:41.000000Z",
+                                        "updated_at": "2026-09-19T09:12:41.000000Z"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "It belongs to someone else.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "غير مصرح"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Customer Notifications"
+                ],
+                "summary": "Delete one",
+                "operationId": "bec714db3890c8ae3e2f656ceca49665",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted. No body."
+                    },
+                    "403": {
+                        "description": "It belongs to someone else.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "غير مصرح"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/notifications/{id}/read": {
+            "patch": {
+                "tags": [
+                    "Customer Notifications"
+                ],
+                "summary": "Mark one as read",
+                "operationId": "fd94428f00b27891b43c8d60bef79985",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Marked. Doing it twice is harmless.",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "تم التحديد كمقروء"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "It belongs to someone else.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "message": "غير مصرح"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/notifications/mark-all-read": {
+            "patch": {
+                "tags": [
+                    "Customer Notifications"
+                ],
+                "summary": "Mark all as read",
+                "operationId": "f24455637907699fdf7c2acea00a6e4c",
+                "responses": {
+                    "200": {
+                        "description": "All marked.",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "تم تحديد الكل كمقروء"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/customer/login": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Customer Auth"
                 ],
                 "summary": "Customer sign-in",
                 "description": "Looks the number up among customers only. The same number may also exist as a delegate; that account cannot sign in here.",
@@ -13558,8 +14001,8 @@
             "description": "Read-only views written by the ordering workflows"
         },
         {
-            "name": "Auth",
-            "description": "الدخول، التسجيل برقم الهاتف والتحقق (OTP)، استعادة كلمة المرور، `me` والخروج."
+            "name": "Customer Auth",
+            "description": "الدخول، التسجيل برقم الهاتف والتحقق (OTP)، استعادة كلمة المرور، `me` والخروج. كلها تحت `/customer/`."
         },
         {
             "name": "Customer Profile",
@@ -13598,8 +14041,16 @@
             "description": "المحفظة: الرصيد والحركات، الشحن بتحويل بنكي (مع الإيصال) أو إلكترونياً عبر البوابة."
         },
         {
+            "name": "Customer Notifications",
+            "description": "إشعارات الزبون: القائمة، عدد غير المقروء، التحديد كمقروء والحذف."
+        },
+        {
+            "name": "Auth",
+            "description": "Auth"
+        },
+        {
             "name": "Notifications",
-            "description": "إشعارات المستخدم: القائمة، غير المقروءة، وتحديدها كمقروءة."
+            "description": "Notifications"
         },
         {
             "name": "Warehouses",

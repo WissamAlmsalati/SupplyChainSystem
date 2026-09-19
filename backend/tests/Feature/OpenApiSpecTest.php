@@ -90,6 +90,21 @@ class OpenApiSpecTest extends TestCase
         ], $open, 'The set of endpoints documented as open has changed');
     }
 
+    public function test_the_customer_reference_holds_only_customer_paths(): void
+    {
+        $spec = json_decode(file_get_contents(storage_path('api-docs/api-docs-customer.json')), true);
+        $paths = array_keys($spec['paths']);
+
+        // The customer app's whole surface is /api/v1/customer/...; a path that
+        // is not, is either not the app's to call or is missing its prefix.
+        $this->assertSame([], array_values(array_filter($paths, fn ($p) => ! str_starts_with($p, '/customer/'))));
+
+        // What an app cannot work without must be there, under the prefix.
+        foreach (['/customer/login', '/customer/register', '/customer/me', '/customer/logout', '/customer/notifications', '/customer/orders', '/customer/cart/checkout'] as $needed) {
+            $this->assertContains($needed, $paths);
+        }
+    }
+
     public function test_the_spec_describes_the_api_it_serves(): void
     {
         $spec = json_decode(file_get_contents(storage_path('api-docs/api-docs.json')), true);
