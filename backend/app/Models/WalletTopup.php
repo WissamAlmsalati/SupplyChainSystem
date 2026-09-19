@@ -41,7 +41,14 @@ class WalletTopup extends Model
     protected $appends = [
         'receipt_url',
         'receipt_type',
+        'receipt_format',
     ];
+
+    // The exact file format of the receipt: jpg, png, webp, heic or pdf.
+    public function getReceiptFormatAttribute(): ?string
+    {
+        return \App\Support\Placeholder::typeFor($this->receipt_path);
+    }
 
     // "pdf" or "image", so clients know how to preview the receipt.
     public function getReceiptTypeAttribute(): ?string

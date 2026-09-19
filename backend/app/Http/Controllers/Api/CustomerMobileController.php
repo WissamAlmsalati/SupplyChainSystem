@@ -555,7 +555,7 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/customer/categories", tags={"Customer Products"}, summary="List categories",
-     *     description="Each category carries image_url (its own picture, or the shared default) and image_type (uploaded / placeholder).",
+     *     description="Each category carries image_url (its own picture, or the shared default) image_type (the file format: svg, jpg, png, webp; the default artwork is svg, so draw by this field) and image_is_placeholder.",
      *
      *     @OA\Response(response=200, description="Categories"))
      */
@@ -672,6 +672,7 @@ class CustomerMobileController extends BaseApiController
             'brand' => $product->brand,
             'image_url' => $product->image_url,
             'image_type' => $product->image_type,
+            'image_is_placeholder' => $product->image_is_placeholder,
             'min_price' => $product->variants->min('price'),
             'max_price' => $product->variants->max('price'),
             'in_stock' => (int) $stock > 0,
@@ -813,6 +814,8 @@ class CustomerMobileController extends BaseApiController
             'brand' => $product->brand,
             'description' => $product->description,
             'image_url' => $product->image_url,
+            'image_type' => $product->image_type,
+            'image_is_placeholder' => $product->image_is_placeholder,
             'images' => $product->allImages->whereNull('product_variant_id')->values(),
             'category' => $product->category,
             'is_favorite' => $this->favoriteIds()->contains($product->id),

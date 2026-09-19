@@ -33,7 +33,7 @@ export default function Categories() {
   const openEdit = (item) => {
     setForm({ ...initial, ...item, parent_category_id: item.parent_category_id ?? '' })
     setImageFile(null)
-    setImagePreview(item.image_type === 'uploaded' ? item.image_url : null)
+    setImagePreview(item.image_is_placeholder ? null : item.image_url)
     setEditing(item)
     setModal(true)
   }

@@ -14,7 +14,8 @@
                 "deleted_at": null,
                 "variants_count": 1,
                 "image_url": "/api/v1/placeholder/product.svg",
-                "image_type": "placeholder",
+                "image_type": "svg",
+                "image_is_placeholder": true,
                 "category": {
                     "id": 5,
                     "name": "أكواب وتغليف",
@@ -23,7 +24,8 @@
                     "created_at": "2026-09-13T21:17:38.000000Z",
                     "updated_at": "2026-09-13T21:17:38.000000Z",
                     "image_url": "/api/v1/placeholder/category.svg",
-                    "image_type": "placeholder"
+                    "image_type": "svg",
+                    "image_is_placeholder": true
                 },
                 "all_images": []
             }
@@ -46,7 +48,8 @@
                 "created_at": "2026-09-13T21:17:38.000000Z",
                 "updated_at": "2026-09-13T21:17:38.000000Z",
                 "image_url": "/api/v1/placeholder/category.svg",
-                "image_type": "placeholder",
+                "image_type": "svg",
+                "image_is_placeholder": true,
                 "parent_category": null
             }
         ],
@@ -179,7 +182,8 @@
                         "updated_at": "2026-09-13T21:17:38.000000Z",
                         "deleted_at": null,
                         "image_url": "/api/v1/placeholder/product.svg",
-                        "image_type": "placeholder"
+                        "image_type": "svg",
+                        "image_is_placeholder": true
                     }
                 }
             }
@@ -480,7 +484,8 @@
         "updated_at": "2026-09-13T21:17:38.000000Z",
         "deleted_at": null,
         "image_url": "/api/v1/placeholder/product.svg",
-        "image_type": "placeholder",
+        "image_type": "svg",
+        "image_is_placeholder": true,
         "category": {
             "id": 5,
             "name": "أكواب وتغليف",
@@ -489,7 +494,8 @@
             "created_at": "2026-09-13T21:17:38.000000Z",
             "updated_at": "2026-09-13T21:17:38.000000Z",
             "image_url": "/api/v1/placeholder/category.svg",
-            "image_type": "placeholder"
+            "image_type": "svg",
+            "image_is_placeholder": true
         },
         "all_images": [],
         "images": [],
@@ -529,7 +535,8 @@
         "created_at": "2026-09-13T21:17:38.000000Z",
         "updated_at": "2026-09-13T21:17:38.000000Z",
         "image_url": "/api/v1/placeholder/category.svg",
-        "image_type": "placeholder",
+        "image_type": "svg",
+        "image_is_placeholder": true,
         "parent_category": null,
         "child_categories": [],
         "products": [
@@ -545,7 +552,8 @@
                 "updated_at": "2026-09-13T21:17:38.000000Z",
                 "deleted_at": null,
                 "image_url": "/api/v1/placeholder/product.svg",
-                "image_type": "placeholder"
+                "image_type": "svg",
+                "image_is_placeholder": true
             }
         ]
     },
@@ -667,7 +675,8 @@
                         "updated_at": "2026-09-13T21:17:38.000000Z",
                         "deleted_at": null,
                         "image_url": "/api/v1/placeholder/product.svg",
-                        "image_type": "placeholder"
+                        "image_type": "svg",
+                        "image_is_placeholder": true
                     }
                 }
             }
@@ -738,7 +747,8 @@
                 "updated_at": "2026-09-13T21:17:38.000000Z",
                 "deleted_at": null,
                 "image_url": "/api/v1/placeholder/product.svg",
-                "image_type": "placeholder"
+                "image_type": "svg",
+                "image_is_placeholder": true
             }
         }
     },
@@ -955,7 +965,8 @@
                         "updated_at": "2026-09-13T21:17:38.000000Z",
                         "deleted_at": null,
                         "image_url": "/api/v1/placeholder/product.svg",
-                        "image_type": "placeholder"
+                        "image_type": "svg",
+                        "image_is_placeholder": true
                     }
                 }
             }
@@ -1201,7 +1212,8 @@
             "updated_at": "2026-09-13T21:17:38.000000Z",
             "deleted_at": null,
             "image_url": "/api/v1/placeholder/product.svg",
-            "image_type": "placeholder"
+            "image_type": "svg",
+            "image_is_placeholder": true
         },
         "inventories": [
             {
@@ -1253,7 +1265,8 @@
                     "updated_at": "2026-09-13T21:17:38.000000Z",
                     "deleted_at": null,
                     "image_url": "/api/v1/placeholder/product.svg",
-                    "image_type": "placeholder"
+                    "image_type": "svg",
+                    "image_is_placeholder": true
                 }
             }
         ],

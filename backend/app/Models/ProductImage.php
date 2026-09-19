@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Placeholder;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,7 @@ class ProductImage extends Model
 
     protected $appends = [
         'image_url',
+        'image_type',
     ];
 
     // Whether the image lives on the public disk (vs an external URL).
@@ -42,6 +44,12 @@ class ProductImage extends Model
         }
 
         return $this->isStored() ? '/storage/'.$this->path : $this->path;
+    }
+
+    // svg, jpg, png, webp...: how the client should draw it.
+    public function getImageTypeAttribute(): ?string
+    {
+        return Placeholder::typeFor($this->path);
     }
 
     public function product(): BelongsTo

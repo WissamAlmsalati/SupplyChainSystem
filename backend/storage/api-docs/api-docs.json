@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Al-Sahel Cafe Supplies API",
-        "description": "\n * The API behind الساحل لمستلزمات المقاهي: the admin dashboard, the customer app and the delegate app all talk to this one service.\n *\n * ### Authenticating\n *\n * Everything except sign-in, customer registration, password reset, the payment callback and the read-only storefront needs a bearer token. Each app has its own door, because a phone number is only unique within a user type:\n *\n * | App | Sign in at | With |\n * |---|---|---|\n * | Customer | `POST /customer/login` | phone + password |\n * | Delegate | `POST /delegate/login` | phone + password |\n * | Dashboard | `POST /admin/login` | email + password |\n *\n * ```\n * Authorization: Bearer 42|abc…\n * ```\n *\n * Tokens expire (30 days by default). A `401` means sign in again.\n *\n * ### What a response looks like\n *\n * A single record is returned as-is. A list is always `{ data, meta }`, where `meta` carries the paging and may add keys of its own — `summary` on custody, `status_counts` on top-up requests:\n *\n * ```json\n * { \"data\": [ … ], \"meta\": { \"current_page\": 1, \"per_page\": 15, \"total\": 58, \"last_page\": 4, \"has_more\": true } }\n * ```\n *\n * A `201` wraps its result: `{ success, message, data }`.\n *\n * ### When something goes wrong\n *\n * Failures share one shape, and `message` is Arabic that is safe to show a user unchanged:\n *\n * ```json\n * { \"success\": false, \"message\": \"البيانات المدخلة غير صحيحة\", \"errors\": { \"amount\": [\"المبلغ يتجاوز المتبقي على الطلب (40.00 د.ل)\"] } }\n * ```\n *\n * `401` not signed in · `403` signed in without the permission · `404` missing, or not yours · `422` refused by validation or by a rule of the business · `429` rate limited, with `Retry-After`.\n *\n * Note that `422` is not only about malformed input. An order cannot move to a state its lifecycle forbids, and a payment cannot exceed what the order still owes; both answer `422` with the reason.\n *\n * ### Updating a record\n *\n * Updates are `PATCH`: send the fields you want changed and leave the rest alone. `PUT` is still accepted everywhere `PATCH` is, so older clients keep working, but new code should send `PATCH`.\n *\n * ### Sending a write safely twice\n *\n * A phone on a weak network retries, and people double-tap. Send an `Idempotency-Key` header\n * (any unique string up to 100 characters, a UUID is ideal) with a `POST` that creates an order,\n * a payment, a top-up, a settlement or a return. The first request does the work; a repeat with\n * the same key within 24 hours gets the first answer back, marked `Idempotent-Replay: true`,\n * and nothing is created twice. Make one key per user action and reuse it only when retrying\n * that action. The same key with a different body is answered `422`, and a repeat that arrives\n * while the first is still running is answered `409`. Failed attempts are not remembered, so\n * retrying after an error with the same key is safe. The header is optional.\n *\n * ### Rate limits\n *\n * Sign-in and the OTP endpoints are limited per IP and per account; everything else shares a general ceiling. A `429` carries `Retry-After` in seconds.\n *\n * ### Searching in Arabic\n *\n * List `search` parameters fold Arabic spelling, so `مصراته` finds `مصراتة`, `بنغازى` finds `بنغازي`, and `١٢٥` finds `125`.\n * ",
+        "description": "\n * The API behind الساحل لمستلزمات المقاهي: the admin dashboard, the customer app and the delegate app all talk to this one service.\n *\n * ### Authenticating\n *\n * Everything except sign-in, customer registration, password reset, the payment callback and the read-only storefront needs a bearer token. Each app has its own door, because a phone number is only unique within a user type:\n *\n * | App | Sign in at | With |\n * |---|---|---|\n * | Customer | `POST /customer/login` | phone + password |\n * | Delegate | `POST /delegate/login` | phone + password |\n * | Dashboard | `POST /admin/login` | email + password |\n *\n * ```\n * Authorization: Bearer 42|abc…\n * ```\n *\n * Tokens expire (30 days by default). A `401` means sign in again.\n *\n * ### What a response looks like\n *\n * A single record is returned as-is. A list is always `{ data, meta }`, where `meta` carries the paging and may add keys of its own — `summary` on custody, `status_counts` on top-up requests:\n *\n * ```json\n * { \"data\": [ … ], \"meta\": { \"current_page\": 1, \"per_page\": 15, \"total\": 58, \"last_page\": 4, \"has_more\": true } }\n * ```\n *\n * A `201` wraps its result: `{ success, message, data }`.\n *\n * ### When something goes wrong\n *\n * Failures share one shape, and `message` is Arabic that is safe to show a user unchanged:\n *\n * ```json\n * { \"success\": false, \"message\": \"البيانات المدخلة غير صحيحة\", \"errors\": { \"amount\": [\"المبلغ يتجاوز المتبقي على الطلب (40.00 د.ل)\"] } }\n * ```\n *\n * `401` not signed in · `403` signed in without the permission · `404` missing, or not yours · `422` refused by validation or by a rule of the business · `429` rate limited, with `Retry-After`.\n *\n * Note that `422` is not only about malformed input. An order cannot move to a state its lifecycle forbids, and a payment cannot exceed what the order still owes; both answer `422` with the reason.\n *\n * ### Updating a record\n *\n * Updates are `PATCH`: send the fields you want changed and leave the rest alone. `PUT` is still accepted everywhere `PATCH` is, so older clients keep working, but new code should send `PATCH`.\n *\n * ### Sending a write safely twice\n *\n * A phone on a weak network retries, and people double-tap. Send an `Idempotency-Key` header\n * (any unique string up to 100 characters, a UUID is ideal) with a `POST` that creates an order,\n * a payment, a top-up, a settlement or a return. The first request does the work; a repeat with\n * the same key within 24 hours gets the first answer back, marked `Idempotent-Replay: true`,\n * and nothing is created twice. Make one key per user action and reuse it only when retrying\n * that action. The same key with a different body is answered `422`, and a repeat that arrives\n * while the first is still running is answered `409`. Failed attempts are not remembered, so\n * retrying after an error with the same key is safe. The header is optional.\n *\n * ### Images\n *\n * Wherever the API returns a picture it returns three fields together. `image_url` is always\n * there: a product, category or promo without a picture of its own gets the shared default\n * artwork, so a client never has to handle a missing image. `image_type` is the file format\n * (`svg`, `jpg`, `png`, `webp`, `gif`, `heic`; `jpeg` is reported as `jpg`, and it is `null`\n * only for an external URL that does not say). **Draw by this field**: the default artwork is\n * `svg` and uploads are bitmaps, and most mobile toolkits need a different widget for each.\n * `image_is_placeholder` is `true` while the picture is that default artwork. Product gallery\n * images carry `image_type` too, and a wallet top-up receipt carries `receipt_format`.\n *\n * ### Rate limits\n *\n * Sign-in and the OTP endpoints are limited per IP and per account; everything else shares a general ceiling. A `429` carries `Retry-After` in seconds.\n *\n * ### Searching in Arabic\n *\n * List `search` parameters fold Arabic spelling, so `مصراته` finds `مصراتة`, `بنغازى` finds `بنغازي`, and `١٢٥` finds `125`.\n * ",
         "version": "1.0.0"
     },
     "servers": [
@@ -727,7 +727,8 @@
                                                 "created_at": "2026-09-13T21:17:38.000000Z",
                                                 "updated_at": "2026-09-13T21:17:38.000000Z",
                                                 "image_url": "/api/v1/placeholder/category.svg",
-                                                "image_type": "placeholder",
+                                                "image_type": "svg",
+                                                "image_is_placeholder": true,
                                                 "parent_category": null
                                             }
                                         ],
@@ -829,7 +830,8 @@
                                         "created_at": "2026-09-13T21:17:38.000000Z",
                                         "updated_at": "2026-09-13T21:17:38.000000Z",
                                         "image_url": "/api/v1/placeholder/category.svg",
-                                        "image_type": "placeholder",
+                                        "image_type": "svg",
+                                        "image_is_placeholder": true,
                                         "parent_category": null,
                                         "child_categories": [],
                                         "products": [
@@ -845,7 +847,8 @@
                                                 "updated_at": "2026-09-13T21:17:38.000000Z",
                                                 "deleted_at": null,
                                                 "image_url": "/api/v1/placeholder/product.svg",
-                                                "image_type": "placeholder"
+                                                "image_type": "svg",
+                                                "image_is_placeholder": true
                                             }
                                         ]
                                     }
@@ -900,7 +903,8 @@
                                         "created_at": "2026-09-13T21:17:38.000000Z",
                                         "updated_at": "2026-09-13T21:17:38.000000Z",
                                         "image_url": "/api/v1/placeholder/category.svg",
-                                        "image_type": "placeholder",
+                                        "image_type": "svg",
+                                        "image_is_placeholder": true,
                                         "parent_category": null,
                                         "child_categories": [],
                                         "products": [
@@ -916,7 +920,8 @@
                                                 "updated_at": "2026-09-13T21:17:38.000000Z",
                                                 "deleted_at": null,
                                                 "image_url": "/api/v1/placeholder/product.svg",
-                                                "image_type": "placeholder"
+                                                "image_type": "svg",
+                                                "image_is_placeholder": true
                                             }
                                         ]
                                     }
@@ -1815,7 +1820,7 @@
                     "Customer Products"
                 ],
                 "summary": "List categories",
-                "description": "Each category carries image_url (its own picture, or the shared default) and image_type (uploaded / placeholder).",
+                "description": "Each category carries image_url (its own picture, or the shared default) image_type (the file format: svg, jpg, png, webp; the default artwork is svg, so draw by this field) and image_is_placeholder.",
                 "operationId": "3a8dcf5c5b049434464039820edfef06",
                 "responses": {
                     "200": {
@@ -5431,7 +5436,8 @@
                                                         "updated_at": "2026-09-13T21:17:38.000000Z",
                                                         "deleted_at": null,
                                                         "image_url": "/api/v1/placeholder/product.svg",
-                                                        "image_type": "placeholder"
+                                                        "image_type": "svg",
+                                                        "image_is_placeholder": true
                                                     }
                                                 }
                                             }
@@ -7622,7 +7628,8 @@
                                                         "updated_at": "2026-09-13T21:17:38.000000Z",
                                                         "deleted_at": null,
                                                         "image_url": "/api/v1/placeholder/product.svg",
-                                                        "image_type": "placeholder"
+                                                        "image_type": "svg",
+                                                        "image_is_placeholder": true
                                                     }
                                                 }
                                             }
@@ -7738,7 +7745,8 @@
                                                         "updated_at": "2026-09-13T21:17:38.000000Z",
                                                         "deleted_at": null,
                                                         "image_url": "/api/v1/placeholder/product.svg",
-                                                        "image_type": "placeholder"
+                                                        "image_type": "svg",
+                                                        "image_is_placeholder": true
                                                     }
                                                 }
                                             }
@@ -8574,7 +8582,8 @@
                                                 "deleted_at": null,
                                                 "variants_count": 1,
                                                 "image_url": "/api/v1/placeholder/product.svg",
-                                                "image_type": "placeholder",
+                                                "image_type": "svg",
+                                                "image_is_placeholder": true,
                                                 "category": {
                                                     "id": 5,
                                                     "name": "أكواب وتغليف",
@@ -8583,7 +8592,8 @@
                                                     "created_at": "2026-09-13T21:17:38.000000Z",
                                                     "updated_at": "2026-09-13T21:17:38.000000Z",
                                                     "image_url": "/api/v1/placeholder/category.svg",
-                                                    "image_type": "placeholder"
+                                                    "image_type": "svg",
+                                                    "image_is_placeholder": true
                                                 },
                                                 "all_images": []
                                             }
@@ -8682,7 +8692,8 @@
                                         "updated_at": "2026-09-13T21:17:38.000000Z",
                                         "deleted_at": null,
                                         "image_url": "/api/v1/placeholder/product.svg",
-                                        "image_type": "placeholder",
+                                        "image_type": "svg",
+                                        "image_is_placeholder": true,
                                         "category": {
                                             "id": 5,
                                             "name": "أكواب وتغليف",
@@ -8691,7 +8702,8 @@
                                             "created_at": "2026-09-13T21:17:38.000000Z",
                                             "updated_at": "2026-09-13T21:17:38.000000Z",
                                             "image_url": "/api/v1/placeholder/category.svg",
-                                            "image_type": "placeholder"
+                                            "image_type": "svg",
+                                            "image_is_placeholder": true
                                         },
                                         "all_images": [],
                                         "images": [],
@@ -8777,7 +8789,8 @@
                                         "updated_at": "2026-09-13T21:17:38.000000Z",
                                         "deleted_at": null,
                                         "image_url": "/api/v1/placeholder/product.svg",
-                                        "image_type": "placeholder",
+                                        "image_type": "svg",
+                                        "image_is_placeholder": true,
                                         "category": {
                                             "id": 5,
                                             "name": "أكواب وتغليف",
@@ -8786,7 +8799,8 @@
                                             "created_at": "2026-09-13T21:17:38.000000Z",
                                             "updated_at": "2026-09-13T21:17:38.000000Z",
                                             "image_url": "/api/v1/placeholder/category.svg",
-                                            "image_type": "placeholder"
+                                            "image_type": "svg",
+                                            "image_is_placeholder": true
                                         },
                                         "all_images": [],
                                         "images": [],
@@ -8935,7 +8949,8 @@
                                                     "updated_at": "2026-09-13T21:17:38.000000Z",
                                                     "deleted_at": null,
                                                     "image_url": "/api/v1/placeholder/product.svg",
-                                                    "image_type": "placeholder"
+                                                    "image_type": "svg",
+                                                    "image_is_placeholder": true
                                                 }
                                             }
                                         ],
@@ -9056,7 +9071,8 @@
                                             "updated_at": "2026-09-13T21:17:38.000000Z",
                                             "deleted_at": null,
                                             "image_url": "/api/v1/placeholder/product.svg",
-                                            "image_type": "placeholder"
+                                            "image_type": "svg",
+                                            "image_is_placeholder": true
                                         },
                                         "inventories": [
                                             {
@@ -9159,7 +9175,8 @@
                                             "updated_at": "2026-09-13T21:17:38.000000Z",
                                             "deleted_at": null,
                                             "image_url": "/api/v1/placeholder/product.svg",
-                                            "image_type": "placeholder"
+                                            "image_type": "svg",
+                                            "image_is_placeholder": true
                                         },
                                         "inventories": [
                                             {
@@ -9929,7 +9946,8 @@
                                                         "updated_at": "2026-09-13T21:17:38.000000Z",
                                                         "deleted_at": null,
                                                         "image_url": "/api/v1/placeholder/product.svg",
-                                                        "image_type": "placeholder"
+                                                        "image_type": "svg",
+                                                        "image_is_placeholder": true
                                                     }
                                                 }
                                             }
@@ -10070,7 +10088,8 @@
                                                 "updated_at": "2026-09-13T21:17:38.000000Z",
                                                 "deleted_at": null,
                                                 "image_url": "/api/v1/placeholder/product.svg",
-                                                "image_type": "placeholder"
+                                                "image_type": "svg",
+                                                "image_is_placeholder": true
                                             }
                                         }
                                     }
@@ -10178,7 +10197,8 @@
                                                 "updated_at": "2026-09-13T21:17:38.000000Z",
                                                 "deleted_at": null,
                                                 "image_url": "/api/v1/placeholder/product.svg",
-                                                "image_type": "placeholder"
+                                                "image_type": "svg",
+                                                "image_is_placeholder": true
                                             }
                                         }
                                     }

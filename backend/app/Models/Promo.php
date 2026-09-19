@@ -17,15 +17,21 @@ class Promo extends Model
         'is_active' => 'boolean',
     ];
 
-    protected $appends = ['image_url', 'image_type'];
+    protected $appends = ['image_url', 'image_type', 'image_is_placeholder'];
 
     public function getImageUrlAttribute(): ?string
     {
         return $this->image ? '/storage/'.ltrim($this->image, '/') : Placeholder::url('promo');
     }
 
-    public function getImageTypeAttribute(): string
+    public function getImageTypeAttribute(): ?string
     {
         return Placeholder::typeFor($this->image_url);
+    }
+
+    // True while the picture is the shared default artwork, not one somebody uploaded.
+    public function getImageIsPlaceholderAttribute(): bool
+    {
+        return Placeholder::isPlaceholder($this->image_url);
     }
 }

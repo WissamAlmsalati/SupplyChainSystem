@@ -62,6 +62,17 @@ namespace App\OpenApi;
  * while the first is still running is answered `409`. Failed attempts are not remembered, so
  * retrying after an error with the same key is safe. The header is optional.
  *
+ * ### Images
+ *
+ * Wherever the API returns a picture it returns three fields together. `image_url` is always
+ * there: a product, category or promo without a picture of its own gets the shared default
+ * artwork, so a client never has to handle a missing image. `image_type` is the file format
+ * (`svg`, `jpg`, `png`, `webp`, `gif`, `heic`; `jpeg` is reported as `jpg`, and it is `null`
+ * only for an external URL that does not say). **Draw by this field**: the default artwork is
+ * `svg` and uploads are bitmaps, and most mobile toolkits need a different widget for each.
+ * `image_is_placeholder` is `true` while the picture is that default artwork. Product gallery
+ * images carry `image_type` too, and a wallet top-up receipt carries `receipt_format`.
+ *
  * ### Rate limits
  *
  * Sign-in and the OTP endpoints are limited per IP and per account; everything else shares a general ceiling. A `429` carries `Retry-After` in seconds.

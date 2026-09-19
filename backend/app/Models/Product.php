@@ -32,6 +32,7 @@ class Product extends Model
     protected $appends = [
         'image_url',
         'image_type',
+        'image_is_placeholder',
     ];
 
     // Primary product-level image, falling back to the first variant image.
@@ -48,10 +49,16 @@ class Product extends Model
         return $image?->image_url ?? Placeholder::url('product');
     }
 
-    // Whether image_url points at an uploaded picture or the default artwork.
-    public function getImageTypeAttribute(): string
+    // The file format of image_url (svg, jpg, png...), so a client knows how to draw it.
+    public function getImageTypeAttribute(): ?string
     {
         return Placeholder::typeFor($this->image_url);
+    }
+
+    // True while the picture is the shared default artwork, not one somebody uploaded.
+    public function getImageIsPlaceholderAttribute(): bool
+    {
+        return Placeholder::isPlaceholder($this->image_url);
     }
 
     public function category(): BelongsTo

@@ -128,6 +128,13 @@ and 4xx bodies in `{ success, message, ... }` and always emits `JSON_UNESCAPED_U
 Arabic stays readable. Framework exceptions are converted to the same Arabic-message shape in
 `bootstrap/app.php`, so do not hand-roll 401/403/404/422 responses.
 
+Every picture comes as three fields: `image_url` (never missing, the default artwork stands in),
+`image_type`, which is the **file format** (`svg`, `jpg`, `png`, `webp`…, from `Placeholder::typeFor`)
+because a client draws an SVG and a bitmap differently and the default artwork is SVG, and
+`image_is_placeholder`. `image_type` once meant "placeholder / uploaded", which told a Flutter
+developer nothing they could draw with. Gallery images carry `image_type`; receipts carry
+`receipt_format` beside the older `receipt_type` (pdf / image).
+
 `requireFeature($code)` gates an endpoint on a `PremiumFeature` flag and returns a ready 403.
 
 ### Order lifecycle is a state machine

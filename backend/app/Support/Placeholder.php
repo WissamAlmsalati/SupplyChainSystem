@@ -15,10 +15,28 @@ class Placeholder
         return "/api/v1/placeholder/{$kind}.svg";
     }
 
-    // 'placeholder' when the URL is our default artwork, 'uploaded' otherwise.
-    public static function typeFor(?string $url): string
+    /**
+     * The file format behind an image URL: svg, jpg, png, webp, gif, heic...
+     * A client has to know before it draws: Flutter renders an SVG with one
+     * widget and a bitmap with another, and the default artwork is SVG while
+     * uploads are photos. "jpeg" is reported as "jpg"; null when the URL does
+     * not say.
+     */
+    public static function typeFor(?string $url): ?string
     {
-        return $url && str_starts_with($url, '/api/v1/placeholder/') ? 'placeholder' : 'uploaded';
+        $extension = strtolower(pathinfo((string) parse_url((string) $url, PHP_URL_PATH), PATHINFO_EXTENSION));
+
+        return match ($extension) {
+            '' => null,
+            'jpeg', 'jpe' => 'jpg',
+            default => $extension,
+        };
+    }
+
+    // Whether the URL is our default artwork rather than a picture somebody uploaded.
+    public static function isPlaceholder(?string $url): bool
+    {
+        return $url !== null && str_starts_with($url, '/api/v1/placeholder/');
     }
 
     public static function svg(string $kind = 'product'): string
