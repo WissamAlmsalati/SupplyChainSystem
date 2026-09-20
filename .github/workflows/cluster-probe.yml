@@ -6,6 +6,11 @@ name: Cluster probe
 # Manual only: it is a diagnostic, not part of any release.
 on:
   workflow_dispatch:
+  # Temporary: workflow_dispatch only works for files already on the default
+  # branch, and this one has to run before the manifests it informs can be
+  # written. Dropped once the probe has served its purpose.
+  push:
+    branches: [ci/deploy-to-cafe-wissam-ly]
 
 permissions:
   contents: read
