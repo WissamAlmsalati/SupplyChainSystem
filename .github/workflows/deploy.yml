@@ -13,8 +13,12 @@ name: Deploy
 # The server keeps a checkout only for the manifests and scripts — application
 # code never comes from git there, it comes from the image.
 on:
-  push:
-    branches: [main]
+  # ponytail: the automatic push trigger is off while the deployment target is
+  # undecided. A push to main must not put anything on a cluster that serves
+  # eight other live sites until somebody has chosen to. Restore
+  #   push:
+  #     branches: [main]
+  # above workflow_dispatch once the target is settled.
   workflow_dispatch:
     inputs:
       image_tag:

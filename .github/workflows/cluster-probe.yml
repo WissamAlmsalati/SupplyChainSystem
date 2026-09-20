@@ -68,38 +68,27 @@ jobs:
           docker version --format '{{.Server.Version}}' 2>&1 | head -1 || true
           REMOTE
 
-      - name: Validate the manifests against the live API
+      - name: What is in the cafe namespace
         env:
           SSHPASS: ${{ secrets.PASSWORD }}
           HOST: ${{ secrets.IP }}
           REMOTE_USER: ${{ secrets.USER }}
           PORT: ${{ secrets.PORT || '22' }}
-          REF: ${{ github.sha }}
         run: |
           set -euo pipefail
           sshpass -e ssh -p "$PORT" -o StrictHostKeyChecking=accept-new \
-            -o ConnectTimeout=20 "$REMOTE_USER@$HOST" "
-             set -e
-             APP_DIR=\"\$HOME/cafe-supply-chain\"
-             if [ ! -d \"\$APP_DIR/.git\" ]; then
-               git clone https://github.com/WissamAlmsalati/SupplyChainSystem.git \"\$APP_DIR\"
+            -o ConnectTimeout=20 "$REMOTE_USER@$HOST" '
+             NS=cafe-supply-chain
+             if ! kubectl get ns "$NS" >/dev/null 2>&1; then
+               echo "The $NS namespace does not exist. Nothing was applied."
+               exit 0
              fi
-             cd \"\$APP_DIR\"
-             git fetch --prune origin
-             git checkout --detach '$REF'
-
-             # Namespaced objects cannot be dry-run against a namespace that is
-             # not there, and a server-side dry run never creates one. This is
-             # the single real change the probe makes: an empty namespace.
-             kubectl create namespace cafe-supply-chain --dry-run=client -o yaml | kubectl apply -f -
-
-             echo
-             echo '=== apply --dry-run=server ==='
-             tmp=\$(mktemp -d)
-             for f in k8s/*.yaml; do
-               sed 's|__IMAGE_TAG__|dry-run|g' \"\$f\" > \"\$tmp/\$(basename \$f)\"
-             done
-             kubectl apply --dry-run=server -f \"\$tmp/\"
-             rm -rf \"\$tmp\"
-             echo
-             echo 'All manifests are accepted by the API server.'"
+             echo "=== pods ==="; kubectl -n "$NS" get pods -o wide
+             echo; echo "=== deployments ==="; kubectl -n "$NS" get deploy
+             echo; echo "=== claims ==="; kubectl -n "$NS" get pvc
+             echo; echo "=== ingress ==="; kubectl -n "$NS" get ingress
+             echo; echo "=== what the node looks like now ==="
+             free -h | head -2
+             kubectl top nodes 2>/dev/null || echo "(metrics-server not installed)"
+             echo; echo "=== the neighbours, for comparison ==="
+             kubectl get pods -A --field-selector=status.phase!=Running 2>/dev/null | head -10 || true'
