@@ -450,26 +450,50 @@ premium-feature codes and notification types to `customer`.
 `/customer/`, the API at `/api/v1`, the WebSocket at `/app/local`. `.github/workflows/ci.yml` runs
 Pint, the backend suite and both frontend builds; `deploy.yml` builds two images
 (`ghcr.io/wissamalmsalati/supplychainsystem/{backend,frontend}`), pushes them tagged
-`sha-<12 chars>`, and rolls the server over by ssh. **A release is an image tag** — the checkout at
-`/opt/cafe-supply-chain` holds only `docker-compose.prod.yml`, the nginx configs and `scripts/`,
-never application code, so a rollback is one tag in the workflow's `image_tag` input rather than a
-revert. The full runbook, secrets and DNS are in `docs/deployment.md`.
+`sha-<12 chars>`, and rolls the Kubernetes deployments over by ssh. **A release is an image tag** —
+the checkout on the server holds only `k8s/` and `scripts/`, never application code, so a rollback
+is one tag in the workflow's `image_tag` input rather than a revert. Full runbook in
+`docs/deployment.md`.
 
-Three things that were wrong before there was anything to deploy, and that stay wrong the moment
+**The target is a shared single-node cluster.** It already serves octobits.ly, luxresale,
+fll.com.ly and five more sites behind one ingress-nginx. Everything lives in the
+`cafe-supply-chain` namespace and owns nothing cluster-wide except three PersistentVolumes named
+for it. Three cluster facts shaped `k8s/`, and undoing any of them breaks the deploy:
+
+- **There is no StorageClass.** A plain PVC sits `Pending` for ever waiting for a provisioner that
+  is not installed. Every claim binds by name to a static hostPath PersistentVolume under
+  `/srv/cafe-supply-chain`, with `storageClassName: ""` on both sides.
+- **cert-manager is installed** with a working `letsencrypt-prod` issuer, so TLS is one annotation
+  on the Ingress. The DNS record must stay on Cloudflare's grey cloud or the HTTP-01 challenge
+  never reaches the cluster.
+- **About 1.6 GB of RAM is free** beside eight live sites. Every pod asks for little and is capped,
+  which leaves them Burstable deliberately: under node pressure the kubelet should evict this
+  stack, not the neighbours. Do not "fix" that by making requests equal limits.
+
+The four backend roles are one image told apart by `CONTAINER_ROLE`, exactly as
+`docker-entrypoint.sh` already decides — the entrypoint is kept rather than reimplemented, so the
+startup path in production is the one development uses. `app` stays at one replica because it is
+the only role that migrates. `backend-nginx`'s readiness probe is `tcpSocket`, not `httpGet`: that
+server answers `/` with `return 404` by design and Kubernetes reads any status at or above 400 as a
+failed probe, so an HTTP probe would leave the Service with no endpoints for ever.
+
+Four things that were wrong before there was anything to deploy, and that stay wrong the moment
 somebody undoes them:
 
-- **`npm ci` in the production stage of `backend/Dockerfile`.** `h3-js` is a runtime dependency of
-  the PHP app, not build tooling; `.dockerignore` excludes `node_modules` and nothing else installed
-  it, so the image could never resolve a zone. Debian ships `npm` separately from `nodejs`, hence
-  both in the apt list.
+- **`npm ci` in both stages of `backend/Dockerfile`.** `h3-js` is a runtime dependency of the PHP
+  app, not build tooling; `.dockerignore` excludes `node_modules` and nothing else installed it, so
+  the image could never resolve a zone. Debian ships `npm` separately from `nodejs`, hence both in
+  the apt list. The dev stage needs it too — the bind mount hides that locally, but CI runs the
+  image with nothing mounted over it.
 - **`TelescopeServiceProvider` is not in `bootstrap/providers.php`.** Telescope is a `require-dev`
   package, so `composer install --no-dev` leaves the class it extends behind and `package:discover`
   dies — the production stage could not be built at all. `AppServiceProvider::register()` registers
   it behind `class_exists()` instead.
-- **`UPLOADS_CONTAINER` in the backup cron.** In production the receipts and product images live in
-  the `storage_public` volume, not in `backend/storage/app/public` on the host, so
-  `scripts/backup-db.sh` reads them from inside the app container. Without it the file half of the
-  backup is empty and nothing says so.
+- **`KUBE_NS` in the backup cron.** The database is a pod under containerd; the server's separate
+  Docker daemon cannot see it, so a `docker exec` backup produces nothing while reporting success.
+- **The uploads volume needs its `own-uploads` init container.** The hostPath is created root-owned
+  and `fsGroup` does not apply to hostPath, so without it the app — which runs as www-data — cannot
+  write a receipt.
 
 Pint runs in CI against the files a change touches, not the whole repository: twenty-nine files
 predate the pipeline and do not pass, and a repository-wide gate would be red on its first run.
@@ -482,13 +506,6 @@ Ubuntu's system 3.45.1 gives up at 30 — so every Arabic search test failed on 
 `parser stack overflow` while passing everywhere else. MySQL, which production uses, parses it, so
 the shop is not affected; a developer running sqlite outside Docker is. `docs/deployment.md`
 explains how the expression could be cut to the folds that can actually affect a match.
-
-The edge nginx config is a template (`docker/edge/nginx.conf.template`); the nginx image's own
-entrypoint runs `envsubst` over `${DOMAIN}` at start, and nginx's `$host`/`$uri` survive it because
-envsubst only replaces names that are set in the environment. TLS is Let's Encrypt over the webroot
-challenge: `scripts/init-letsencrypt.sh` issues the first certificate (nginx will not start without
-one, and certbot cannot answer the challenge without nginx — a self-signed day-long certificate
-breaks the circle), and the `certbot` container renews from then on.
 
 ## Conventions
 
