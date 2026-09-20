@@ -201,8 +201,13 @@ it, so an order placed at 00:30 belongs to the new day. Bind its `startOf()/dayS
 queries (they are UTC); a Carbon in another zone is bound as it stands, unconverted.
 
 The delivery zone, and so the fee, is resolved on the server from the coordinates
-(`AddressZoneResolver`); clients never choose it, a point outside every zone is a 422, and an app
-order to an uncovered address is refused. A cafe's first address is always allowed (registration
+(`AddressZoneResolver`); clients never choose it. An address outside every zone is still saved, and
+answered **`202`** instead of `201`/`200`, with `code: address_outside_coverage` and a `title` and
+`message` ready for a dialog; it carries `is_deliverable: false` and an app order to it is refused
+with a 422. The promise in that message is kept by `AddressZoneResolver::adopt()`: when a zone is
+created active, switched on or moved, the uncovered addresses inside it join it and their owners are
+notified. If the hexagon service is down nobody knows whether a point is covered, so that is a 422
+"try again", never a guess. A cafe's first address is always allowed (registration
 creates it from the pinned location); the `customer_branches` feature limits the second onwards.
 Stock is drained from the warehouse that serves the zone first, and the order records that
 `warehouse_id` as where to load from.

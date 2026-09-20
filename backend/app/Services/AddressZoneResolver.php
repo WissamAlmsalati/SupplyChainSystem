@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Address;
 use App\Models\DeliveryZone;
+use App\Models\Notification;
 
 /**
  * Which delivery zone a point on the map falls in, decided by the server.
@@ -30,6 +32,39 @@ class AddressZoneResolver
         }
 
         return null;
+    }
+
+    /**
+     * Keeps the promise made to a cafe whose address was outside coverage: when
+     * a zone starts delivering, every uncovered address inside it joins the zone
+     * and its owner is told they can order now. Returns how many were adopted.
+     */
+    public function adopt(DeliveryZone $zone): int
+    {
+        $resolution = self::resolutionOf((string) $zone->hex_id);
+        if (! $zone->is_active || $resolution === null) {
+            return 0;
+        }
+
+        $adopted = 0;
+        Address::whereNull('delivery_zone_id')->whereNotNull('latitude')->whereNotNull('longitude')
+            ->each(function (Address $address) use ($zone, $resolution, &$adopted) {
+                if (H3Service::latLngToCell((float) $address->latitude, (float) $address->longitude, $resolution) !== $zone->hex_id) {
+                    return;
+                }
+                $address->update(['delivery_zone_id' => $zone->id]);
+                Notification::sendTo(
+                    [$address->user_id],
+                    'بدأنا التوصيل إلى منطقتك',
+                    "عنوانك «{$address->name}» صار ضمن نطاق التوصيل، ويمكنك الطلب إليه الآن.",
+                    '/addresses',
+                    'address',
+                    ['address', $address->id],
+                );
+                $adopted++;
+            });
+
+        return $adopted;
     }
 
     public static function resolutionOf(string $hexId): ?int

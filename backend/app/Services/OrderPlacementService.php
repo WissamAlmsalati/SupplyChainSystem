@@ -72,7 +72,7 @@ class OrderPlacementService
         // switched off, used to go through with a delivery fee of zero. The
         // office may still send one there on purpose from the dashboard.
         if ($source === OrderSource::App && ! $address->deliveryZone?->is_active) {
-            throw ValidationException::withMessages(['address_id' => 'هذا العنوان خارج نطاق التوصيل حالياً']);
+            throw ValidationException::withMessages(['address_id' => 'هذا العنوان خارج نطاق التوصيل حالياً، اختر عنواناً آخر. سنبلغك فور بدء التوصيل إلى منطقتك.']);
         }
 
         $order = DB::transaction(function () use ($customer, $address, $quantities, $variants, $source, $cart, $delegateId, $paymentMethod, $note) {

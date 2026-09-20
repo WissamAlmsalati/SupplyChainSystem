@@ -207,6 +207,10 @@ class CustomerMobileController extends BaseApiController
                 'full_address' => collect([$address->street, $address->city])->filter()->implode('، '),
                 'delivery_zone' => $zone?->only(['id', 'name', 'delivery_price']),
                 'delivery_price' => $zone ? (float) $zone->delivery_price : null,
+                // False while the address is outside every active zone: keep it
+                // in the list, but do not offer it at checkout.
+                'is_deliverable' => (bool) $zone?->is_active,
+                'coverage_message' => $zone?->is_active ? null : self::OUTSIDE_COVERAGE_TITLE,
             ];
         })->values();
     }
@@ -340,18 +344,45 @@ class CustomerMobileController extends BaseApiController
     }
 
     // The zone is found from the coordinates, never taken from the request: it sets the fee.
-    private function zoneFor(float $latitude, float $longitude): DeliveryZone
+    /** What the apps show when an address is saved but cannot be delivered to yet. */
+    public const OUTSIDE_COVERAGE_CODE = 'address_outside_coverage';
+
+    public const OUTSIDE_COVERAGE_TITLE = 'عنوانك خارج نطاق التوصيل حالياً';
+
+    public const OUTSIDE_COVERAGE_MESSAGE = 'حفظنا عنوانك بنجاح، لكن خدمة التوصيل لم تصل إلى منطقتك بعد، لذلك لا يمكن الطلب إليه الآن. سنرسل لك إشعاراً فور بدء التوصيل إلى منطقتك.';
+
+    // The zone is found from the coordinates, never taken from the request: it
+    // sets the fee. Null means the point is outside every zone, which is a fact
+    // about coverage and not an error: the address is still saved.
+    private function zoneFor(float $latitude, float $longitude): ?DeliveryZone
     {
         try {
-            $zone = app(AddressZoneResolver::class)->resolve($latitude, $longitude);
+            return app(AddressZoneResolver::class)->resolve($latitude, $longitude);
         } catch (\RuntimeException $e) {
-            // The hexagon service (Node) did not answer. The office needs to know;
-            // the customer needs a sentence, not a 500.
+            // The hexagon service (Node) did not answer, so nobody knows whether
+            // the point is covered. Saying "outside coverage" would be a guess.
             report($e);
             throw ValidationException::withMessages(['latitude' => 'تعذّر تحديد منطقة التوصيل الآن، حاول بعد قليل']);
         }
+    }
 
-        return $zone ?? throw ValidationException::withMessages(['latitude' => 'موقعك خارج نطاق التوصيل حالياً']);
+    /**
+     * An address outside every delivery zone is saved, and answered with 202
+     * rather than 201/200: the request was accepted, the thing it exists for
+     * (ordering to it) is not available yet. `code` is stable for the apps to
+     * switch on; the title and message are ready for a dialog.
+     */
+    private function addressSaved(Address $address, int $status, string $message): JsonResponse
+    {
+        $deliverable = (bool) $address->deliveryZone?->is_active;
+
+        return response()->json([
+            'success' => true,
+            'code' => $deliverable ? 'address_saved' : self::OUTSIDE_COVERAGE_CODE,
+            'title' => $deliverable ? null : self::OUTSIDE_COVERAGE_TITLE,
+            'message' => $deliverable ? $message : self::OUTSIDE_COVERAGE_MESSAGE,
+            'data' => $this->addressDetails(collect([$address]))->first(),
+        ], $deliverable ? $status : 202, [], JSON_UNESCAPED_UNICODE);
     }
 
     // Delivery price for the customer's registered location — used when the
@@ -396,10 +427,19 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Post(path="/customer/addresses", tags={"Customer Addresses"}, summary="Create an address",
+     *     description="Send the coordinates; the server finds the delivery zone (any `delivery_zone_id` you send is ignored, because the zone sets the fee). **Switch on the status code:** `201` means saved and ready to order to; `202` means saved but outside every delivery zone, so show `title` and `message` in a dialog and do not offer the address at checkout (`data.is_deliverable` is false, and an order to it is refused with 422). When coverage reaches the address the customer gets a notification and it becomes deliverable by itself. The first address is always allowed; more need the branches feature (403).",
      *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
      *
-     *     @OA\Response(response=201, description="Address created"))
+     *     @OA\Response(response=201, description="Saved, inside a delivery zone.",
+     *
+     *         @OA\JsonContent(example={"success": true, "code": "address_saved", "title": null, "message": "تم إنشاء العنوان بنجاح", "data": {"id": 14, "name": "الفرع الرئيسي", "city": "طرابلس", "latitude": "32.88000000", "longitude": "13.19000000", "delivery_zone": {"id": 3, "name": "طرابلس", "delivery_price": "7.00"}, "delivery_price": 7, "is_deliverable": true, "coverage_message": null}})),
+     *
+     *     @OA\Response(response=202, description="Saved, but outside every delivery zone: show the dialog, do not allow ordering to it.",
+     *
+     *         @OA\JsonContent(example={"success": true, "code": "address_outside_coverage", "title": "عنوانك خارج نطاق التوصيل حالياً", "message": "حفظنا عنوانك بنجاح، لكن خدمة التوصيل لم تصل إلى منطقتك بعد، لذلك لا يمكن الطلب إليه الآن. سنرسل لك إشعاراً فور بدء التوصيل إلى منطقتك.", "data": {"id": 15, "name": "فرع الجنوب", "city": "سبها", "latitude": "25.00000000", "longitude": "20.00000000", "delivery_zone": null, "delivery_price": null, "is_deliverable": false, "coverage_message": "عنوانك خارج نطاق التوصيل حالياً"}})),
+     *
+     *     @OA\Response(response=403, description="Already has an address and the branches feature is off.", @OA\JsonContent(ref="#/components/schemas/Error")))
      */
     public function storeAddress(AddressRequest $request): JsonResponse
     {
@@ -410,15 +450,11 @@ class CustomerMobileController extends BaseApiController
         }
 
         $data = $request->validated();
-        $data['delivery_zone_id'] = $this->zoneFor((float) $data['latitude'], (float) $data['longitude'])->id;
+        $data['delivery_zone_id'] = $this->zoneFor((float) $data['latitude'], (float) $data['longitude'])?->id;
 
         $address = Address::create($data + ['user_id' => auth()->id()]);
 
-        return $this->jsonResponse([
-            'id' => $address->id,
-            'name' => $address->name,
-            'message' => 'تم إنشاء العنوان بنجاح',
-        ], 201);
+        return $this->addressSaved($address->load('deliveryZone'), 201, 'تم إنشاء العنوان بنجاح');
     }
 
     /**
@@ -428,7 +464,8 @@ class CustomerMobileController extends BaseApiController
      *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
      *
-     *     @OA\Response(response=200, description="Address updated"))
+     *     @OA\Response(response=200, description="Updated, inside a delivery zone. Same body as creating one."),
+     *     @OA\Response(response=202, description="Updated, but the pin is now outside every delivery zone. Same body and dialog as creating one; `code` is `address_outside_coverage`."))
      */
     public function updateAddress(AddressRequest $request, int $id): JsonResponse
     {
@@ -437,11 +474,11 @@ class CustomerMobileController extends BaseApiController
         unset($data['delivery_zone_id']);
         // Moving the pin can move the address into another zone, or out of all of them.
         if (array_key_exists('latitude', $data) || array_key_exists('longitude', $data)) {
-            $data['delivery_zone_id'] = $this->zoneFor((float) ($data['latitude'] ?? $address->latitude), (float) ($data['longitude'] ?? $address->longitude))->id;
+            $data['delivery_zone_id'] = $this->zoneFor((float) ($data['latitude'] ?? $address->latitude), (float) ($data['longitude'] ?? $address->longitude))?->id;
         }
         $address->update($data);
 
-        return $this->jsonResponse($address->load('deliveryZone'));
+        return $this->addressSaved($address->load('deliveryZone'), 200, 'تم تحديث العنوان بنجاح');
     }
 
     /**

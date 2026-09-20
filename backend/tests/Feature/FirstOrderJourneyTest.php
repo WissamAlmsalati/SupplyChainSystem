@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Warehouse;
 use App\Services\AddressZoneResolver;
+use App\Services\H3Service;
 use App\Services\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -90,11 +91,62 @@ class FirstOrderJourneyTest extends TestCase
         $id = Address::where('user_id', $user->id)->value('id');
         $this->assertSame($this->zone->id, Address::find($id)->delivery_zone_id);
 
-        // Outside every zone: refused, on create and when the pin is moved there.
+    }
+
+    public function test_an_address_outside_coverage_is_saved_with_its_own_status_and_cannot_be_ordered_to(): void
+    {
+        $user = AppUser::factory()->customer()->create();
         PremiumFeature::where('code', 'customer_branches')->update(['is_active' => true]);
-        $this->postJson('/api/v1/customer/addresses', ['name' => 'بعيد', 'latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))
-            ->assertUnprocessable()->assertJsonPath('errors.latitude.0', 'موقعك خارج نطاق التوصيل حالياً');
-        $this->patchJson("/api/v1/customer/addresses/{$id}", ['latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))->assertUnprocessable();
+
+        // 25.0, 20.0 is deep in the desert: saved, answered 202, ready for a dialog.
+        $res = $this->postJson('/api/v1/customer/addresses', ['name' => 'فرع الجنوب', 'latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))
+            ->assertStatus(202)
+            ->assertJsonPath('code', 'address_outside_coverage')
+            ->assertJsonPath('title', 'عنوانك خارج نطاق التوصيل حالياً')
+            ->assertJsonPath('data.is_deliverable', false)
+            ->assertJsonPath('data.delivery_zone', null);
+        $this->assertStringContainsString('سنرسل لك إشعاراً', $res->json('message'));
+        $far = Address::findOrFail($res->json('data.id'));
+
+        // Inside a zone it is the ordinary 201.
+        $near = $this->postJson('/api/v1/customer/addresses', ['name' => 'فرع طرابلس', 'latitude' => 32.88, 'longitude' => 13.19], $this->headers($user))
+            ->assertCreated()->assertJsonPath('code', 'address_saved')->assertJsonPath('data.is_deliverable', true)->json('data.id');
+
+        // Moving a good pin out of coverage answers 202 too; the list says which can be used.
+        $this->patchJson("/api/v1/customer/addresses/{$near}", ['latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))->assertStatus(202);
+        $this->patchJson("/api/v1/customer/addresses/{$near}", ['latitude' => 32.88, 'longitude' => 13.19], $this->headers($user))->assertOk()->assertJsonPath('data.is_deliverable', true);
+        $list = collect($this->getJson('/api/v1/customer/addresses', $this->headers($user))->assertOk()->json('data.addresses'))->keyBy('id');
+        $this->assertFalse($list[$far->id]['is_deliverable']);
+        $this->assertTrue($list[$near]['is_deliverable']);
+
+        // It cannot be ordered to, from the cart or directly, and nothing leaves the shelf.
+        $product = Product::create(['category_id' => Category::create(['name' => 'قهوة'])->id, 'name' => 'بن']);
+        $variant = ProductVariant::create(['product_id' => $product->id, 'name' => '1 كجم', 'price' => 45]);
+        app(StockService::class)->adjust(Warehouse::create(['name' => 'م'])->id, $variant->id, 10, StockMovementType::Adjustment);
+        $this->postJson('/api/v1/customer/orders', ['address_id' => $far->id, 'items' => [['product_variant_id' => $variant->id, 'quantity' => 1]]], $this->headers($user))
+            ->assertUnprocessable()->assertJsonValidationErrors('address_id');
+        $this->postJson('/api/v1/customer/cart/items', ['product_variant_id' => $variant->id, 'quantity' => 1], $this->headers($user))->assertSuccessful();
+        $this->postJson('/api/v1/customer/cart/checkout', ['address_id' => $far->id], $this->headers($user))->assertUnprocessable();
+        $this->assertSame(10, (int) Inventory::sum('quantity'));
+    }
+
+    public function test_the_cafe_is_told_the_day_delivery_reaches_its_address(): void
+    {
+        $user = AppUser::factory()->customer()->create();
+        // Benghazi, which no zone covers yet.
+        $address = Address::create(['user_id' => $user->id, 'name' => 'فرع بنغازي', 'latitude' => 32.1167, 'longitude' => 20.0667]);
+        $cell = H3Service::latLngToCell(32.1167, 20.0667, 4);
+
+        // A zone somewhere else changes nothing; an inactive one over it changes nothing either.
+        DeliveryZone::create(['hex_id' => '842da29ffffffff', 'name' => 'بعيدة', 'delivery_price' => 5, 'is_active' => true]);
+        $zone = DeliveryZone::create(['hex_id' => $cell, 'name' => 'بنغازي', 'delivery_price' => 9, 'is_active' => false]);
+        $this->assertNull($address->fresh()->delivery_zone_id);
+
+        $zone->update(['is_active' => true]);
+
+        $this->assertSame($zone->id, $address->fresh()->delivery_zone_id);
+        $this->assertDatabaseHas('notifications', ['user_id' => $user->id, 'title' => 'بدأنا التوصيل إلى منطقتك', 'entity_type' => 'address', 'entity_id' => $address->id]);
+        $this->getJson('/api/v1/customer/addresses', $this->headers($user))->assertOk()->assertJsonPath('data.addresses.0.is_deliverable', true);
     }
 
     public function test_a_hexagon_service_that_is_down_costs_a_sentence_not_a_500(): void
@@ -123,7 +175,7 @@ class FirstOrderJourneyTest extends TestCase
 
         $this->postJson('/api/v1/customer/orders', [
             'address_id' => $address->id, 'items' => [['product_variant_id' => $variant->id, 'quantity' => 1]], 'payment_method' => 'cash',
-        ], $this->headers($user))->assertUnprocessable()->assertJsonPath('errors.address_id.0', 'هذا العنوان خارج نطاق التوصيل حالياً');
+        ], $this->headers($user))->assertUnprocessable()->assertJsonPath('errors.address_id.0', 'هذا العنوان خارج نطاق التوصيل حالياً، اختر عنواناً آخر. سنبلغك فور بدء التوصيل إلى منطقتك.');
         $this->assertSame(10, (int) Inventory::sum('quantity'));
     }
 }

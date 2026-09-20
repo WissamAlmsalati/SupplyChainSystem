@@ -253,20 +253,18 @@ class AuthController extends BaseApiController
 
         // The place they pinned while registering is where they want deliveries:
         // make it their first address, so a new cafe can order without first
-        // discovering that it has to add one. Outside every zone, it is left for
-        // them to add once coverage reaches them.
+        // discovering that it has to add one. It is kept even when no zone covers
+        // it yet: it cannot be ordered to, and the cafe is told the day one does.
         if (($record->payload['latitude'] ?? null) !== null && ($record->payload['longitude'] ?? null) !== null) {
             $zone = rescue(fn () => app(AddressZoneResolver::class)->resolve((float) $record->payload['latitude'], (float) $record->payload['longitude']), null, false);
-            if ($zone) {
-                Address::create([
-                    'user_id' => $user->id,
-                    'name' => $record->payload['name'],
-                    'latitude' => $record->payload['latitude'],
-                    'longitude' => $record->payload['longitude'],
-                    'delivery_zone_id' => $zone->id,
-                    'contact_phones' => [$record->payload['phone_number']],
-                ]);
-            }
+            Address::create([
+                'user_id' => $user->id,
+                'name' => $record->payload['name'],
+                'latitude' => $record->payload['latitude'],
+                'longitude' => $record->payload['longitude'],
+                'delivery_zone_id' => $zone?->id,
+                'contact_phones' => [$record->payload['phone_number']],
+            ]);
         }
 
         $record->delete();

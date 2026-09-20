@@ -29,7 +29,8 @@ export default function Cart() {
       .then((res) => {
         const list = res.data?.data?.addresses ?? []
         setAddresses(list)
-        const preferred = list[0]
+        // Only an address we deliver to can be chosen.
+        const preferred = list.find((a) => a.is_deliverable !== false)
         if (preferred) setAddressId(String(preferred.id))
       })
       .catch(() => setAddresses([]))
@@ -210,6 +211,9 @@ export default function Cart() {
             <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
               <h2 className="mb-4 font-semibold text-foreground">ملخص الطلب</h2>
               <label className="mb-1.5 block text-sm font-medium text-muted">عنوان التوصيل</label>
+              {addresses.length > 0 && !addresses.some((a) => a.is_deliverable !== false) && (
+                <div className="mb-3 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-foreground">كل عناوينك خارج نطاق التوصيل حالياً. سنبلغك فور بدء التوصيل إلى منطقتك.</div>
+              )}
               {addresses.length === 0 ? (
                 <div className="mb-4 text-sm text-danger">
                   لا يوجد عنوان توصيل بعد. <Link to="/addresses" className="font-bold underline">أضف عنوانك الآن</Link>
@@ -221,7 +225,9 @@ export default function Cart() {
                   className="mb-4 w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
                 >
                   {addresses.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}{a.city ? ` — ${a.city}` : ''}</option>
+                    <option key={a.id} value={a.id} disabled={a.is_deliverable === false}>
+                      {a.name}{a.city ? `، ${a.city}` : ''}{a.is_deliverable === false ? ' (خارج نطاق التوصيل)' : ''}
+                    </option>
                   ))}
                 </select>
               )}

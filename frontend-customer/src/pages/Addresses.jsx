@@ -25,6 +25,8 @@ export default function Addresses() {
   const [form, setForm] = useState(initial)
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
+  // { title, message } when an address was saved outside the delivery area.
+  const [notice, setNotice] = useState(null)
   const branchesFeature = usePremiumFeatureActive('customer_branches')
 
   const load = async () => {
@@ -75,29 +77,16 @@ export default function Addresses() {
     setEditing(null)
   }
 
-  const ensureDeliveryZone = () => {
-    const hexId = form.hex_id
-    if (!hexId) {
-      return form.delivery_zone_id || null
-    }
-
-    const existing = zones.find((z) => z.hex_id === hexId)
-    return existing?.id ?? null
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.delivery_zone_id && !form.hex_id) {
-      setError('اختر موقع العنوان على الخريطة ضمن منطقة توصيل مسعّرة.')
+    if (!form.latitude || !form.longitude) {
+      setError('حدّد موقع العنوان على الخريطة.')
       return
     }
     setSaving(true)
     try {
-      const deliveryZoneId = ensureDeliveryZone()
-      if (!deliveryZoneId) {
-        setError('الخلية المختارة ليست ضمن مناطق التوصيل المسعّرة.')
-        return
-      }
+      // The server decides the delivery zone from the pin. A pin outside every
+      // zone is still saved; the answer says so (202) and we show it as a dialog.
       const data = {
         ...form,
         latitude: Number(form.latitude),
@@ -108,13 +97,14 @@ export default function Addresses() {
       if (!data.city) data.city = null
       delete data.hex_id
 
-      if (editing) {
-        await client.patch(`/customer/addresses/${editing.id}`, data)
-      } else {
-        await client.post('/customer/addresses', data)
-      }
+      const res = editing
+        ? await client.patch(`/customer/addresses/${editing.id}`, data)
+        : await client.post('/customer/addresses', data)
       close()
       load()
+      if (res.status === 202 || res.data?.code === 'address_outside_coverage') {
+        setNotice({ title: res.data?.title, message: res.data?.message })
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'فشل حفظ العنوان')
     } finally {
@@ -124,6 +114,15 @@ export default function Addresses() {
 
   return (
     <>
+      {notice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setNotice(null)}>
+          <div role="alertdialog" aria-labelledby="coverage-title" className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <h2 id="coverage-title" className="text-lg font-extrabold text-foreground">{notice.title}</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted">{notice.message}</p>
+            <button onClick={() => setNotice(null)} className="mt-6 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">حسناً</button>
+          </div>
+        </div>
+      )}
       <header className="mb-6 flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">عناويني</h1>
@@ -174,7 +173,10 @@ export default function Addresses() {
             ) : (
               addresses.map((a) => (
                 <tr key={a.id} className="hover:bg-background/50">
-                  <td className="px-4 py-3 font-medium">{a.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {a.name}
+                    {a.is_deliverable === false && <span className="mt-1 block w-fit rounded-full border border-warning/40 bg-warning-soft px-2 py-0.5 text-[11px] font-medium text-foreground">خارج نطاق التوصيل حالياً</span>}
+                  </td>
                   <td className="px-4 py-3">{a.city ?? '-'}</td>
                   <td className="px-4 py-3">{a.street ?? '-'}</td>
                   <td className="px-4 py-3">{(a.contact_phones ?? []).join('، ') || '-'}</td>
