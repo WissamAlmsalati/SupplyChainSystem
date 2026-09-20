@@ -1,0 +1,153 @@
+# Public edge for ${DOMAIN}: terminates TLS, serves both SPAs, and hands
+# everything else to the backend nginx container.
+#
+# ${DOMAIN} is filled in at container start by the nginx image's envsubst
+# entrypoint (see docker/frontend/Dockerfile.prod), so moving to another
+# hostname is one variable in the server's .env, not an image rebuild.
+#
+# Deliberately absent, both reachable over an SSH tunnel instead:
+#   /telescope  — the request log holds tokens and customer data
+#   phpMyAdmin  — bound to 127.0.0.1 on the host by the compose file
+
+# Docker's embedded DNS. nginx resolves an `upstream` name once at startup and
+# keeps that IP forever, so rebuilding the backend container leaves this one
+# proxying to an address nobody answers on — a 502 that only an nginx restart
+# clears. Re-resolving per request through a variable removes that failure.
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+# Plain HTTP carries the ACME challenge and nothing else.
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    # Let's Encrypt writes the challenge into a volume shared with certbot.
+    # This must stay above the redirect, or renewal fails with a 301.
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # A year, on this host only — no includeSubDomains, so the rest of
+    # wissam.ly is not committed to TLS by this file.
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # The API accepts receipt photos up to 5 MB and product images; nginx's
+    # default of 1 MB refused them before PHP ever saw the request.
+    client_max_body_size 12m;
+
+    # TLS is terminated here, so keep redirects relative: an absolute redirect
+    # built from the proxied request would drop back to http and lose the session.
+    absolute_redirect off;
+
+    error_log /var/log/nginx/error.log;
+    access_log /var/log/nginx/access.log;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json application/manifest+json image/svg+xml;
+
+    # API → backend container
+    location /api/ {
+        set $backend http://nginx:80;
+        proxy_pass $backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # API docs → backend container
+    location /docs {
+        set $backend http://nginx:80;
+        proxy_pass $backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Reverb WebSocket — the path carries REVERB_APP_KEY, which echo.js sends
+    # as 'local'; changing the key means changing both.
+    location /app/local {
+        set $backend http://nginx:80;
+        proxy_pass $backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        # A driver's position channel stays open between updates; the default
+        # 60s read timeout would drop it and force a reconnect loop.
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    # Uploaded files (receipts, product images) → backend container
+    location /storage/ {
+        set $backend http://nginx:80;
+        proxy_pass $backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    # Hashed build assets → cache forever (filename changes on every build)
+    location /assets/ {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # Customer app at /customer/
+    location /customer/ {
+        alias /usr/share/nginx/html/customer/;
+        add_header Cache-Control "no-cache";
+        try_files $uri $uri/ /customer/index.html;
+    }
+
+    # nginx's mime.types has no .webmanifest entry, and a manifest served as
+    # octet-stream is ignored by some installers. Naming the file beats a
+    # server-level types block, which would replace the whole map.
+    location = /manifest.webmanifest {
+        root /usr/share/nginx/html;
+        default_type application/manifest+json;
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    # The service worker must never be served stale, or a released build stays
+    # invisible behind the worker that cached the last one.
+    location = /sw.js {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        try_files $uri =404;
+    }
+
+    # Admin app at / — HTML must revalidate so new builds are picked up
+    location / {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "no-cache";
+        try_files $uri $uri/ /index.html;
+    }
+}

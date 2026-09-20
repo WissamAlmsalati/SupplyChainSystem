@@ -1,0 +1,39 @@
+# Release image for the two SPAs: admin at /, customer at /customer/.
+#
+# ponytail: the sibling Dockerfile copies dists built on the host, because npm
+# registry fetches stall inside containers on the developer's machine. A CI
+# runner has no such problem, so the release image builds properly in-container
+# and a release never depends on what happened to be in frontend-*/dist.
+# Both stages are built from the repository root, which is why the COPY paths
+# carry the frontend-* prefix.
+
+FROM node:20-alpine AS admin
+WORKDIR /app
+COPY frontend-admin/package.json frontend-admin/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend-admin/ ./
+RUN npm run build
+
+FROM node:20-alpine AS customer
+WORKDIR /app
+# The customer app is served under a sub-path, so Vite has to bake that prefix
+# into every asset URL; a root-path build 404s on its own JavaScript.
+ENV VITE_BASE_PATH=/customer/
+COPY frontend-customer/package.json frontend-customer/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend-customer/ ./
+RUN npm run build
+
+FROM nginx:alpine
+
+# The template is read by the base image's entrypoint, which runs envsubst over
+# it into /etc/nginx/conf.d/ at startup — that is how ${DOMAIN} becomes
+# cafe.wissam.ly without rebuilding the image. nginx's own $host, $uri and
+# friends are untouched: envsubst only replaces names that are set in the
+# environment, and those are not.
+COPY docker/edge/nginx.conf.template /etc/nginx/templates/default.conf.template
+
+COPY --from=admin /app/dist /usr/share/nginx/html
+COPY --from=customer /app/dist /usr/share/nginx/html/customer
+
+EXPOSE 80 443

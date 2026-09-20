@@ -1,0 +1,164 @@
+name: Deploy
+
+# A release is an image tag. Every push to main that passes CI builds the two
+# production images, pushes them to GHCR, and rolls the stack on the server
+# over to them. The server keeps a checkout only for configuration (compose
+# file, nginx configs, scripts) — application code never comes from git there.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Existing image tag to roll back to (blank = build this commit)'
+        required: false
+        type: string
+
+# Never let two deploys overlap; never cancel one halfway, which would leave
+# the stack on a half-pulled set of images.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  ci:
+    # Rolling back by hand should not wait on (or be blocked by) a rebuild.
+    if: inputs.image_tag == ''
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build and push images
+    if: inputs.image_tag == ''
+    needs: ci
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: meta
+        name: Work out image names and tag
+        run: |
+          # GHCR rejects capitals, and the repository is WissamAlmsalati/SupplyChainSystem.
+          echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          target: prod
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.prefix }}/backend:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.prefix }}/backend:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      # Built from the repository root: one nginx image carries both SPAs.
+      - name: Frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/frontend/Dockerfile.prod
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.prefix }}/frontend:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.prefix }}/frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  deploy:
+    name: Roll the server over
+    needs: build
+    # `always()` so a manual rollback, which skips ci and build, still runs.
+    if: always() && (inputs.image_tag != '' || needs.build.result == 'success')
+    runs-on: ubuntu-latest
+    # The IP, USER and PASSWORD secrets are scoped to this environment, so the
+    # name has to match it exactly or they resolve to empty strings.
+    environment:
+      name: development-env
+      url: https://cafe.wissam.ly
+    steps:
+      - name: Install sshpass
+        # The server authenticates with a password rather than a key, and ssh
+        # will only read one from a terminal.
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Deploy
+        env:
+          # sshpass reads the password from this variable, so it never appears
+          # in the runner's process list or in the log.
+          SSHPASS: ${{ secrets.PASSWORD }}
+          HOST: ${{ secrets.IP }}
+          REMOTE_USER: ${{ secrets.USER }}
+          PORT: ${{ secrets.PORT || '22' }}
+          # Optional: `ssh-keyscan -H <ip>` once, pasted into a secret of this
+          # name, pins the server's identity. Without it the first connection
+          # is trusted on sight.
+          KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }}
+          TAG: ${{ inputs.image_tag || needs.build.outputs.tag }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$HOST" || { echo "The IP secret is empty — is the job's environment name right?" >&2; exit 1; }
+          test -n "$REMOTE_USER" || { echo "The USER secret is empty." >&2; exit 1; }
+          test -n "$SSHPASS" || { echo "The PASSWORD secret is empty." >&2; exit 1; }
+
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          if [ -n "$KNOWN_HOSTS" ]; then
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+            STRICT=yes
+          else
+            STRICT=accept-new
+          fi
+          chmod 644 ~/.ssh/known_hosts 2>/dev/null || true
+
+          # The checkout is moved to this commit before the deploy script runs,
+          # so the compose file and script that execute are the ones this
+          # release ships with, not the previous release's copies.
+          #
+          # The registry token rides in as a command-line variable. It is this
+          # run's GITHUB_TOKEN, dead the moment the job ends, and reading it
+          # off the server's process list already requires a shell there —
+          # which, through the docker group, is root anyway.
+          sshpass -e ssh -p "$PORT" \
+            -o StrictHostKeyChecking="$STRICT" \
+            -o ConnectTimeout=20 \
+            "$REMOTE_USER@$HOST" \
+            "set -e
+             echo '$REGISTRY_TOKEN' | docker login ghcr.io -u '$REGISTRY_USER' --password-stdin
+             cd /opt/cafe-supply-chain
+             git fetch --prune origin
+             git checkout --detach '$SHA'
+             IMAGE_TAG='$TAG' ./scripts/deploy.sh
+             docker logout ghcr.io"
+
+      - name: Check the site answers
+        run: |
+          for i in $(seq 1 12); do
+            code=$(curl -fsS -o /dev/null -w '%{http_code}' https://cafe.wissam.ly/api/v1/categories || true)
+            if [ "$code" = "200" ]; then
+              echo "Up: /api/v1/categories answered 200."
+              exit 0
+            fi
+            echo "Attempt $i: got '${code:-no answer}', waiting."
+            sleep 10
+          done
+          echo "The API did not answer 200 within two minutes."
+          exit 1

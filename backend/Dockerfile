@@ -7,11 +7,14 @@ FROM php:8.3-fpm AS base
 LABEL maintainer="Cafe Supply Chain"
 
 # Install system dependencies
-# nodejs is required by app/Services/H3Service.php (scripts/h3.cjs)
+# nodejs is required by app/Services/H3Service.php (scripts/h3.cjs), and npm
+# with it: Debian ships them as separate packages, and the prod stage installs
+# h3-js. Without npm that stage cannot build at all.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     nodejs \
+    npm \
     libpng-dev \
     libjpeg-dev \
     libonig-dev \
@@ -88,9 +91,16 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 COPY docker/php/uploads.ini "$PHP_INI_DIR/conf.d/uploads.ini"
 COPY docker/php/opcache.ini "$PHP_INI_DIR/conf.d/opcache.ini"
 
-# Copy composer files first for better layer caching
-COPY composer.json composer.lock ./
+# Copy dependency manifests first for better layer caching
+COPY composer.json composer.lock package.json package-lock.json ./
 RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader
+
+# ponytail: h3-js is a runtime dependency of the PHP app, not build tooling —
+# H3Service shells out to scripts/h3.cjs. .dockerignore excludes node_modules,
+# and nothing else installs it, so an image without this line answers every
+# zone and address request with the "hexagon service is missing" sentence and
+# can never resolve a delivery fee.
+RUN npm ci --omit=dev --no-audit --no-fund
 
 COPY . .
 RUN composer install --no-dev --no-interaction --optimize-autoloader \

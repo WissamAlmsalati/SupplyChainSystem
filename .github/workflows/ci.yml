@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # deploy.yml calls this so a release can never ship past a red suite.
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend — Pint + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The Pint step below diffs against the base commit, which the
+          # default depth-1 clone does not have.
+          fetch-depth: 0
+
+      - name: Set up PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          # gd here is built with jpeg, which the receipt-upload tests need;
+          # pdo_sqlite backs phpunit.xml's :memory: database.
+          extensions: mbstring, exif, pcntl, bcmath, gd, zip, intl, pdo_sqlite, sqlite3, redis
+          ini-values: memory_limit=512M
+          coverage: none
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install PHP dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # H3Service shells out to scripts/h3.cjs, so h3-js is a runtime
+      # requirement of the PHP app, not build tooling: the zone and address
+      # tests fail without node_modules here.
+      - name: Install Node dependencies (h3-js)
+        working-directory: backend
+        run: npm ci --no-audit --no-fund
+
+      - name: Prepare environment
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # Pint, the only PHP linter here, scoped to the files this change
+      # touches. Twenty-nine files predate this pipeline and do not pass; a
+      # repository-wide gate would be red on its first run, and the fix for
+      # that is one deliberate `pint` commit of its own, not a reformat
+      # smuggled into every unrelated pull request.
+      - name: Pint (files this change touches)
+        run: |
+          base='${{ github.event.pull_request.base.sha || github.event.before }}'
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "No base commit to compare against — nothing to scope Pint to."
+            exit 0
+          fi
+          files=$(git diff --name-only --diff-filter=ACMR "$base" HEAD \
+                  | grep '^backend/.*\.php$' | sed 's|^backend/||' || true)
+          if [ -z "$files" ]; then
+            echo "No PHP files changed."
+            exit 0
+          fi
+          echo "$files"
+          cd backend
+          echo "$files" | xargs ./vendor/bin/pint --test
+
+      # phpunit.xml sets every env var with force="true", so the suite brings
+      # its own sqlite :memory: database and array cache; nothing here needs a
+      # MySQL or Redis service container.
+      - name: Tests
+        working-directory: backend
+        run: php artisan test
+
+  admin:
+    name: Admin — oxlint + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend-admin/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend-admin
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        working-directory: frontend-admin
+        run: npm run lint
+
+      - name: Build
+        working-directory: frontend-admin
+        run: npm run build
+
+  customer:
+    name: Customer — build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend-customer/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend-customer
+        run: npm ci --no-audit --no-fund
+
+      # The app is served under /customer/, so Vite must bake that prefix into
+      # every asset URL — a root-path build 404s on its own JavaScript.
+      # frontend-customer has no lint script.
+      - name: Build
+        working-directory: frontend-customer
+        env:
+          VITE_BASE_PATH: /customer/
+        run: npm run build

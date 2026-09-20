@@ -444,6 +444,44 @@ the consolidated baseline — add new dated migrations rather than editing them.
 are used for stored codes too: `2026_09_17_000016` renamed the `cafe` role, permission codes,
 premium-feature codes and notification types to `customer`.
 
+## Deployment
+
+`cafe.wissam.ly` serves the whole platform from one hostname: admin at `/`, the customer app at
+`/customer/`, the API at `/api/v1`, the WebSocket at `/app/local`. `.github/workflows/ci.yml` runs
+Pint, the backend suite and both frontend builds; `deploy.yml` builds two images
+(`ghcr.io/wissamalmsalati/supplychainsystem/{backend,frontend}`), pushes them tagged
+`sha-<12 chars>`, and rolls the server over by ssh. **A release is an image tag** — the checkout at
+`/opt/cafe-supply-chain` holds only `docker-compose.prod.yml`, the nginx configs and `scripts/`,
+never application code, so a rollback is one tag in the workflow's `image_tag` input rather than a
+revert. The full runbook, secrets and DNS are in `docs/deployment.md`.
+
+Three things that were wrong before there was anything to deploy, and that stay wrong the moment
+somebody undoes them:
+
+- **`npm ci` in the production stage of `backend/Dockerfile`.** `h3-js` is a runtime dependency of
+  the PHP app, not build tooling; `.dockerignore` excludes `node_modules` and nothing else installed
+  it, so the image could never resolve a zone. Debian ships `npm` separately from `nodejs`, hence
+  both in the apt list.
+- **`TelescopeServiceProvider` is not in `bootstrap/providers.php`.** Telescope is a `require-dev`
+  package, so `composer install --no-dev` leaves the class it extends behind and `package:discover`
+  dies — the production stage could not be built at all. `AppServiceProvider::register()` registers
+  it behind `class_exists()` instead.
+- **`UPLOADS_CONTAINER` in the backup cron.** In production the receipts and product images live in
+  the `storage_public` volume, not in `backend/storage/app/public` on the host, so
+  `scripts/backup-db.sh` reads them from inside the app container. Without it the file half of the
+  backup is empty and nothing says so.
+
+Pint runs in CI against the files a change touches, not the whole repository: twenty-nine files
+predate the pipeline and do not pass, and a repository-wide gate would be red on its first run.
+Fixing those is one deliberate `pint` commit whenever somebody wants it.
+
+The edge nginx config is a template (`docker/edge/nginx.conf.template`); the nginx image's own
+entrypoint runs `envsubst` over `${DOMAIN}` at start, and nginx's `$host`/`$uri` survive it because
+envsubst only replaces names that are set in the environment. TLS is Let's Encrypt over the webroot
+challenge: `scripts/init-letsencrypt.sh` issues the first certificate (nginx will not start without
+one, and certbot cannot answer the challenge without nginx — a self-signed day-long certificate
+breaks the circle), and the `certbot` container renews from then on.
+
 ## Conventions
 
 Comments prefixed `ponytail:` mark deliberate non-obvious decisions and workarounds, with the

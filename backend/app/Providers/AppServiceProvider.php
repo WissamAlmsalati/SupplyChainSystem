@@ -8,6 +8,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Telescope\Telescope;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,7 +21,14 @@ class AppServiceProvider extends ServiceProvider
             'sandbox' => new SandboxGateway,
             default => throw new \RuntimeException('Unknown wallet gateway driver: '.config('wallet.gateway.driver')),
         });
-        //
+
+        // Telescope ships in require-dev, so it simply is not there in a
+        // production image. Guarding on the package rather than on the
+        // environment means the class is only ever touched when it exists;
+        // whether it then records anything is config/telescope.php's business.
+        if (class_exists(Telescope::class)) {
+            $this->app->register(TelescopeServiceProvider::class);
+        }
     }
 
     /**
