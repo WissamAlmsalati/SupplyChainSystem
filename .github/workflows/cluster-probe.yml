@@ -1,0 +1,68 @@
+name: Cluster probe
+
+# Read-only. Reports what the server's Kubernetes cluster offers so the
+# manifests can be written against what is actually there — an ingress class
+# name, a storage class, whether cert-manager exists — rather than guessed.
+# Manual only: it is a diagnostic, not part of any release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    environment:
+      name: development-env
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Look around
+        env:
+          SSHPASS: ${{ secrets.PASSWORD }}
+          HOST: ${{ secrets.IP }}
+          REMOTE_USER: ${{ secrets.USER }}
+          PORT: ${{ secrets.PORT || '22' }}
+        run: |
+          set -euo pipefail
+          test -n "$HOST" || { echo "The IP secret is empty."; exit 1; }
+          sshpass -e ssh -p "$PORT" -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=20 "$REMOTE_USER@$HOST" 'bash -s' <<'REMOTE'
+          # k3s keeps its kubeconfig root-only, so find the command that works.
+          for k in "kubectl" "sudo kubectl" "sudo k3s kubectl" "k3s kubectl"; do
+            if $k get nodes >/dev/null 2>&1; then KC="$k"; break; fi
+          done
+          if [ -z "${KC:-}" ]; then
+            echo "No working kubectl found. Tried: kubectl, sudo kubectl, sudo k3s kubectl, k3s kubectl"
+            echo "--- what is installed ---"
+            command -v kubectl k3s microk8s docker 2>&1 || true
+            exit 1
+          fi
+          echo "kubectl command: $KC"
+
+          echo; echo "=== nodes ==="
+          $KC get nodes -o wide
+          echo; echo "=== distribution ==="
+          $KC version -o yaml 2>/dev/null | grep -E 'gitVersion' | head -2
+          echo; echo "=== ingress classes ==="
+          $KC get ingressclass
+          echo; echo "=== existing ingresses (do not touch these) ==="
+          $KC get ingress -A
+          echo; echo "=== storage classes ==="
+          $KC get storageclass
+          echo; echo "=== cert-manager ==="
+          $KC get crd 2>/dev/null | grep cert-manager | head -5 || echo "no cert-manager CRDs"
+          $KC get clusterissuer 2>/dev/null || echo "no clusterissuers"
+          echo; echo "=== namespaces ==="
+          $KC get ns
+          echo; echo "=== does the cafe namespace already exist? ==="
+          $KC get ns cafe-supply-chain 2>&1 || true
+          echo; echo "=== resources on the box ==="
+          free -h | head -2
+          df -h / | tail -1
+          echo "cpus: $(nproc)"
+          echo; echo "=== can this user pull from a registry / run docker? ==="
+          docker version --format '{{.Server.Version}}' 2>&1 | head -1 || true
+          REMOTE
