@@ -1,0 +1,152 @@
+# Two nginx pods with one job each.
+#
+#   backend-nginx — FastCGI to app, WebSocket to reverb, uploaded files
+#   frontend      — the two built SPAs, nothing else
+#
+# The Ingress splits traffic by path before it reaches either, so the frontend
+# serves static files only — its nginx config is baked into the image
+# (docker/frontend/nginx.prod.conf) rather than repeated in a ConfigMap here.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-nginx-conf
+  namespace: cafe-supply-chain
+data:
+  default.conf: |
+    # No `resolver` here, unlike the compose version: a Kubernetes Service
+    # keeps one ClusterIP for its whole life, so resolving `app` once at
+    # startup is correct. It was Docker handing a rebuilt container a new IP
+    # that made the 502s there.
+    server {
+        listen 80;
+        server_name _;
+
+        # Receipt photos reach 5 MB; nginx's 1 MB default refused them before
+        # PHP ever saw the request.
+        client_max_body_size 12m;
+
+        error_log /var/log/nginx/error.log;
+        access_log /var/log/nginx/access.log;
+
+        location /api/ {
+            fastcgi_pass app:9000;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME /var/www/public/index.php;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            include fastcgi_params;
+        }
+
+        location /docs {
+            fastcgi_pass app:9000;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME /var/www/public/index.php;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            include fastcgi_params;
+        }
+
+        # Uploaded receipts and product images, straight off the shared volume.
+        location /storage/ {
+            alias /var/www/storage/app/public/;
+            try_files $uri $uri/ =404;
+        }
+
+        location /app/local {
+            proxy_pass http://reverb:8080;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+        }
+
+        # Telescope is deliberately not here, and TELESCOPE_ENABLED is false:
+        # its request log holds bearer tokens and customer data.
+        location / {
+            return 404;
+        }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-nginx
+  namespace: cafe-supply-chain
+spec:
+  selector: { app: backend-nginx }
+  ports: [{ port: 80, targetPort: 80 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-nginx
+  namespace: cafe-supply-chain
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: backend-nginx }
+  template:
+    metadata:
+      labels: { app: backend-nginx }
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports: [{ containerPort: 80 }]
+          volumeMounts:
+            - { name: conf, mountPath: /etc/nginx/conf.d }
+            - { name: uploads, mountPath: /var/www/storage/app/public, readOnly: true }
+          resources:
+            requests: { memory: 24Mi, cpu: 20m }
+            limits: { memory: 96Mi, cpu: 500m }
+          readinessProbe:
+            # tcpSocket, not httpGet: this server answers the root with
+            # `return 404` by design, and Kubernetes reads any status at or
+            # above 400 as a failed probe — the pod would never go Ready and
+            # the Service would never have an endpoint.
+            tcpSocket: { port: 80 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: conf
+          configMap: { name: backend-nginx-conf }
+        - name: uploads
+          persistentVolumeClaim: { claimName: uploads }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: cafe-supply-chain
+spec:
+  selector: { app: frontend }
+  ports: [{ port: 80, targetPort: 80 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: cafe-supply-chain
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: frontend }
+  template:
+    metadata:
+      labels: { app: frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/wissamalmsalati/supplychainsystem/frontend:__IMAGE_TAG__
+          ports: [{ containerPort: 80 }]
+          resources:
+            requests: { memory: 24Mi, cpu: 20m }
+            limits: { memory: 96Mi, cpu: 500m }
+          readinessProbe:
+            httpGet: { path: /index.html, port: 80 }
+            initialDelaySeconds: 5
+            periodSeconds: 10

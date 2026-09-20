@@ -1,0 +1,71 @@
+# cafe.wissam.ly, split by path before it reaches a pod.
+#
+# Two Ingress objects for one host, because the WebSocket needs an hour-long
+# read timeout and the rest of the site must not: a hung API request should not
+# hold a worker for an hour. ingress-nginx picks the longest matching path, so
+# /api beats /.
+#
+# TLS: the cluster already runs cert-manager with a working `letsencrypt-prod`
+# ClusterIssuer (the neighbours use it). The annotation below is all it takes —
+# cert-manager answers the HTTP-01 challenge through this same ingress and
+# writes the certificate into the secret named in `tls`. It is on the main
+# object only; the websocket one just reuses the secret, so the two do not
+# both ask for the same certificate.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cafe
+  namespace: cafe-supply-chain
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Receipt photos and product images; the ingress default is 1 MB.
+    nginx.ingress.kubernetes.io/proxy-body-size: "12m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [cafe.wissam.ly]
+      secretName: cafe-wissam-ly-tls
+  rules:
+    - host: cafe.wissam.ly
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: backend-nginx, port: { number: 80 } } }
+          - path: /docs
+            pathType: Prefix
+            backend: { service: { name: backend-nginx, port: { number: 80 } } }
+          - path: /storage
+            pathType: Prefix
+            backend: { service: { name: backend-nginx, port: { number: 80 } } }
+          # Everything else is the admin dashboard at / and the customer app
+          # at /customer/, both served as static files.
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: frontend, port: { number: 80 } } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cafe-websocket
+  namespace: cafe-supply-chain
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [cafe.wissam.ly]
+      secretName: cafe-wissam-ly-tls
+  rules:
+    - host: cafe.wissam.ly
+      http:
+        paths:
+          # The path carries REVERB_APP_KEY, which echo.js sends as "local".
+          # Changing the key means changing this, the ConfigMap and echo.js.
+          - path: /app/local
+            pathType: Prefix
+            backend: { service: { name: backend-nginx, port: { number: 80 } } }

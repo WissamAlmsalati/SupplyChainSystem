@@ -1,0 +1,10 @@
+# The cafe platform lives in its own namespace on a cluster that already runs
+# octobits.ly, luxresale, fll.com.ly and five more. Nothing here touches any
+# of them: no shared namespace, no cluster-scoped object except the two
+# PersistentVolumes below, which are named for this project.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cafe-supply-chain
+  labels:
+    app.kubernetes.io/part-of: cafe-supply-chain

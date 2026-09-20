@@ -1,0 +1,90 @@
+# Everything Laravel reads, minus the secrets.
+#
+# The image carries no .env — .dockerignore keeps it out, and a release should
+# not — so Laravel runs on environment variables alone. That means this file
+# has to be complete: a setting missing here falls back to the framework
+# default, silently. The secrets live beside it in `cafe-secrets`, created once
+# by scripts/k8s-bootstrap.sh and never rewritten by a deploy, because APP_KEY
+# is what every encrypted column was written with.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cafe-config
+  namespace: cafe-supply-chain
+data:
+  APP_NAME: "الساحل لمستلزمات المقاهي"
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_URL: https://cafe.wissam.ly
+  APP_LOCALE: ar
+  APP_FALLBACK_LOCALE: ar
+  APP_FAKER_LOCALE: ar_SA
+  APP_MAINTENANCE_DRIVER: file
+  BCRYPT_ROUNDS: "12"
+
+  LOG_CHANNEL: stack
+  LOG_STACK: single
+  LOG_DEPRECATIONS_CHANNEL: "null"
+  # debug writes every query; on a shared box with 31 GB left that is a way to
+  # fill the disk and take the neighbours down with it.
+  LOG_LEVEL: warning
+
+  DB_CONNECTION: mysql
+  DB_HOST: db
+  DB_PORT: "3306"
+  DB_DATABASE: cafe_supply_chain
+  DB_USERNAME: cafe_user
+
+  CACHE_STORE: redis
+  SESSION_DRIVER: redis
+  SESSION_LIFETIME: "120"
+  SESSION_ENCRYPT: "false"
+  SESSION_PATH: /
+  SESSION_DOMAIN: "null"
+  QUEUE_CONNECTION: redis
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: "null"
+
+  BROADCAST_CONNECTION: reverb
+  FILESYSTEM_DISK: local
+
+  # Every request arrives through ingress-nginx, so Laravel must trust the
+  # X-Forwarded-* headers or it builds http:// links on an https:// site.
+  TRUSTED_PROXIES: "**"
+  TELESCOPE_ENABLED: "false"
+  L5_SWAGGER_GENERATE_ALWAYS: "false"
+
+  SANCTUM_TOKEN_EXPIRATION_MINUTES: "43200"
+
+  # REVERB_APP_KEY stays "local": it is the last segment of the path the
+  # ingress routes (/app/local) and the key frontend-admin/src/echo.js sends.
+  REVERB_APP_ID: local-app
+  REVERB_APP_KEY: local
+  # Where the PHP app publishes events — the pod next door, not the public
+  # edge. Browsers reach Reverb at wss://cafe.wissam.ly/app/local, which
+  # echo.js works out from the page URL on its own.
+  REVERB_HOST: reverb
+  REVERB_PORT: "8080"
+  REVERB_SCHEME: http
+
+  # Clock times people read (order numbers, report headings); storage is UTC.
+  APP_BUSINESS_TIMEZONE: Africa/Tripoli
+
+  # Until real SMTP is set, password resets and registration OTPs are written
+  # to the log instead of sent, and nobody outside the office can register.
+  MAIL_MAILER: log
+  MAIL_HOST: ""
+  MAIL_PORT: "587"
+  MAIL_USERNAME: ""
+  MAIL_FROM_ADDRESS: info@cafe.wissam.ly
+  MAIL_FROM_NAME: "الساحل لمستلزمات المقاهي"
+
+  COMPANY_NAME: "الساحل لمستلزمات المقاهي"
+  COMPANY_TAGLINE: "توريد مستلزمات المقاهي بالجملة"
+  COMPANY_ADDRESS: "طرابلس، ليبيا"
+  COMPANY_PHONE: "091-0000000"
+  COMPANY_EMAIL: info@cafe.wissam.ly
+  COMPANY_COMMERCIAL_REGISTER: ""
+  COMPANY_TAX_NUMBER: ""

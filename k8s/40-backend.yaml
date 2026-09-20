@@ -1,0 +1,191 @@
+# The four roles the one backend image plays, exactly as docker-entrypoint.sh
+# already decides them from CONTAINER_ROLE: web (migrates), worker, scheduler,
+# reverb. Keeping the entrypoint rather than replacing it with Kubernetes
+# equivalents means the tested startup path — wait for MySQL, wait for Redis,
+# config:cache, migrate --force --isolated from the web role only — is the
+# same one that runs in development.
+#
+# `app` stays at one replica on purpose: it is the only role that migrates,
+# and one replica is what keeps two migrators off the same CREATE TABLE.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: cafe-supply-chain
+spec:
+  selector: { app: app }
+  ports: [{ name: fpm, port: 9000, targetPort: 9000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: cafe-supply-chain
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: app }
+  template:
+    metadata:
+      labels: { app: app }
+    spec:
+      initContainers:
+        # The uploads PersistentVolume is a hostPath, and the kubelet creates
+        # it root-owned. fsGroup does not apply to hostPath, so without this
+        # the app — which runs as www-data, uid 33 — cannot write a receipt.
+        # Non-recursive: the directory is all that needs re-owning, and a
+        # recursive pass would grow with the shop on every pod start.
+        - name: own-uploads
+          image: ghcr.io/wissamalmsalati/supplychainsystem/backend:__IMAGE_TAG__
+          command: ["sh", "-c", "chown 33:33 /var/www/storage/app/public && chmod 775 /var/www/storage/app/public"]
+          securityContext: { runAsUser: 0 }
+          volumeMounts:
+            - { name: uploads, mountPath: /var/www/storage/app/public }
+      containers:
+        - name: app
+          image: ghcr.io/wissamalmsalati/supplychainsystem/backend:__IMAGE_TAG__
+          envFrom:
+            - configMapRef: { name: cafe-config }
+            - secretRef: { name: cafe-secrets }
+          ports: [{ containerPort: 9000 }]
+          volumeMounts:
+            - { name: uploads, mountPath: /var/www/storage/app/public }
+          resources:
+            requests: { memory: 160Mi, cpu: 100m }
+            limits: { memory: 448Mi, cpu: "1" }
+          readinessProbe:
+            tcpSocket: { port: 9000 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: 9000 }
+            # Generous: the entrypoint waits for MySQL, caches config and runs
+            # migrations before php-fpm ever listens. A tight probe here would
+            # restart the pod in the middle of a migration.
+            initialDelaySeconds: 120
+            periodSeconds: 30
+      volumes:
+        - name: uploads
+          persistentVolumeClaim: { claimName: uploads }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: cafe-supply-chain
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: worker }
+  template:
+    metadata:
+      labels: { app: worker }
+    spec:
+      initContainers:
+        - name: own-uploads
+          image: ghcr.io/wissamalmsalati/supplychainsystem/backend:__IMAGE_TAG__
+          command: ["sh", "-c", "chown 33:33 /var/www/storage/app/public && chmod 775 /var/www/storage/app/public"]
+          securityContext: { runAsUser: 0 }
+          volumeMounts:
+            - { name: uploads, mountPath: /var/www/storage/app/public }
+      containers:
+        - name: worker
+          image: ghcr.io/wissamalmsalati/supplychainsystem/backend:__IMAGE_TAG__
+          envFrom:
+            - configMapRef: { name: cafe-config }
+            - secretRef: { name: cafe-secrets }
+          env:
+            - { name: CONTAINER_ROLE, value: worker }
+          volumeMounts:
+            - { name: uploads, mountPath: /var/www/storage/app/public }
+          resources:
+            requests: { memory: 128Mi, cpu: 50m }
+            limits: { memory: 320Mi, cpu: 500m }
+      volumes:
+        - name: uploads
+          persistentVolumeClaim: { claimName: uploads }
+---
+# Not optional: OTP expiry and Sanctum token pruning are scheduled work.
+# Without this pod, a six-digit code stays valid for ever.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler
+  namespace: cafe-supply-chain
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: scheduler }
+  template:
+    metadata:
+      labels: { app: scheduler }
+    spec:
+      initContainers:
+        - name: own-uploads
+          image: ghcr.io/wissamalmsalati/supplychainsystem/backend:__IMAGE_TAG__
+          command: ["sh", "-c", "chown 33:33 /var/www/storage/app/public && chmod 775 /var/www/storage/app/public"]
+          securityContext: { runAsUser: 0 }
+          volumeMounts:
+            - { name: uploads, mountPath: /var/www/storage/app/public }
+      containers:
+        - name: scheduler
+          image: ghcr.io/wissamalmsalati/supplychainsystem/backend:__IMAGE_TAG__
+          envFrom:
+            - configMapRef: { name: cafe-config }
+            - secretRef: { name: cafe-secrets }
+          env:
+            - { name: CONTAINER_ROLE, value: scheduler }
+          volumeMounts:
+            - { name: uploads, mountPath: /var/www/storage/app/public }
+          resources:
+            requests: { memory: 96Mi, cpu: 20m }
+            limits: { memory: 256Mi, cpu: 500m }
+      volumes:
+        - name: uploads
+          persistentVolumeClaim: { claimName: uploads }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reverb
+  namespace: cafe-supply-chain
+spec:
+  selector: { app: reverb }
+  ports: [{ name: ws, port: 8080, targetPort: 8080 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reverb
+  namespace: cafe-supply-chain
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: reverb }
+  template:
+    metadata:
+      labels: { app: reverb }
+    spec:
+      containers:
+        - name: reverb
+          image: ghcr.io/wissamalmsalati/supplychainsystem/backend:__IMAGE_TAG__
+          # `args` and not `command`: the entrypoint stays in place so this pod
+          # also waits for MySQL and Redis, and CONTAINER_ROLE keeps it out of
+          # the migrations.
+          args: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+          envFrom:
+            - configMapRef: { name: cafe-config }
+            - secretRef: { name: cafe-secrets }
+          env:
+            - { name: CONTAINER_ROLE, value: reverb }
+          ports: [{ containerPort: 8080 }]
+          resources:
+            requests: { memory: 96Mi, cpu: 20m }
+            limits: { memory: 256Mi, cpu: 500m }
+          readinessProbe:
+            tcpSocket: { port: 8080 }
+            initialDelaySeconds: 20
+            periodSeconds: 10

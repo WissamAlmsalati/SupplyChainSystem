@@ -1,9 +1,10 @@
 name: Cluster probe
 
-# Read-only. Reports what the server's Kubernetes cluster offers so the
-# manifests can be written against what is actually there — an ingress class
-# name, a storage class, whether cert-manager exists — rather than guessed.
-# Manual only: it is a diagnostic, not part of any release.
+# Reports what the cluster offers, then validates k8s/ against the live API
+# server without changing anything. --dry-run=server is a full admission
+# check — schema, defaulting, webhooks, the cert-manager and ingress-nginx
+# annotations — which no amount of local YAML linting can stand in for.
+# A diagnostic, not part of any release.
 on:
   workflow_dispatch:
   # Temporary: workflow_dispatch only works for files already on the default
@@ -71,3 +72,39 @@ jobs:
           echo; echo "=== can this user pull from a registry / run docker? ==="
           docker version --format '{{.Server.Version}}' 2>&1 | head -1 || true
           REMOTE
+
+      - name: Validate the manifests against the live API
+        env:
+          SSHPASS: ${{ secrets.PASSWORD }}
+          HOST: ${{ secrets.IP }}
+          REMOTE_USER: ${{ secrets.USER }}
+          PORT: ${{ secrets.PORT || '22' }}
+          REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          sshpass -e ssh -p "$PORT" -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=20 "$REMOTE_USER@$HOST" "
+             set -e
+             APP_DIR=\"\$HOME/cafe-supply-chain\"
+             if [ ! -d \"\$APP_DIR/.git\" ]; then
+               git clone https://github.com/WissamAlmsalati/SupplyChainSystem.git \"\$APP_DIR\"
+             fi
+             cd \"\$APP_DIR\"
+             git fetch --prune origin
+             git checkout --detach '$REF'
+
+             # Namespaced objects cannot be dry-run against a namespace that is
+             # not there, and a server-side dry run never creates one. This is
+             # the single real change the probe makes: an empty namespace.
+             kubectl create namespace cafe-supply-chain --dry-run=client -o yaml | kubectl apply -f -
+
+             echo
+             echo '=== apply --dry-run=server ==='
+             tmp=\$(mktemp -d)
+             for f in k8s/*.yaml; do
+               sed 's|__IMAGE_TAG__|dry-run|g' \"\$f\" > \"\$tmp/\$(basename \$f)\"
+             done
+             kubectl apply --dry-run=server -f \"\$tmp/\"
+             rm -rf \"\$tmp\"
+             echo
+             echo 'All manifests are accepted by the API server.'"

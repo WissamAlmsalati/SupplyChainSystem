@@ -1,7 +1,11 @@
 #!/bin/sh
 # Nightly database backup, meant for cron on the server:
 #
-#   15 3 * * * /var/www/SupplyChainSystem/scripts/backup-db.sh >> /var/log/cafe-backup.log 2>&1
+#   30 2 * * * KUBE_NS=cafe-supply-chain ~/cafe-supply-chain/scripts/backup-db.sh >> ~/cafe-backup.log 2>&1
+#
+# On the Kubernetes cluster the data is in a hostPath volume under
+# /srv/cafe-supply-chain — which is this machine's disk, not a backup. This
+# script is the backup, and OFFSITE is what makes it one.
 #
 # Dumps MySQL from inside its container (so no client or password is needed on
 # the host), compresses it, checks the result is a real dump and not an error
@@ -13,6 +17,12 @@
 #   OFFSITE='scp "$1" backup@other-host:/backups/cafe/'
 set -eu
 
+# Where the database lives. In production it is a pod on the Kubernetes
+# cluster, which containerd runs — `docker exec` cannot see it, and the server
+# has a separate Docker daemon that would look like it is simply not there.
+# Set KUBE_NS to reach the pod instead; leave it unset for a Docker container.
+KUBE_NS="${KUBE_NS:-}"
+KUBECTL="${KUBECTL:-kubectl}"
 CONTAINER="${CONTAINER:-cafe_supply_chain_db}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/cafe-supply-chain}"
 KEEP_DAYS="${KEEP_DAYS:-14}"
@@ -34,7 +44,11 @@ tmp="$file.partial"
 
 # --single-transaction: a consistent snapshot without locking the tables the
 # app is writing to. The password comes from the container's own environment.
-docker exec "$CONTAINER" sh -c 'exec mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction --quick --routines --no-tablespaces "$MYSQL_DATABASE"' 2>/dev/null | gzip -9 > "$tmp"
+if [ -n "$KUBE_NS" ]; then
+  $KUBECTL -n "$KUBE_NS" exec deploy/db -- sh -c 'exec mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction --quick --routines --no-tablespaces "$MYSQL_DATABASE"' 2>/dev/null | gzip -9 > "$tmp"
+else
+  docker exec "$CONTAINER" sh -c 'exec mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction --quick --routines --no-tablespaces "$MYSQL_DATABASE"' 2>/dev/null | gzip -9 > "$tmp"
+fi
 
 # A failed dump still leaves a small gzip behind; a real one ends with this line.
 if ! gzip -dc "$tmp" | tail -n 1 | grep -q "Dump completed"; then
@@ -50,9 +64,11 @@ echo "$(date '+%F %T') ok $file ($(du -h "$file" | cut -f1))"
 # Uploaded files: bank-transfer receipts and product images. They are the
 # evidence behind wallet top-ups, and a database dump alone cannot bring them back.
 files=""
-if [ -n "$UPLOADS_CONTAINER" ] || [ -d "$UPLOADS_DIR" ]; then
+if [ -n "$KUBE_NS" ] || [ -n "$UPLOADS_CONTAINER" ] || [ -d "$UPLOADS_DIR" ]; then
   files="$BACKUP_DIR/files_$stamp.tar.gz"
-  if [ -n "$UPLOADS_CONTAINER" ]; then
+  if [ -n "$KUBE_NS" ]; then
+    $KUBECTL -n "$KUBE_NS" exec deploy/app -c app -- tar -czf - -C /var/www/storage/app/public . > "$files.partial" 2>/dev/null
+  elif [ -n "$UPLOADS_CONTAINER" ]; then
     docker exec "$UPLOADS_CONTAINER" tar -czf - -C /var/www/storage/app/public . > "$files.partial" 2>/dev/null
   else
     tar -czf "$files.partial" -C "$UPLOADS_DIR" . 2>/dev/null
@@ -82,6 +98,6 @@ find "$BACKUP_DIR" -name '*.partial' -mmin +120 -delete
 # Restore the files, in development:
 #   tar -xzf files_2026-09-19_0315.tar.gz -C backend/storage/app/public
 # and in production, back into the volume through the container:
-#   gunzip -c files_2026-09-19_0315.tar.gz | docker exec -i cafe_supply_chain_app tar -xf - -C /var/www/storage/app/public
+#   gunzip -c files_2026-09-19_0315.tar.gz | kubectl -n cafe-supply-chain exec -i deploy/app -c app -- tar -xf - -C /var/www/storage/app/public
 # Restore the database:
-#   gunzip -c db_2026-09-19_0315.sql.gz | docker exec -i cafe_supply_chain_db sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"'
+#   gunzip -c db_2026-09-19_0315.sql.gz | kubectl -n cafe-supply-chain exec -i deploy/db -- sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"'

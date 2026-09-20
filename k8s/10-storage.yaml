@@ -1,0 +1,102 @@
+# The cluster has no StorageClass at all, so a plain PVC would sit Pending for
+# ever waiting for a provisioner that is not there. On a single node the honest
+# answer is a static hostPath volume per claim, bound by name.
+#
+# That ties the data to this machine's disk: a hostPath volume is not a backup
+# and does not survive losing the box. scripts/backup-db.sh is what does, and
+# on Kubernetes it has to run against the mysql pod — see docs/deployment.md.
+#
+# storageClassName: "" on both sides is what makes the binding static. Leaving
+# it unset would send the claim looking for the (absent) default class.
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cafe-supply-chain-mysql
+  labels:
+    app.kubernetes.io/part-of: cafe-supply-chain
+spec:
+  capacity:
+    storage: 8Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath:
+    path: /srv/cafe-supply-chain/mysql
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-data
+  namespace: cafe-supply-chain
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  volumeName: cafe-supply-chain-mysql
+  resources:
+    requests:
+      storage: 8Gi
+---
+# Redis carries the queue, not just a cache: a job that has been popped and not
+# yet finished is only in here. Losing it loses that work, so it gets a disk.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cafe-supply-chain-redis
+  labels:
+    app.kubernetes.io/part-of: cafe-supply-chain
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath:
+    path: /srv/cafe-supply-chain/redis
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+  namespace: cafe-supply-chain
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  volumeName: cafe-supply-chain-redis
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Receipts and product images. Written by app, worker and scheduler, read by
+# the backend nginx, so this one has to be ReadWriteMany — which a hostPath
+# volume can honour precisely because there is only one node to schedule onto.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cafe-supply-chain-uploads
+  labels:
+    app.kubernetes.io/part-of: cafe-supply-chain
+spec:
+  capacity:
+    storage: 4Gi
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath:
+    path: /srv/cafe-supply-chain/uploads
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uploads
+  namespace: cafe-supply-chain
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: ""
+  volumeName: cafe-supply-chain-uploads
+  resources:
+    requests:
+      storage: 4Gi

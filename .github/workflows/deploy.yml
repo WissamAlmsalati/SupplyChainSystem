@@ -1,9 +1,17 @@
 name: Deploy
 
 # A release is an image tag. Every push to main that passes CI builds the two
-# production images, pushes them to GHCR, and rolls the stack on the server
-# over to them. The server keeps a checkout only for configuration (compose
-# file, nginx configs, scripts) — application code never comes from git there.
+# production images, pushes them to GHCR, and rolls the Kubernetes deployments
+# over to them.
+#
+# The target is a shared single-node cluster that also runs octobits.ly,
+# luxresale, fll.com.ly and five more sites. Everything this workflow touches
+# is inside the cafe-supply-chain namespace, apart from three PersistentVolumes
+# named for this project. It never restarts the ingress controller, never edits
+# another namespace, and never changes a cluster-wide setting.
+#
+# The server keeps a checkout only for the manifests and scripts — application
+# code never comes from git there, it comes from the image.
 on:
   push:
     branches: [main]
@@ -82,7 +90,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=frontend
 
   deploy:
-    name: Roll the server over
+    name: Roll the cluster over
     needs: build
     # `always()` so a manual rollback, which skips ci and build, still runs.
     if: always() && (inputs.image_tag != '' || needs.build.result == 'success')
@@ -129,36 +137,47 @@ jobs:
           fi
           chmod 644 ~/.ssh/known_hosts 2>/dev/null || true
 
-          # The checkout is moved to this commit before the deploy script runs,
-          # so the compose file and script that execute are the ones this
-          # release ships with, not the previous release's copies.
+          # The checkout lives in the remote user's home, not /opt: no sudo is
+          # available over a password login, and nothing here needs root that
+          # kubectl does not already have.
+          #
+          # It is moved to this commit before the scripts run, so the manifests
+          # and the deploy script that execute are the ones this release ships
+          # with rather than the previous release's copies.
           #
           # The registry token rides in as a command-line variable. It is this
-          # run's GITHUB_TOKEN, dead the moment the job ends, and reading it
-          # off the server's process list already requires a shell there —
-          # which, through the docker group, is root anyway.
+          # run's GITHUB_TOKEN, dead the moment the job ends, and reading it off
+          # the server's process list already requires a shell there.
           sshpass -e ssh -p "$PORT" \
             -o StrictHostKeyChecking="$STRICT" \
             -o ConnectTimeout=20 \
-            "$REMOTE_USER@$HOST" \
-            "set -e
-             echo '$REGISTRY_TOKEN' | docker login ghcr.io -u '$REGISTRY_USER' --password-stdin
-             cd /opt/cafe-supply-chain
+            "$REMOTE_USER@$HOST" "
+             set -e
+             APP_DIR=\"\$HOME/cafe-supply-chain\"
+             if [ ! -d \"\$APP_DIR/.git\" ]; then
+               git clone https://github.com/WissamAlmsalati/SupplyChainSystem.git \"\$APP_DIR\"
+             fi
+             cd \"\$APP_DIR\"
              git fetch --prune origin
              git checkout --detach '$SHA'
-             IMAGE_TAG='$TAG' ./scripts/deploy.sh
-             docker logout ghcr.io"
+             ./scripts/k8s-bootstrap.sh
+             IMAGE_TAG='$TAG' REGISTRY_USER='$REGISTRY_USER' REGISTRY_TOKEN='$REGISTRY_TOKEN' ./scripts/k8s-deploy.sh"
 
       - name: Check the site answers
         run: |
+          # Two minutes: cert-manager may still be finishing the HTTP-01
+          # challenge on a first deploy, and an untrusted certificate fails
+          # curl before the API is ever reached.
           for i in $(seq 1 12); do
             code=$(curl -fsS -o /dev/null -w '%{http_code}' https://cafe.wissam.ly/api/v1/categories || true)
             if [ "$code" = "200" ]; then
-              echo "Up: /api/v1/categories answered 200."
+              echo "Up: /api/v1/categories answered 200 over a trusted certificate."
               exit 0
             fi
             echo "Attempt $i: got '${code:-no answer}', waiting."
             sleep 10
           done
           echo "The API did not answer 200 within two minutes."
+          echo "If the site loads in a browser but this fails, the certificate"
+          echo "is probably still pending: kubectl -n cafe-supply-chain get certificate"
           exit 1
