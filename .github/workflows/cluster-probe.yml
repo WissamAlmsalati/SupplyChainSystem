@@ -92,3 +92,24 @@ jobs:
              kubectl top nodes 2>/dev/null || echo "(metrics-server not installed)"
              echo; echo "=== the neighbours, for comparison ==="
              kubectl get pods -A --field-selector=status.phase!=Running 2>/dev/null | head -10 || true'
+
+      - name: Why are the unhealthy pods unhealthy
+        env:
+          SSHPASS: ${{ secrets.PASSWORD }}
+          HOST: ${{ secrets.IP }}
+          REMOTE_USER: ${{ secrets.USER }}
+          PORT: ${{ secrets.PORT || '22' }}
+        run: |
+          set -euo pipefail
+          sshpass -e ssh -p "$PORT" -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=20 "$REMOTE_USER@$HOST" '
+             NS=cafe-supply-chain
+             kubectl get ns "$NS" >/dev/null 2>&1 || { echo "namespace gone"; exit 0; }
+             for d in backend-nginx app reverb; do
+               echo "############ $d ############"
+               kubectl -n "$NS" logs "deploy/$d" --tail=40 --all-containers 2>&1 | tail -40
+               echo "--- previous crash, if any ---"
+               kubectl -n "$NS" logs "deploy/$d" --tail=25 --previous 2>&1 | tail -25
+               echo
+             done'
+
