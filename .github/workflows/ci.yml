@@ -25,45 +25,27 @@ jobs:
           # default depth-1 clone does not have.
           fetch-depth: 0
 
-      - name: Set up PHP 8.3
-        uses: shivammathur/setup-php@v2
+      - uses: docker/setup-buildx-action@v3
+
+      # ponytail: the suite runs inside the image the project ships, not on the
+      # runner's own PHP. Ubuntu's libsqlite3 is built with a parser stack that
+      # gives up at 30 nested function calls, and ArabicText::sqlExpression()
+      # wraps every searched column in 35 REPLACE()s — so on a runner the
+      # Arabic search tests died with "parser stack overflow" while passing in
+      # Docker (PHP's images bundle SQLite 3.46, which parses it) and on MySQL,
+      # which is what production actually runs. Testing in the shipped image
+      # keeps that whole class of "green here, red there" out of the pipeline.
+      # The underlying depth is still worth reducing; see docs/deployment.md.
+      - name: Build the dev image
+        uses: docker/build-push-action@v6
         with:
-          php-version: '8.3'
-          # gd here is built with jpeg, which the receipt-upload tests need;
-          # pdo_sqlite backs phpunit.xml's :memory: database.
-          extensions: mbstring, exif, pcntl, bcmath, gd, zip, intl, pdo_sqlite, sqlite3, redis
-          ini-values: memory_limit=512M
-          coverage: none
-
-      - name: Cache Composer downloads
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/composer/files
-          key: composer-${{ hashFiles('backend/composer.lock') }}
-          restore-keys: composer-
-
-      - name: Install PHP dependencies
-        working-directory: backend
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      # H3Service shells out to scripts/h3.cjs, so h3-js is a runtime
-      # requirement of the PHP app, not build tooling: the zone and address
-      # tests fail without node_modules here.
-      - name: Install Node dependencies (h3-js)
-        working-directory: backend
-        run: npm ci --no-audit --no-fund
-
-      - name: Prepare environment
-        working-directory: backend
-        run: |
-          cp .env.example .env
-          php artisan key:generate
+          context: backend
+          file: backend/Dockerfile
+          target: dev
+          load: true
+          tags: cafe-backend:ci
+          cache-from: type=gha,scope=backend-dev
+          cache-to: type=gha,mode=max,scope=backend-dev
 
       # Pint, the only PHP linter here, scoped to the files this change
       # touches. Twenty-nine files predate this pipeline and do not pass; a
@@ -84,15 +66,21 @@ jobs:
             exit 0
           fi
           echo "$files"
-          cd backend
-          echo "$files" | xargs ./vendor/bin/pint --test
+          docker run --rm -v "$PWD/backend:/src" -w /src \
+            --entrypoint /var/www/vendor/bin/pint cafe-backend:ci --test $files
 
-      # phpunit.xml sets every env var with force="true", so the suite brings
-      # its own sqlite :memory: database and array cache; nothing here needs a
-      # MySQL or Redis service container.
+      # tests/ and phpunit.xml are kept out of the image by .dockerignore — a
+      # release has no business carrying them — so they are mounted in. The
+      # .env is written inside the container: without one, Laravel's warning
+      # about the missing file turns all 236 tests yellow. phpunit.xml still
+      # forces sqlite :memory:, so nothing here needs a database service.
       - name: Tests
-        working-directory: backend
-        run: php artisan test
+        run: |
+          docker run --rm \
+            -v "$PWD/backend/tests:/var/www/tests:ro" \
+            -v "$PWD/backend/phpunit.xml:/var/www/phpunit.xml:ro" \
+            --entrypoint sh cafe-backend:ci \
+            -c 'cp .env.example .env && php artisan key:generate --quiet && php artisan test'
 
   admin:
     name: Admin — oxlint + build

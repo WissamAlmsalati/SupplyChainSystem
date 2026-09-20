@@ -62,9 +62,15 @@ RUN echo "opcache.enable=0" > "$PHP_INI_DIR/conf.d/opcache-dev.ini"
 # Install xdebug for development (optional, can be enabled via environment)
 RUN pecl install xdebug && docker-php-ext-enable xdebug
 
-# Copy composer files first for better layer caching
-COPY composer.json composer.lock ./
+# Copy dependency manifests first for better layer caching
+COPY composer.json composer.lock package.json package-lock.json ./
 RUN composer install --no-interaction --no-scripts --no-autoloader
+
+# Same reason as the prod stage: H3Service shells out to scripts/h3.cjs. The
+# dev container hides this behind its bind mount of the host checkout, but CI
+# runs the suite in this image with nothing mounted over it, and the zone
+# tests need h3-js to be here.
+RUN npm ci --no-audit --no-fund
 
 COPY . .
 RUN composer install --no-interaction --optimize-autoloader \

@@ -475,6 +475,14 @@ Pint runs in CI against the files a change touches, not the whole repository: tw
 predate the pipeline and do not pass, and a repository-wide gate would be red on its first run.
 Fixing those is one deliberate `pint` commit whenever somebody wants it.
 
+**The backend suite runs inside the project's own dev image on CI, not on the runner's PHP.**
+`ArabicText::sqlExpression()` wraps a column in 35 nested `REPLACE()` calls, and how deep a SQLite
+build parses is a compile-time constant: the `php:8.3-fpm` image's bundled 3.46.1 manages 60, while
+Ubuntu's system 3.45.1 gives up at 30 — so every Arabic search test failed on a bare runner with
+`parser stack overflow` while passing everywhere else. MySQL, which production uses, parses it, so
+the shop is not affected; a developer running sqlite outside Docker is. `docs/deployment.md`
+explains how the expression could be cut to the folds that can actually affect a match.
+
 The edge nginx config is a template (`docker/edge/nginx.conf.template`); the nginx image's own
 entrypoint runs `envsubst` over `${DOMAIN}` at start, and nginx's `$host`/`$uri` survive it because
 envsubst only replaces names that are set in the environment. TLS is Let's Encrypt over the webroot

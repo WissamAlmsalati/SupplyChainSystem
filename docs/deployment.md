@@ -200,6 +200,42 @@ logs certbot`. The usual cause is the ACME challenge location having been moved
 below the HTTPS redirect in the edge config, which turns the challenge into a
 301.
 
+## Why the backend suite runs in Docker on CI
+
+`ArabicText::sqlExpression()` wraps every searched column in 35 nested
+`REPLACE()` calls — one per fold pair, plus `LOWER()`. How deep a SQLite build
+will parse before giving up is a compile-time constant, and it differs:
+
+| SQLite | max nested calls |
+| ------ | ---------------- |
+| the `php:8.3-fpm` image's bundled 3.46.1 | 60+ |
+| Ubuntu 24.04's system libsqlite3 3.45.1 | fails at 30 |
+
+So the Arabic search tests pass in the dev container and fail on a bare GitHub
+runner with `SQLSTATE[HY000]: General error: 1 parser stack overflow`. Building
+the project's own dev image and running the suite inside it removes the drift:
+CI then tests what the developer tests, and what the server runs.
+
+This is worth fixing in the app, not just routed around. Two things are true:
+
+- **Production is not affected.** MySQL parses the expression, and the whole
+  suite passes against MySQL 8 (3 failures, all `'2'` vs `2` — see below).
+  Anyone running the suite on sqlite outside Docker, which `CLAUDE.md` offers
+  as an option, will hit it.
+- **The expression can be much shorter.** A fold pair `X → Y` where `Y` is not
+  `''` can only ever affect the match if `Y` occurs in the normalized search
+  term: the term never contains `X` (it was folded too), so leaving `X` alone
+  can produce neither a false positive nor a false negative. Only the thirteen
+  deletions — tatweel and the harakat — are needed unconditionally. Searching
+  "قهوه امريكيه" would need 23 calls rather than 35, and the query would be
+  cheaper on MySQL too, on every product search.
+
+A second thing the MySQL run turned up, unrelated to deployment: MySQL returns
+`SUM()` as a string where sqlite returns an integer, so `items_quantity` and
+`returned_quantity` come back from production as `"2"` while the tests assert
+`2`. A client parsing those as numbers is relying on something the API does not
+promise. Both of these want a change of their own.
+
 ## What is still open
 
 - SSH signs in with a password. Adding a key to the deploy user and turning
