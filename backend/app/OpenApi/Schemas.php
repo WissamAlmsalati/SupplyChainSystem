@@ -18,11 +18,11 @@ namespace App\OpenApi;
  *     @OA\Property(property="created_at", type="string", format="date-time"),
  *     @OA\Property(property="updated_at", type="string", format="date-time"),
  *     @OA\Property(property="deleted_at", type="string", nullable=true),
- *     @OA\Property(property="delivery_zone", type="object", nullable=true,
+ *     @OA\Property(property="delivery_zone", description="The zone the coordinates fall in, and the fee it sets. Null while no active zone reaches the address.", type="object", nullable=true,
  *         @OA\Property(property="id", type="integer", example=1),
  *         @OA\Property(property="name", type="string", example="منطقة طرابلس"),
  *         @OA\Property(property="delivery_price", type="string", example="6.00")),
- *     @OA\Property(property="delivery_price", type="number", nullable=true, example=6)
+ *     @OA\Property(property="is_deliverable", description="False while no active delivery zone reaches the address: show it in the list, but do not offer it at checkout — an order to it is refused with 422. It becomes true by itself once coverage arrives, and the customer is notified.", type="boolean", example=true)
  * )
  *
  * @OA\Schema(schema="CustomerOrderCard", type="object",

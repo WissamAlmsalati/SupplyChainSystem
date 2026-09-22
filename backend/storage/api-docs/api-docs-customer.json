@@ -571,7 +571,7 @@
                     "Customer Addresses"
                 ],
                 "summary": "List own addresses (branches)",
-                "description": "Address details with delivery zone and price. Orders of an address are a separate call: GET /customer/addresses/{id}/orders. data.delivery_price is the price at the customer's registered location (used when there are no addresses yet).",
+                "description": "Address details with delivery zone and price. Orders of an address are a separate call: GET /customer/addresses/{id}/orders. Each address carries its own fee in `delivery_zone.delivery_price`; branches in different zones cost different amounts, so there is no single price for the list.",
                 "operationId": "512db4fb20218463b67bcb38eff27a63",
                 "responses": {
                     "200": {
@@ -587,11 +587,6 @@
                                                     "items": {
                                                         "$ref": "#/components/schemas/CustomerAddressDetail"
                                                     }
-                                                },
-                                                "delivery_price": {
-                                                    "type": "number",
-                                                    "example": 6,
-                                                    "nullable": true
                                                 }
                                             },
                                             "type": "object"
@@ -620,7 +615,7 @@
                     "Customer Addresses"
                 ],
                 "summary": "Create an address",
-                "description": "Send the coordinates; the server finds the delivery zone (any `delivery_zone_id` you send is ignored, because the zone sets the fee). **Switch on the status code:** `201` means saved and ready to order to; `202` means saved but outside every delivery zone, so show `title` and `message` in a dialog and do not offer the address at checkout (`data.is_deliverable` is false, and an order to it is refused with 422). When coverage reaches the address the customer gets a notification and it becomes deliverable by itself. The first address is always allowed; more need the branches feature (403).",
+                "description": "Send the coordinates; the server finds the delivery zone (any `delivery_zone_id` you send is ignored, because the zone sets the fee). **Switch on `is_deliverable`:** true means saved and ready to order to; false means saved but outside every delivery zone, so show `title` and `message` in a dialog and do not offer the address at checkout (an order to it is refused with 422). The status is 201 either way — the address was created in full. When coverage reaches the address the customer gets a notification and it becomes deliverable by itself. The first address is always allowed; more need the branches feature (403).",
                 "operationId": "0f7447dfdd2c7c95bbb4da0fc3884949",
                 "requestBody": {
                     "required": true,
@@ -634,54 +629,48 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Saved, inside a delivery zone.",
+                        "description": "Saved. `is_deliverable` says whether it can be ordered to; when false, show `title` and `message` in a dialog.",
                         "content": {
                             "application/json": {
                                 "schema": {},
-                                "example": {
-                                    "success": true,
-                                    "code": "address_saved",
-                                    "title": null,
-                                    "message": "تم إنشاء العنوان بنجاح",
-                                    "data": {
-                                        "id": 14,
-                                        "name": "الفرع الرئيسي",
-                                        "city": "طرابلس",
-                                        "latitude": "32.88000000",
-                                        "longitude": "13.19000000",
-                                        "delivery_zone": {
-                                            "id": 3,
-                                            "name": "طرابلس",
-                                            "delivery_price": "7.00"
-                                        },
-                                        "delivery_price": 7,
-                                        "is_deliverable": true,
-                                        "coverage_message": null
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "202": {
-                        "description": "Saved, but outside every delivery zone: show the dialog, do not allow ordering to it.",
-                        "content": {
-                            "application/json": {
-                                "schema": {},
-                                "example": {
-                                    "success": true,
-                                    "code": "address_outside_coverage",
-                                    "title": "عنوانك خارج نطاق التوصيل حالياً",
-                                    "message": "حفظنا عنوانك بنجاح، لكن خدمة التوصيل لم تصل إلى منطقتك بعد، لذلك لا يمكن الطلب إليه الآن. سنرسل لك إشعاراً فور بدء التوصيل إلى منطقتك.",
-                                    "data": {
-                                        "id": 15,
-                                        "name": "فرع الجنوب",
-                                        "city": "سبها",
-                                        "latitude": "25.00000000",
-                                        "longitude": "20.00000000",
-                                        "delivery_zone": null,
-                                        "delivery_price": null,
-                                        "is_deliverable": false,
-                                        "coverage_message": "عنوانك خارج نطاق التوصيل حالياً"
+                                "examples": {
+                                    "inside": {
+                                        "summary": "Inside a delivery zone",
+                                        "value": {
+                                            "success": true,
+                                            "is_deliverable": true,
+                                            "title": null,
+                                            "message": "تم إنشاء العنوان بنجاح",
+                                            "data": {
+                                                "id": 14,
+                                                "name": "الفرع الرئيسي",
+                                                "city": "طرابلس",
+                                                "latitude": "32.88000000",
+                                                "longitude": "13.19000000",
+                                                "delivery_zone": {
+                                                    "id": 3,
+                                                    "name": "طرابلس",
+                                                    "delivery_price": "7.00"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "outside": {
+                                        "summary": "Outside every delivery zone",
+                                        "value": {
+                                            "success": true,
+                                            "is_deliverable": false,
+                                            "title": "عنوانك خارج نطاق التوصيل حالياً",
+                                            "message": "حفظنا عنوانك بنجاح، لكن خدمة التوصيل لم تصل إلى منطقتك بعد، لذلك لا يمكن الطلب إليه الآن. سنرسل لك إشعاراً فور بدء التوصيل إلى منطقتك.",
+                                            "data": {
+                                                "id": 15,
+                                                "name": "فرع الجنوب",
+                                                "city": "سبها",
+                                                "latitude": "25.00000000",
+                                                "longitude": "20.00000000",
+                                                "delivery_zone": null
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -820,10 +809,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Updated, inside a delivery zone. Same body as creating one."
-                    },
-                    "202": {
-                        "description": "Updated, but the pin is now outside every delivery zone. Same body and dialog as creating one; `code` is `address_outside_coverage`."
+                        "description": "Updated. Same body as creating one: when the pin now sits outside every delivery zone, `is_deliverable` is false and the same dialog applies."
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
@@ -4007,6 +3993,7 @@
                         "nullable": true
                     },
                     "delivery_zone": {
+                        "description": "The zone the coordinates fall in, and the fee it sets. Null while no active zone reaches the address.",
                         "properties": {
                             "id": {
                                 "type": "integer",
@@ -4024,10 +4011,10 @@
                         "type": "object",
                         "nullable": true
                     },
-                    "delivery_price": {
-                        "type": "number",
-                        "example": 6,
-                        "nullable": true
+                    "is_deliverable": {
+                        "description": "False while no active delivery zone reaches the address: show it in the list, but do not offer it at checkout — an order to it is refused with 422. It becomes true by itself once coverage arrives, and the customer is notified.",
+                        "type": "boolean",
+                        "example": true
                     }
                 },
                 "type": "object"

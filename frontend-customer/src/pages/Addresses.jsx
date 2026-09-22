@@ -16,7 +16,6 @@ const initial = {
 
 export default function Addresses() {
   const [addresses, setAddresses] = useState([])
-  const [deliveryPrice, setDeliveryPrice] = useState(null)
   const [zones, setZones] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -38,7 +37,6 @@ export default function Addresses() {
         client.get('/customer/delivery-zones'),
       ])
       setAddresses(addressesRes.data.data.addresses ?? [])
-      setDeliveryPrice(addressesRes.data.data.delivery_price ?? null)
       setZones(zonesRes.data.data)
     } catch (err) {
       setError(err.response?.data?.message || 'فشل تحميل العناوين')
@@ -86,7 +84,7 @@ export default function Addresses() {
     setSaving(true)
     try {
       // The server decides the delivery zone from the pin. A pin outside every
-      // zone is still saved; the answer says so (202) and we show it as a dialog.
+      // zone is still saved; is_deliverable says so and we show it as a dialog.
       const data = {
         ...form,
         latitude: Number(form.latitude),
@@ -102,7 +100,7 @@ export default function Addresses() {
         : await client.post('/customer/addresses', data)
       close()
       load()
-      if (res.status === 202 || res.data?.code === 'address_outside_coverage') {
+      if (res.data?.is_deliverable === false) {
         setNotice({ title: res.data?.title, message: res.data?.message })
       }
     } catch (err) {
@@ -127,9 +125,6 @@ export default function Addresses() {
         <div>
           <h1 className="text-2xl font-extrabold text-foreground">عناويني</h1>
           <p className="mt-1 text-muted">إدارة عناوين توصيل مقهاك</p>
-          {deliveryPrice != null && (
-            <p className="mt-1 text-sm text-primary">سعر التوصيل لموقعك: {Number(deliveryPrice).toFixed(2)} د.ل</p>
-          )}
         </div>
         {/* The first address is always allowed; more of them need the branches feature. */}
         {(branchesFeature || (!loading && addresses.length === 0)) && (
@@ -175,7 +170,9 @@ export default function Addresses() {
                 <tr key={a.id} className="hover:bg-background/50">
                   <td className="px-4 py-3 font-medium">
                     {a.name}
-                    {a.is_deliverable === false && <span className="mt-1 block w-fit rounded-full border border-warning/40 bg-warning-soft px-2 py-0.5 text-[11px] font-medium text-foreground">خارج نطاق التوصيل حالياً</span>}
+                    {a.is_deliverable === false
+                      ? <span className="mt-1 block w-fit rounded-full border border-warning/40 bg-warning-soft px-2 py-0.5 text-[11px] font-medium text-foreground">خارج نطاق التوصيل حالياً</span>
+                      : a.delivery_zone && <span className="mt-1 block text-[11px] font-normal text-muted">{a.delivery_zone.name} — توصيل {Number(a.delivery_zone.delivery_price).toFixed(2)} د.ل</span>}
                   </td>
                   <td className="px-4 py-3">{a.city ?? '-'}</td>
                   <td className="px-4 py-3">{a.street ?? '-'}</td>

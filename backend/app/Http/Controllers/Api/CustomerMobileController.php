@@ -19,7 +19,6 @@ use App\Models\PremiumFeature;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\AddressZoneResolver;
-use App\Services\H3Service;
 use App\Services\OrderPlacementService;
 use App\Services\ProductSearch;
 use App\Services\StockService;
@@ -205,12 +204,14 @@ class CustomerMobileController extends BaseApiController
 
             return $address->makeHidden(['delivery_zone', 'deliveryZone'])->toArray() + [
                 'full_address' => collect([$address->street, $address->city])->filter()->implode('، '),
+                // The fee belongs to the zone and is read from it; a copy beside
+                // it only invites the two to disagree.
                 'delivery_zone' => $zone?->only(['id', 'name', 'delivery_price']),
-                'delivery_price' => $zone ? (float) $zone->delivery_price : null,
                 // False while the address is outside every active zone: keep it
-                // in the list, but do not offer it at checkout.
+                // in the list, but do not offer it at checkout. The sentence that
+                // explains it is the same for every address, so it is not repeated
+                // here; the save response carries it as `title`.
                 'is_deliverable' => (bool) $zone?->is_active,
-                'coverage_message' => $zone?->is_active ? null : self::OUTSIDE_COVERAGE_TITLE,
             ];
         })->values();
     }
@@ -321,7 +322,7 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Get(path="/customer/addresses", tags={"Customer Addresses"}, summary="List own addresses (branches)",
-     *     description="Address details with delivery zone and price. Orders of an address are a separate call: GET /customer/addresses/{id}/orders. data.delivery_price is the price at the customer's registered location (used when there are no addresses yet).",
+     *     description="Address details with delivery zone and price. Orders of an address are a separate call: GET /customer/addresses/{id}/orders. Each address carries its own fee in `delivery_zone.delivery_price`; branches in different zones cost different amounts, so there is no single price for the list.",
      *     security={{"bearerAuth":{}}},
      *
      *     @OA\Response(response=200, description="Addresses",
@@ -329,7 +330,7 @@ class CustomerMobileController extends BaseApiController
      *         @OA\JsonContent(@OA\Property(property="data", type="object",
      *
      *             @OA\Property(property="addresses", type="array", @OA\Items(ref="#/components/schemas/CustomerAddressDetail")),
-     *             @OA\Property(property="delivery_price", type="number", nullable=true, example=6)))))
+     *             )))))
      */
     public function addresses(Request $request): JsonResponse
     {
@@ -337,19 +338,21 @@ class CustomerMobileController extends BaseApiController
             $this->addressScope()->orderBy('id')->get()
         );
 
-        return $this->jsonResponse(['data' => [
-            'addresses' => $addresses,
-            'delivery_price' => $this->userZonePrice(),
-        ]]);
+        // ponytail: no single delivery_price here. A cafe's branches can sit in
+        // different zones, so one number for the list would be right for one of
+        // them and wrong for the rest; each address carries its zone's price.
+        return $this->jsonResponse(['data' => ['addresses' => $addresses]]);
     }
 
     // The zone is found from the coordinates, never taken from the request: it sets the fee.
-    /** What the apps show when an address is saved but cannot be delivered to yet. */
-    public const OUTSIDE_COVERAGE_CODE = 'address_outside_coverage';
+    /**
+     * What the apps show when an address is saved but cannot be delivered to yet.
+     * The wording itself belongs to AddressZoneResolver, which decides coverage;
+     * these stay as names clients of this controller already use.
+     */
+    public const OUTSIDE_COVERAGE_TITLE = AddressZoneResolver::OUTSIDE_COVERAGE_TITLE;
 
-    public const OUTSIDE_COVERAGE_TITLE = 'عنوانك خارج نطاق التوصيل حالياً';
-
-    public const OUTSIDE_COVERAGE_MESSAGE = 'حفظنا عنوانك بنجاح، لكن خدمة التوصيل لم تصل إلى منطقتك بعد، لذلك لا يمكن الطلب إليه الآن. سنرسل لك إشعاراً فور بدء التوصيل إلى منطقتك.';
+    public const OUTSIDE_COVERAGE_MESSAGE = AddressZoneResolver::OUTSIDE_COVERAGE_MESSAGE;
 
     // The zone is found from the coordinates, never taken from the request: it
     // sets the fee. Null means the point is outside every zone, which is a fact
@@ -367,49 +370,36 @@ class CustomerMobileController extends BaseApiController
     }
 
     /**
-     * An address outside every delivery zone is saved, and answered with 202
-     * rather than 201/200: the request was accepted, the thing it exists for
-     * (ordering to it) is not available yet. `code` is stable for the apps to
-     * switch on; the title and message are ready for a dialog.
+     * An address outside every delivery zone is saved like any other and answered
+     * 201/200: the record was created in full, and nothing about the request is
+     * still being processed, which is the only thing another 2xx would mean. What
+     * is missing is coverage, a fact about the business — so `is_deliverable`
+     * carries it, and the title and message are ready for a dialog.
      */
     private function addressSaved(Address $address, int $status, string $message): JsonResponse
     {
         $deliverable = (bool) $address->deliveryZone?->is_active;
 
+        // ponytail: the same shaper builds the rows of GET /customer/addresses,
+        // which has no envelope to carry coverage, so it keeps is_deliverable on
+        // every address. Here the envelope already says it, so drop the copy
+        // rather than answer the same question twice in one body.
+        $details = $this->addressDetails(collect([$address]))->first();
+        unset($details['is_deliverable']);
+
         return response()->json([
             'success' => true,
-            'code' => $deliverable ? 'address_saved' : self::OUTSIDE_COVERAGE_CODE,
+            'is_deliverable' => $deliverable,
             'title' => $deliverable ? null : self::OUTSIDE_COVERAGE_TITLE,
             'message' => $deliverable ? $message : self::OUTSIDE_COVERAGE_MESSAGE,
-            'data' => $this->addressDetails(collect([$address]))->first(),
-        ], $deliverable ? $status : 202, [], JSON_UNESCAPED_UNICODE);
+            'data' => $details,
+        ], $status, [], JSON_UNESCAPED_UNICODE);
     }
 
     // Delivery price for the customer's registered location — used when the
     // customer has no addresses yet.
     // ponytail: delivery zones are drawn on the res-4 map grid, so one cell
     // lookup covers all of them; other resolutions would need one call per res.
-    private function userZonePrice(): ?float
-    {
-        $profile = auth()->user()->customerProfile;
-
-        if ($profile?->latitude === null || $profile?->longitude === null) {
-            return null;
-        }
-
-        // A hint for a customer with no address yet. If the hexagon service is
-        // down, the list of addresses must still load; it simply has no hint.
-        $cell = rescue(fn () => H3Service::latLngToCell((float) $profile->latitude, (float) $profile->longitude, 4), null);
-        if ($cell === null) {
-            return null;
-        }
-
-        $zone = DeliveryZone::where('is_active', true)
-            ->where('hex_id', $cell)
-            ->first(['delivery_price']);
-
-        return $zone ? (float) $zone->delivery_price : null;
-    }
 
     /**
      * @OA\Get(path="/customer/addresses/{id}", tags={"Customer Addresses"}, summary="Own address details",
@@ -427,17 +417,16 @@ class CustomerMobileController extends BaseApiController
 
     /**
      * @OA\Post(path="/customer/addresses", tags={"Customer Addresses"}, summary="Create an address",
-     *     description="Send the coordinates; the server finds the delivery zone (any `delivery_zone_id` you send is ignored, because the zone sets the fee). **Switch on the status code:** `201` means saved and ready to order to; `202` means saved but outside every delivery zone, so show `title` and `message` in a dialog and do not offer the address at checkout (`data.is_deliverable` is false, and an order to it is refused with 422). When coverage reaches the address the customer gets a notification and it becomes deliverable by itself. The first address is always allowed; more need the branches feature (403).",
+     *     description="Send the coordinates; the server finds the delivery zone (any `delivery_zone_id` you send is ignored, because the zone sets the fee). **Switch on `is_deliverable`:** true means saved and ready to order to; false means saved but outside every delivery zone, so show `title` and `message` in a dialog and do not offer the address at checkout (an order to it is refused with 422). The status is 201 either way — the address was created in full. When coverage reaches the address the customer gets a notification and it becomes deliverable by itself. The first address is always allowed; more need the branches feature (403).",
      *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
      *
-     *     @OA\Response(response=201, description="Saved, inside a delivery zone.",
+     *     @OA\Response(response=201, description="Saved. `is_deliverable` says whether it can be ordered to; when false, show `title` and `message` in a dialog.",
      *
-     *         @OA\JsonContent(example={"success": true, "code": "address_saved", "title": null, "message": "تم إنشاء العنوان بنجاح", "data": {"id": 14, "name": "الفرع الرئيسي", "city": "طرابلس", "latitude": "32.88000000", "longitude": "13.19000000", "delivery_zone": {"id": 3, "name": "طرابلس", "delivery_price": "7.00"}, "delivery_price": 7, "is_deliverable": true, "coverage_message": null}})),
+     *         @OA\JsonContent(examples={
      *
-     *     @OA\Response(response=202, description="Saved, but outside every delivery zone: show the dialog, do not allow ordering to it.",
-     *
-     *         @OA\JsonContent(example={"success": true, "code": "address_outside_coverage", "title": "عنوانك خارج نطاق التوصيل حالياً", "message": "حفظنا عنوانك بنجاح، لكن خدمة التوصيل لم تصل إلى منطقتك بعد، لذلك لا يمكن الطلب إليه الآن. سنرسل لك إشعاراً فور بدء التوصيل إلى منطقتك.", "data": {"id": 15, "name": "فرع الجنوب", "city": "سبها", "latitude": "25.00000000", "longitude": "20.00000000", "delivery_zone": null, "delivery_price": null, "is_deliverable": false, "coverage_message": "عنوانك خارج نطاق التوصيل حالياً"}})),
+     *             @OA\Examples(example="inside", summary="Inside a delivery zone", value={"success": true, "is_deliverable": true, "title": null, "message": "تم إنشاء العنوان بنجاح", "data": {"id": 14, "name": "الفرع الرئيسي", "city": "طرابلس", "latitude": "32.88000000", "longitude": "13.19000000", "delivery_zone": {"id": 3, "name": "طرابلس", "delivery_price": "7.00"}}}),
+     *             @OA\Examples(example="outside", summary="Outside every delivery zone", value={"success": true, "is_deliverable": false, "title": "عنوانك خارج نطاق التوصيل حالياً", "message": "حفظنا عنوانك بنجاح، لكن خدمة التوصيل لم تصل إلى منطقتك بعد، لذلك لا يمكن الطلب إليه الآن. سنرسل لك إشعاراً فور بدء التوصيل إلى منطقتك.", "data": {"id": 15, "name": "فرع الجنوب", "city": "سبها", "latitude": "25.00000000", "longitude": "20.00000000", "delivery_zone": null}})})),
      *
      *     @OA\Response(response=403, description="Already has an address and the branches feature is off.", @OA\JsonContent(ref="#/components/schemas/Error")))
      */
@@ -464,8 +453,7 @@ class CustomerMobileController extends BaseApiController
      *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
      *
-     *     @OA\Response(response=200, description="Updated, inside a delivery zone. Same body as creating one."),
-     *     @OA\Response(response=202, description="Updated, but the pin is now outside every delivery zone. Same body and dialog as creating one; `code` is `address_outside_coverage`."))
+     *     @OA\Response(response=200, description="Updated. Same body as creating one: when the pin now sits outside every delivery zone, `is_deliverable` is false and the same dialog applies."))
      */
     public function updateAddress(AddressRequest $request, int $id): JsonResponse
     {

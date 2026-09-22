@@ -184,7 +184,10 @@ class CustomerMobileEndpointsTest extends TestCase
         $res = $this->getJson('/api/v1/customer/addresses', ['Authorization' => "Bearer $token"]);
         $res->assertOk();
         $this->assertCount(1, $res->json('data.addresses'));
-        $this->assertArrayHasKey('delivery_price', $res->json('data'));
+        // Branches can sit in different zones, so the list carries no single fee;
+        // each address carries its own through its zone.
+        $this->assertArrayNotHasKey('delivery_price', $res->json('data'));
+        $this->assertEquals(5, $res->json('data.addresses.0.delivery_zone.delivery_price'));
     }
 
     public function test_customer_address_create(): void
@@ -225,7 +228,8 @@ class CustomerMobileEndpointsTest extends TestCase
 
         $this->assertSame('الشارع الرئيسي، طرابلس', $address['full_address']);
         $this->assertSame('منطقة اختبار', $address['delivery_zone']['name']);
-        $this->assertEquals(5, $address['delivery_price']);
+        $this->assertEquals(5, $address['delivery_zone']['delivery_price']);
+        $this->assertArrayNotHasKey('delivery_price', $address);
         $this->assertArrayNotHasKey('is_default', $address);
         $this->assertArrayNotHasKey('is_active', $address);
         $this->assertArrayNotHasKey('stats', $address);

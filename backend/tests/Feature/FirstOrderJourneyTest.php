@@ -93,28 +93,28 @@ class FirstOrderJourneyTest extends TestCase
 
     }
 
-    public function test_an_address_outside_coverage_is_saved_with_its_own_status_and_cannot_be_ordered_to(): void
+    public function test_an_address_outside_coverage_is_saved_but_flagged_and_cannot_be_ordered_to(): void
     {
         $user = AppUser::factory()->customer()->create();
         PremiumFeature::where('code', 'customer_branches')->update(['is_active' => true]);
 
-        // 25.0, 20.0 is deep in the desert: saved, answered 202, ready for a dialog.
+        // 25.0, 20.0 is deep in the desert: created like any other, flagged, ready for a dialog.
         $res = $this->postJson('/api/v1/customer/addresses', ['name' => 'فرع الجنوب', 'latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))
-            ->assertStatus(202)
-            ->assertJsonPath('code', 'address_outside_coverage')
+            ->assertCreated()
+            ->assertJsonPath('is_deliverable', false)
             ->assertJsonPath('title', 'عنوانك خارج نطاق التوصيل حالياً')
-            ->assertJsonPath('data.is_deliverable', false)
+            ->assertJsonMissingPath('data.is_deliverable')
             ->assertJsonPath('data.delivery_zone', null);
         $this->assertStringContainsString('سنرسل لك إشعاراً', $res->json('message'));
         $far = Address::findOrFail($res->json('data.id'));
 
         // Inside a zone it is the ordinary 201.
         $near = $this->postJson('/api/v1/customer/addresses', ['name' => 'فرع طرابلس', 'latitude' => 32.88, 'longitude' => 13.19], $this->headers($user))
-            ->assertCreated()->assertJsonPath('code', 'address_saved')->assertJsonPath('data.is_deliverable', true)->json('data.id');
+            ->assertCreated()->assertJsonPath('is_deliverable', true)->assertJsonMissingPath('data.is_deliverable')->json('data.id');
 
-        // Moving a good pin out of coverage answers 202 too; the list says which can be used.
-        $this->patchJson("/api/v1/customer/addresses/{$near}", ['latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))->assertStatus(202);
-        $this->patchJson("/api/v1/customer/addresses/{$near}", ['latitude' => 32.88, 'longitude' => 13.19], $this->headers($user))->assertOk()->assertJsonPath('data.is_deliverable', true);
+        // Moving a good pin out of coverage flags it too; the list says which can be used.
+        $this->patchJson("/api/v1/customer/addresses/{$near}", ['latitude' => 25.0, 'longitude' => 20.0], $this->headers($user))->assertOk()->assertJsonPath('is_deliverable', false);
+        $this->patchJson("/api/v1/customer/addresses/{$near}", ['latitude' => 32.88, 'longitude' => 13.19], $this->headers($user))->assertOk()->assertJsonPath('is_deliverable', true);
         $list = collect($this->getJson('/api/v1/customer/addresses', $this->headers($user))->assertOk()->json('data.addresses'))->keyBy('id');
         $this->assertFalse($list[$far->id]['is_deliverable']);
         $this->assertTrue($list[$near]['is_deliverable']);

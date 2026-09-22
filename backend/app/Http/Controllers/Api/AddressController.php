@@ -15,6 +15,64 @@ use Illuminate\Http\Request;
  */
 class AddressController extends BaseApiController
 {
+    /**
+     * Resolves the zone for a point and writes it into $data. Returns whether we
+     * actually got an answer: false means the hexagon service did not reply, so
+     * nobody knows whether the point is covered and anything the office is told
+     * about coverage would be a guess. A zone the office set by hand survives a
+     * lookup that found nothing, which is how an uncovered place is served.
+     */
+    private function applyZone(array &$data, float $latitude, float $longitude): bool
+    {
+        $chosenByHand = ! empty($data['delivery_zone_id']);
+
+        try {
+            $zone = app(AddressZoneResolver::class)->resolve($latitude, $longitude);
+        } catch (\RuntimeException $e) {
+            report($e);
+
+            return false;
+        }
+
+        // ponytail: a pin that moved out of every zone clears the zone it had,
+        // or the address would go on charging the fee of a zone that no longer
+        // reaches it. A zone named in this very request survives, which is how
+        // the office serves a place no zone covers yet.
+        if ($zone) {
+            $data['delivery_zone_id'] = $zone->id;
+        } elseif (! $chosenByHand) {
+            $data['delivery_zone_id'] = null;
+        }
+
+        return true;
+    }
+
+    /**
+     * The dashboard gets the same answer the apps get: an address no zone reaches
+     * is still saved, and carries `is_deliverable: false` with a sentence ready for
+     * a dialog, rather than a plain success for an address nobody can deliver to.
+     * Shape matches CustomerMobileController::addressSaved() so one dialog serves
+     * both; the status stays 201/200, because the record was created in full.
+     *
+     * A hexagon service that did not answer leaves coverage unknown, and saying
+     * "outside coverage" would be a guess — so that case keeps the plain success.
+     */
+    private function addressSaved(Address $address, int $status, bool $coverageKnown): JsonResponse
+    {
+        $deliverable = (bool) $address->deliveryZone?->is_active;
+        if ($deliverable || ! $coverageKnown) {
+            return $this->jsonResponse($address, $status);
+        }
+
+        return response()->json([
+            'success' => true,
+            'is_deliverable' => false,
+            'title' => AddressZoneResolver::OUTSIDE_COVERAGE_TITLE,
+            'message' => AddressZoneResolver::OUTSIDE_COVERAGE_MESSAGE,
+            'data' => $address,
+        ], $status, [], JSON_UNESCAPED_UNICODE);
+    }
+
     private function isCustomer(): bool
     {
         return auth()->user()?->userType?->name === UserRole::Customer->value;
@@ -62,7 +120,7 @@ class AddressController extends BaseApiController
      *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
      *
-     *     @OA\Response(response=201, description="Address created"),
+     *     @OA\Response(response=201, description="Address created. When no delivery zone reaches the point and none was set by hand, the body carries `is_deliverable: false` with a `title` and `message` ready for a dialog; a hand-set zone, or a hexagon service that did not answer, answers the plain model."),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
      */
@@ -82,14 +140,11 @@ class AddressController extends BaseApiController
         // The point decides the zone. The office may still set one by hand, for a
         // place no zone covers yet or while the hexagon service is down; without
         // either, the address has no fee.
-        $zone = rescue(fn () => app(AddressZoneResolver::class)->resolve((float) $data['latitude'], (float) $data['longitude']), null);
-        if ($zone) {
-            $data['delivery_zone_id'] = $zone->id;
-        }
+        $looked = $this->applyZone($data, (float) $data['latitude'], (float) $data['longitude']);
 
         $address = Address::create($data);
 
-        return $this->jsonResponse($address->load(['user', 'deliveryZone']), 201);
+        return $this->addressSaved($address->load(['user', 'deliveryZone']), 201, $looked);
     }
 
     /**
@@ -119,7 +174,7 @@ class AddressController extends BaseApiController
      *
      *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AddressRequest")),
      *
-     *     @OA\Response(response=200, description="Address updated"),
+     *     @OA\Response(response=200, description="Address updated. When the pin moved outside every delivery zone, the body carries `is_deliverable: false` as on create; coverage is only re-read when the pin moved."),
      *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
      */
@@ -134,16 +189,16 @@ class AddressController extends BaseApiController
             $data['user_id'] = auth()->id();
         }
 
+        // Coverage is only re-read when the pin moved; otherwise it is not our
+        // place to say anything about it, so $looked stays false.
+        $looked = false;
         if (array_key_exists('latitude', $data) || array_key_exists('longitude', $data)) {
-            $zone = rescue(fn () => app(AddressZoneResolver::class)->resolve((float) ($data['latitude'] ?? $address->latitude), (float) ($data['longitude'] ?? $address->longitude)), null);
-            if ($zone) {
-                $data['delivery_zone_id'] = $zone->id;
-            }
+            $looked = $this->applyZone($data, (float) ($data['latitude'] ?? $address->latitude), (float) ($data['longitude'] ?? $address->longitude));
         }
 
         $address->update($data);
 
-        return $this->jsonResponse($address->load(['user', 'deliveryZone']));
+        return $this->addressSaved($address->load(['user', 'deliveryZone']), 200, $looked);
     }
 
     /**

@@ -15,6 +15,13 @@ use App\Models\Notification;
  */
 class AddressZoneResolver
 {
+    // The one wording for "saved, but nobody delivers there yet". It lives on the
+    // service that decides coverage so the apps and the dashboard cannot drift
+    // apart, and so the office edits the sentence in one place.
+    public const OUTSIDE_COVERAGE_TITLE = 'عنوانك خارج نطاق التوصيل حالياً';
+
+    public const OUTSIDE_COVERAGE_MESSAGE = 'حفظنا عنوانك بنجاح، لكن خدمة التوصيل لم تصل إلى منطقتك بعد، لذلك لا يمكن الطلب إليه الآن. سنرسل لك إشعاراً فور بدء التوصيل إلى منطقتك.';
+
     public function resolve(float $latitude, float $longitude): ?DeliveryZone
     {
         $zones = DeliveryZone::where('is_active', true)->get(['id', 'hex_id']);
