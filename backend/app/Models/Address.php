@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasImages;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Address extends Model
 {
-    use HasFactory, LogsActivity, SoftDeletes;
+    use HasFactory, HasImages, LogsActivity, SoftDeletes;
+
+    // Which default artwork stands in when the cafe has photographed nothing.
+    protected string $placeholderKind = 'customer';
+
+    protected $appends = ['images'];
 
     protected $fillable = [
         'user_id',

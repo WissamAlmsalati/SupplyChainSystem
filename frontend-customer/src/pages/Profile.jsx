@@ -11,8 +11,8 @@ export default function Profile() {
 
   useEffect(() => {
     client
-      .get('/customer/profile')
-      .then((res) => setAddresses(res.data?.data?.addresses ?? res.data?.addresses ?? []))
+      .get('/customer/addresses')
+      .then((res) => setAddresses(res.data?.data?.addresses ?? []))
       .catch(() => setError('فشل تحميل بيانات الملف.'))
       .finally(() => setLoading(false))
   }, [])
@@ -63,7 +63,7 @@ export default function Profile() {
                   <div className="flex justify-between"><span className="text-muted">الاسم</span><span>{a.name}</span></div>
                   <div className="flex justify-between"><span className="text-muted">المدينة</span><span>{a.city ?? '-'}</span></div>
                   <div className="flex justify-between"><span className="text-muted">أرقام التواصل</span><span>{(a.contact_phones ?? []).join('، ') || '-'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted">الحالة</span><span>{a.is_active ? 'نشط' : 'غير نشط'}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">التوصيل</span><span>{a.is_deliverable === false ? 'خارج النطاق' : a.delivery_zone?.name ?? '-'}</span></div>
                 </li>
               ))}
             </ul>

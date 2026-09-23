@@ -51,6 +51,13 @@ class CheckPermission
         // Sending is the one notifications action that is not about your own rows.
         'notifications.send' => 'NOTIFICATIONS_SEND',
         'notifications.sent' => 'NOTIFICATIONS_SEND',
+        // Pictures of an address are part of managing that address, so they
+        // carry the address codes rather than a module of their own. Without
+        // these three the names would not split into resource.action, and a
+        // route whose code is null is let through unchecked.
+        'addresses.images.store' => 'CUSTOMER_BRANCHES_EDIT',
+        'addresses.images.update' => 'CUSTOMER_BRANCHES_EDIT',
+        'addresses.images.destroy' => 'CUSTOMER_BRANCHES_EDIT',
     ];
 
     /**

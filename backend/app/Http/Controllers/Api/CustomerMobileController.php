@@ -23,6 +23,7 @@ use App\Services\OrderPlacementService;
 use App\Services\ProductSearch;
 use App\Services\StockService;
 use App\Support\BusinessTime;
+use App\Support\Placeholder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -504,7 +505,11 @@ class CustomerMobileController extends BaseApiController
     {
         return $this->jsonResponse([
             'user' => $this->profilePayload(),
-            'addresses' => $this->addressScope()->with('deliveryZone:id,name,delivery_price')->get(),
+            // ponytail: ids, not whole addresses. Each address carries its zone
+            // and its pictures, so embedding them made the one call every app
+            // makes on startup grow with every branch and every photo. The
+            // addresses endpoint is where an address is read.
+            'addresses' => $this->addressScope()->orderBy('id')->pluck('id'),
             // The rule lives here so the apps do not re-derive it: the first address is
             // always allowed, further ones need the branches feature.
             'can_add_address' => ! $this->addressScope()->exists() || PremiumFeature::isActive('customer_branches'),
@@ -530,14 +535,20 @@ class CustomerMobileController extends BaseApiController
 
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:100'],
-            'mobile_number' => ['sometimes', 'required', 'string', 'max:20', Rule::unique('users', 'mobile_number')->ignore($user->id)],
+            'email' => ['sometimes', 'nullable', 'email', 'max:150', Rule::unique('users', 'email')->ignore($user->id)],
+            // ponytail: the number is the account's identity — it is the door a
+            // cafe signs in through, and it is unique per user type. Changing it
+            // here would move the account without any of the checks registration
+            // does, so it is refused rather than quietly ignored: a client that
+            // believed it had changed the number would be lied to.
+            'mobile_number' => ['prohibited'],
             'business_name' => ['nullable', 'string', 'max:150'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], ['mobile_number.prohibited' => 'لا يمكن تغيير رقم الهاتف من هنا، تواصل مع الإدارة']);
 
         DB::transaction(function () use ($user, $data) {
-            $user->update(collect($data)->only(['name', 'mobile_number'])->all());
+            $user->update(collect($data)->only(['name', 'email'])->all());
             $user->customerProfile()->updateOrCreate(
                 ['user_id' => $user->id],
                 collect($data)->only(['business_name', 'latitude', 'longitude'])->all()
@@ -547,6 +558,14 @@ class CustomerMobileController extends BaseApiController
         $user->unsetRelation('customerProfile');
 
         return $this->jsonResponse($this->profilePayload());
+    }
+
+    /** The default artwork as a one-entry list, for a cafe with no profile row. */
+    private function placeholderImages(): array
+    {
+        $url = Placeholder::url('customer');
+
+        return [['id' => null, 'url' => $url, 'type' => Placeholder::typeFor($url), 'is_primary' => true, 'sort_order' => 0]];
     }
 
     private function profilePayload(): array
@@ -559,6 +578,9 @@ class CustomerMobileController extends BaseApiController
             'business_name' => $profile?->business_name,
             'latitude' => $profile?->latitude,
             'longitude' => $profile?->longitude,
+            // A cafe with no profile row yet still gets a list, so a client
+            // never has to tell "no pictures" apart from "no profile".
+            'images' => $profile?->images ?? $this->placeholderImages(),
             'has_addresses' => $addressesCount > 0,
             'addresses_count' => $addressesCount,
         ];

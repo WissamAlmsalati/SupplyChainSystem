@@ -22,7 +22,18 @@ namespace App\OpenApi;
  *         @OA\Property(property="id", type="integer", example=1),
  *         @OA\Property(property="name", type="string", example="منطقة طرابلس"),
  *         @OA\Property(property="delivery_price", type="string", example="6.00")),
- *     @OA\Property(property="is_deliverable", description="False while no active delivery zone reaches the address: show it in the list, but do not offer it at checkout — an order to it is refused with 422. It becomes true by itself once coverage arrives, and the customer is notified.", type="boolean", example=true)
+ *     @OA\Property(property="is_deliverable", description="False while no active delivery zone reaches the address: show it in the list, but do not offer it at checkout — an order to it is refused with 422. It becomes true by itself once coverage arrives, and the customer is notified.", type="boolean", example=true),
+ *     @OA\Property(property="images", description="Pictures of the place, primary first. Never empty: an address nobody photographed answers one entry carrying the default artwork, with a null id — which is also how you know there is nothing there to delete.", type="array", @OA\Items(ref="#/components/schemas/ImageItem"))
+ * )
+ *
+ * @OA\Schema(schema="ImageItem", type="object",
+ *     description="One picture. `type` is the file format (jpg, png, webp, svg…), because a client draws an SVG and a bitmap differently and the default artwork is SVG.",
+ *
+ *     @OA\Property(property="id", type="integer", nullable=true, example=41),
+ *     @OA\Property(property="url", type="string", example="/storage/addresses/front.jpg"),
+ *     @OA\Property(property="type", type="string", example="jpg"),
+ *     @OA\Property(property="is_primary", type="boolean", example=true),
+ *     @OA\Property(property="sort_order", type="integer", example=0)
  * )
  *
  * @OA\Schema(schema="CustomerOrderCard", type="object",

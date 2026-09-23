@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\AddressImageController;
 use App\Http\Controllers\Api\AppUserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CafeProfileImageController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CartItemController;
 use App\Http\Controllers\Api\CategoryController;
@@ -123,6 +125,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () use ($account
             // Profile endpoints stay reachable for every authenticated customer user.
             Route::get('profile', [CustomerMobileController::class, 'profile'])->name('profile');
             Route::match(['patch', 'put'], 'profile', [CustomerMobileController::class, 'updateProfile'])->name('profile.update');
+            // Pictures of the cafe itself. Scoped to the signed-in account, so
+            // these sit with the other profile routes rather than under a code.
+            Route::post('profile/images', [CafeProfileImageController::class, 'store'])->name('profile.images.store');
+            Route::match(['patch', 'put'], 'profile/images/{imageId}', [CafeProfileImageController::class, 'update'])->name('profile.images.update');
+            Route::delete('profile/images/{imageId}', [CafeProfileImageController::class, 'destroy'])->name('profile.images.destroy');
             // Read-only feature flags for the customer app UI (addresses toggle, etc.)
             Route::get('premium-features', [PremiumFeatureController::class, 'index'])->name('premium-features');
         });
@@ -138,6 +145,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () use ($account
             Route::get('addresses/{id}', [CustomerMobileController::class, 'showAddress'])->name('addresses.show');
             Route::get('addresses/{id}/orders', [CustomerMobileController::class, 'addressOrders'])->name('addresses.orders');
             Route::match(['patch', 'put'], 'addresses/{id}', [CustomerMobileController::class, 'updateAddress'])->name('addresses.update');
+            Route::post('addresses/{id}/images', [AddressImageController::class, 'store'])->name('addresses.images.store');
+            Route::match(['patch', 'put'], 'addresses/{id}/images/{imageId}', [AddressImageController::class, 'update'])->name('addresses.images.update');
+            Route::delete('addresses/{id}/images/{imageId}', [AddressImageController::class, 'destroy'])->name('addresses.images.destroy');
             Route::delete('addresses/{id}', [CustomerMobileController::class, 'destroyAddress'])->name('addresses.destroy');
             Route::get('delivery-zones', [CustomerMobileController::class, 'deliveryZones'])->name('delivery-zones.index');
             Route::get('categories', [CustomerMobileController::class, 'categories'])->name('categories.index');
@@ -203,6 +213,14 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () use ($account
         Route::match(['patch', 'put'], 'notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
         Route::apiResource('notifications', NotificationController::class)->only(['index', 'show', 'destroy']);
         Route::match(['patch', 'put'], 'notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+
+        // Pictures of an address, for the office. The names are three segments,
+        // so they need an entry in CheckPermission::ROUTE_MAP: a name that does
+        // not split into resource.action yields no code, and a route with no
+        // code is not checked at all.
+        Route::post('addresses/{id}/images', [AddressImageController::class, 'store'])->name('addresses.images.store');
+        Route::match(['patch', 'put'], 'addresses/{id}/images/{imageId}', [AddressImageController::class, 'update'])->name('addresses.images.update');
+        Route::delete('addresses/{id}/images/{imageId}', [AddressImageController::class, 'destroy'])->name('addresses.images.destroy');
 
         Route::apiResources([
             'user-types' => UserTypeController::class,

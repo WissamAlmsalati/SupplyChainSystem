@@ -420,6 +420,200 @@
                 ]
             }
         },
+        "/customer/addresses/{id}/images": {
+            "post": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "Add a picture to an address",
+                "description": "Multipart upload. The first picture an address gets becomes its primary; send `is_primary` to make a later one take over. Pictures always come back as the `images` list on the address.",
+                "operationId": "2f78e2558a205b60beb2b05729fbb8b7",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "image"
+                                ],
+                                "properties": {
+                                    "image": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "is_primary": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Picture added",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "success": true,
+                                    "message": "تمت إضافة الصورة بنجاح",
+                                    "data": {
+                                        "id": 41,
+                                        "url": "/storage/addresses/front.jpg",
+                                        "type": "jpg",
+                                        "is_primary": true,
+                                        "sort_order": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Address not found or not yours"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/addresses/{id}/images/{imageId}": {
+            "delete": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "Delete a picture",
+                "description": "Removes the row and the stored file. An address left with none answers the default artwork.",
+                "operationId": "2a4f6d6886f0a13fc032faed7c512f37",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "imageId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Picture deleted"
+                    },
+                    "404": {
+                        "description": "Address or picture not found"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Customer Addresses"
+                ],
+                "summary": "Make a picture the primary one",
+                "description": "Exactly one picture is primary; promoting one demotes the rest, and the promoted picture leads the `images` list.",
+                "operationId": "650a253e182e7aa62fd10013648376ce",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "imageId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "is_primary"
+                                ],
+                                "properties": {
+                                    "is_primary": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Picture promoted"
+                    },
+                    "404": {
+                        "description": "Address or picture not found"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/login": {
             "post": {
                 "tags": [
@@ -694,6 +888,170 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/profile/images": {
+            "post": {
+                "tags": [
+                    "Customer Profile"
+                ],
+                "summary": "Add a picture of the cafe",
+                "description": "Multipart upload, scoped to the signed-in cafe. The first picture becomes the primary one; send `is_primary` to make a later one take over. Pictures come back as `user.images` on the profile.",
+                "operationId": "9c77264f6fff221e35a910a9cd480012",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "image"
+                                ],
+                                "properties": {
+                                    "image": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "is_primary": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Picture added",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "success": true,
+                                    "message": "تمت إضافة الصورة بنجاح",
+                                    "data": {
+                                        "id": 7,
+                                        "url": "/storage/cafes/shop.jpg",
+                                        "type": "jpg",
+                                        "is_primary": true,
+                                        "sort_order": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/customer/profile/images/{imageId}": {
+            "delete": {
+                "tags": [
+                    "Customer Profile"
+                ],
+                "summary": "Delete a picture of the cafe",
+                "description": "Removes the row and the stored file. A cafe left with none answers the default artwork.",
+                "operationId": "94c7274c66e9624f2b45e0d69e3ecb16",
+                "parameters": [
+                    {
+                        "name": "imageId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Picture deleted"
+                    },
+                    "404": {
+                        "description": "No such picture on this cafe"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Customer Profile"
+                ],
+                "summary": "Make a picture the primary one",
+                "operationId": "46e66c02bc0c0b6a19393b5c1142581b",
+                "parameters": [
+                    {
+                        "name": "imageId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "is_primary"
+                                ],
+                                "properties": {
+                                    "is_primary": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Picture promoted"
+                    },
+                    "404": {
+                        "description": "No such picture on this cafe"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     }
                 },
                 "security": [
@@ -13542,6 +13900,40 @@
                         "description": "False while no active delivery zone reaches the address: show it in the list, but do not offer it at checkout — an order to it is refused with 422. It becomes true by itself once coverage arrives, and the customer is notified.",
                         "type": "boolean",
                         "example": true
+                    },
+                    "images": {
+                        "description": "Pictures of the place, primary first. Never empty: an address nobody photographed answers one entry carrying the default artwork, with a null id — which is also how you know there is nothing there to delete.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ImageItem"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "ImageItem": {
+                "description": "One picture. `type` is the file format (jpg, png, webp, svg…), because a client draws an SVG and a bitmap differently and the default artwork is SVG.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 41,
+                        "nullable": true
+                    },
+                    "url": {
+                        "type": "string",
+                        "example": "/storage/addresses/front.jpg"
+                    },
+                    "type": {
+                        "type": "string",
+                        "example": "jpg"
+                    },
+                    "is_primary": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "sort_order": {
+                        "type": "integer",
+                        "example": 0
                     }
                 },
                 "type": "object"
