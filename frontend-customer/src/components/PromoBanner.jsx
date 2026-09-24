@@ -17,13 +17,29 @@ export default function PromoBanner() {
 
   if (promos.length === 0) return null
 
-  const handleClick = (link) => {
-    if (!link) return
-    if (/^https?:\/\//i.test(link)) {
-      window.open(link, '_blank', 'noopener')
-    } else if (link.startsWith('/')) {
-      navigate(link)
+  // The server names the destination; this maps it to a route on the web. A
+  // `link` is a place outside the platform, and the two never both apply.
+  const ROUTES = {
+    home: () => '/',
+    products: () => '/products',
+    product: (id) => `/products/${id}`,
+    category: (id) => `/products?category_id=${id}`,
+    orders: () => '/orders',
+    cart: () => '/cart',
+    profile: () => '/profile',
+  }
+
+  const destinationOf = (promo) =>
+    promo.deeplink_entity ? ROUTES[promo.deeplink_entity]?.(promo.deeplink_entity_id) : null
+
+  const handleClick = (promo) => {
+    if (promo.link) {
+      window.open(promo.link, '_blank', 'noopener')
+
+      return
     }
+    const to = destinationOf(promo)
+    if (to) navigate(to)
   }
 
   return (
@@ -32,11 +48,11 @@ export default function PromoBanner() {
         <button
           key={promo.id}
           type="button"
-          onClick={() => handleClick(promo.link)}
-          className={`block w-full overflow-hidden rounded-xl border border-border bg-surface text-start shadow-sm ${promo.link ? 'cursor-pointer hover:opacity-95' : 'cursor-default'}`}
+          onClick={() => handleClick(promo)}
+          className={`block w-full overflow-hidden rounded-xl border border-border bg-surface text-start shadow-sm ${promo.link || destinationOf(promo) ? 'cursor-pointer hover:opacity-95' : 'cursor-default'}`}
         >
-          {promo.image_url && (
-            <img src={promo.image_url} alt="" className="max-h-64 w-full object-cover" />
+          {promo.image && (
+            <img src={promo.image} alt="" className="max-h-64 w-full object-cover" />
           )}
           {promo.show_description && promo.description && (
             <div className="p-4">

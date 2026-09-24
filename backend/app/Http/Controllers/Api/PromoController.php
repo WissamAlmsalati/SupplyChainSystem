@@ -39,7 +39,12 @@ class PromoController extends BaseApiController
      */
     public function active(): JsonResponse
     {
-        return $this->jsonResponse(Promo::where('is_active', true)->orderByDesc('id')->get());
+        // { data: [...] } like every other list here, rather than a bare array:
+        // the apps should not need a special case for this one endpoint. Each
+        // row is shaped by Promo::toClient(), so every banner has the same keys.
+        return $this->jsonResponse([
+            'data' => Promo::where('is_active', true)->orderByDesc('id')->get()->map->toClient(),
+        ]);
     }
 
     public function store(PromoRequest $request): JsonResponse

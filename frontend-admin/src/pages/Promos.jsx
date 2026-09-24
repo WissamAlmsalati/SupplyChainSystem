@@ -7,30 +7,24 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import SearchableSelect from '../components/ui/SearchableSelect'
 
-const initial = { description: '', linkType: 'none', productId: '', productSearch: '', show_description: true, is_active: true }
+const initial = { description: '', linkType: 'none', entityId: '', entitySearch: '', link: '', show_description: true, is_active: true }
 
+// 'none' and 'external' are choices in this form only; everything else is a
+// deeplink_entity the API and both apps know by name.
 const DESTINATIONS = [
   { value: 'none', label: 'بدون وجهة (صورة فقط)' },
   { value: 'home', label: 'الرئيسية' },
   { value: 'products', label: 'صفحة المنتجات' },
   { value: 'product', label: 'منتج محدد' },
+  { value: 'category', label: 'تصنيف محدد' },
   { value: 'orders', label: 'الطلبات' },
   { value: 'cart', label: 'سلة المشتريات' },
   { value: 'profile', label: 'الملف الشخصي' },
+  { value: 'external', label: 'رابط خارجي (خارج التطبيق)' },
 ]
 
-const LINK_BY_TYPE = { home: '/', products: '/products', orders: '/orders', cart: '/cart', profile: '/profile' }
-
-function parseLink(link) {
-  if (!link) return { linkType: 'none', productId: '' }
-  const m = link.match(/^\/products\/(\d+)$/)
-  if (m) return { linkType: 'product', productId: m[1] }
-  const type = Object.keys(LINK_BY_TYPE).find((k) => LINK_BY_TYPE[k] === link)
-  return { linkType: type ?? 'none', productId: '' }
-}
-
-const buildLink = (form) =>
-  form.linkType === 'product' ? (form.productId ? `/products/${form.productId}` : '') : (LINK_BY_TYPE[form.linkType] ?? '')
+// Which destinations name one record and so need it chosen.
+const NEEDS_ID = { product: { endpoint: '/products', label: 'اختر المنتج' }, category: { endpoint: '/categories', label: 'اختر التصنيف' } }
 
 export default function Promos() {
   const { items, loading, error, pagination, setPage, create, update, remove, confirmDialog } = useApiResource('/promos')
@@ -43,12 +37,14 @@ export default function Promos() {
   const [products, setProducts] = useState([])
   const [productsLoading, setProductsLoading] = useState(false)
 
+  const needsId = NEEDS_ID[form.linkType]
+
   useEffect(() => {
-    if (form.linkType !== 'product') return
+    if (!needsId) return
     const t = setTimeout(async () => {
       setProductsLoading(true)
       try {
-        const { data } = await client.get('/products', { params: { search: form.productSearch || undefined, per_page: 50 } })
+        const { data } = await client.get(needsId.endpoint, { params: { search: form.entitySearch || undefined, per_page: 50 } })
         setProducts(data?.data ?? data ?? [])
       } catch {
         setProducts([])
@@ -57,7 +53,7 @@ export default function Promos() {
       }
     }, 300)
     return () => clearTimeout(t)
-  }, [form.linkType, form.productSearch])
+  }, [form.linkType, form.entitySearch])
 
   const openCreate = () => {
     setForm(initial)
@@ -68,19 +64,27 @@ export default function Promos() {
   }
 
   const openEdit = async (item) => {
-    const parsed = parseLink(item.link)
-    setForm({ ...initial, ...item, ...parsed, productSearch: '' })
+    const linkType = item.deeplink_entity ?? (item.link ? 'external' : 'none')
+    setForm({
+      ...initial, ...item, linkType,
+      entityId: item.deeplink_entity_id ?? '',
+      link: item.link ?? '',
+      entitySearch: '',
+    })
     setImageFile(null)
     setImagePreview(item.image_url)
     setEditing(item)
     setModal(true)
-    if (parsed.linkType === 'product') {
+
+    const target = NEEDS_ID[linkType]
+    if (target && item.deeplink_entity_id) {
       try {
-        const { data } = await client.get(`/products/${parsed.productId}`)
-        const p = data?.data ?? data
-        setForm((f) => ({ ...f, productSearch: p?.name ?? '' }))
+        const { data } = await client.get(`${target.endpoint}/${item.deeplink_entity_id}`)
+        const row = data?.data ?? data
+        setForm((f) => ({ ...f, entitySearch: row?.name ?? '' }))
       } catch {
-        // ponytail: product deleted since promo created — keep the id, label shows the raw id
+        // ponytail: the record was deleted since the banner was made — keep the
+        // id, the picker simply shows it raw rather than losing the banner.
       }
     }
   }
@@ -97,7 +101,11 @@ export default function Promos() {
     const data = new FormData()
     if (imageFile) data.append('image', imageFile)
     data.append('description', form.description ?? '')
-    data.append('link', buildLink(form))
+    // A destination inside the apps, or a link outside them, never both.
+    const inApp = form.linkType !== 'none' && form.linkType !== 'external'
+    data.append('link', form.linkType === 'external' ? (form.link ?? '') : '')
+    data.append('deeplink_entity', inApp ? form.linkType : '')
+    data.append('deeplink_entity_id', inApp && NEEDS_ID[form.linkType] ? (form.entityId ?? '') : '')
     data.append('show_description', form.show_description ? '1' : '0')
     data.append('is_active', form.is_active ? '1' : '0')
     return data
@@ -136,13 +144,15 @@ export default function Promos() {
     },
     {
       key: 'link',
-      label: 'الوجهة (Deep Link)',
-      render: (r) =>
-        r.link ? (
-          <code className="rounded bg-background px-1.5 py-0.5 text-xs text-primary" dir="ltr">{r.link}</code>
-        ) : (
-          <span className="text-muted">-</span>
-        ),
+      label: 'الوجهة',
+      render: (r) => {
+        if (r.link) {
+          return <code className="rounded bg-background px-1.5 py-0.5 text-xs text-primary" dir="ltr">{r.link}</code>
+        }
+        if (!r.deeplink_entity) return <span className="text-muted">-</span>
+        const label = DESTINATIONS.find((d) => d.value === r.deeplink_entity)?.label ?? r.deeplink_entity
+        return <span>{label}{r.deeplink_entity_id ? ` #${r.deeplink_entity_id}` : ''}</span>
+      },
     },
     {
       key: 'show_description',
@@ -219,27 +229,40 @@ export default function Promos() {
             <label className="mb-1.5 block text-sm font-medium text-muted">الوجهة (Deep Link)</label>
             <select
               value={form.linkType}
-              onChange={(e) => setForm({ ...form, linkType: e.target.value, productId: '', productSearch: '' })}
+              onChange={(e) => setForm({ ...form, linkType: e.target.value, entityId: '', entitySearch: '', link: '' })}
               className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             >
               {DESTINATIONS.map((d) => (
                 <option key={d.value} value={d.value}>{d.label}</option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-muted">{buildLink(form) ? `اللينك: ${buildLink(form)}` : 'بدون لينك'}</p>
           </div>
-          {form.linkType === 'product' && (
+          {needsId && (
             <SearchableSelect
-              label="اختر المنتج"
-              placeholder="ابحث واختر منتج..."
+              label={needsId.label}
+              placeholder="ابحث واختر..."
               searchPlaceholder="ابحث بالاسم..."
               options={products}
-              value={form.productId}
-              onChange={(v) => setForm({ ...form, productId: v })}
-              onQueryChange={(q) => setForm((f) => ({ ...f, productSearch: q }))}
+              value={form.entityId}
+              onChange={(v) => setForm({ ...form, entityId: v })}
+              onQueryChange={(q) => setForm((f) => ({ ...f, entitySearch: q }))}
               loading={productsLoading}
               getLabel={(p) => p.name}
             />
+          )}
+          {form.linkType === 'external' && (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-muted">الرابط الخارجي</label>
+              <input
+                type="url"
+                dir="ltr"
+                placeholder="https://facebook.com/..."
+                value={form.link}
+                onChange={(e) => setForm({ ...form, link: e.target.value })}
+                className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+              />
+              <p className="mt-1 text-xs text-muted">يفتح خارج التطبيق. للوجهات داخل التطبيق اختر وجهة من القائمة.</p>
+            </div>
           )}
           <label className="flex items-center gap-2 text-sm text-foreground">
             <input
